@@ -13,6 +13,12 @@ let repos = uniqueRepos(readStored('acc.repos.v2', DEFAULT_REPOS));
 if (!repos.length) repos = [...DEFAULT_REPOS];
 let selected = readStored('acc.selected.v1', repos[0]);
 if (!repos.includes(selected)) selected = repos[0];
+const requestedRepo = new URLSearchParams(location.search).get('repo');
+if (requestedRepo && FULL_REPOS.includes('tanawutmalirum29-ux/'+requestedRepo)) {
+ const full = 'tanawutmalirum29-ux/'+requestedRepo;
+ if (!repos.includes(full)) repos.push(full);
+ selected = full;
+}
 let currentView = 'workspace';
 let requestId = 0;
 let currentData = {info: null, issues: [], pulls: [], runs: [], errors: []};

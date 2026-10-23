@@ -102,3 +102,32 @@ test('UI includes separate project organization rooms, M messages, T cards and o
  assert.match(migration,/UNIQUE\(room_id,seq\)/);
  assert.match(migration,/org_creator_sessions/);
 });
+
+test('OWNER D1 setup is secured and loads packaged schema before any member query',async()=>{
+ let called=false;
+ const db={prepare(){throw Error('should not need membership tables before setup')},async exec(query){
+  called=true;
+  assert.match(query,/CREATE TABLE IF NOT EXISTS org_messages/);
+  assert.match(query,/CREATE TABLE IF NOT EXISTS org_creator_sessions/);
+ }};
+ const req=post('setup',{});
+ const unauth=await orgWorkspaceApi(req.clone(),{db});
+ assert.equal(unauth.status,403);
+ assert.equal(called,false);
+ const auth=await orgWorkspaceApi(req,{db,owner:true});
+ assert.equal(auth.status,200,JSON.stringify(await auth.clone().json()));
+ assert.equal((await auth.json()).initialized,true);
+ assert.equal(called,true);
+});
+test('packaged D1 schema matches the SQL migration file byte for byte',async()=>{
+ const {ORG_SCHEMA}=await import('../src/org-schema.js');
+ const sql=readFileSync(new URL('../migrations/0001_org_workspaces.sql',import.meta.url),'utf8');
+ assert.equal(ORG_SCHEMA,sql);
+});
+test('invitation and CEO deep links do not leave bearer tickets in browser address bar',()=>{
+ const script=readFileSync(new URL('../public/org-workspace.js',import.meta.url),'utf8');
+ const html=readFileSync(new URL('../public/index.html',import.meta.url),'utf8');
+ assert.match(script,/history\.replaceState/);
+ assert.match(script,/ceo-activate/);
+ assert.match(html,/name="referrer" content="no-referrer"/);
+});
