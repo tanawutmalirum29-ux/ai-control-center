@@ -268,10 +268,10 @@ test('AI-facing organization page uses website-only invitations, no GitHub proof
  assert.match(html,/id="orgw-invite-form"/);
  assert.doesNotMatch(html,/id="orgw-proof-form"/);
  assert.doesNotMatch(js,/prepareGithubProof/);
- assert.match(js,/api\\('ceo-activate','POST'/);
- assert.match(js,/api\\('members','POST'/);
- assert.match(js,/api\\('messages','POST'/);
- assert.match(js,/api\\('tasks','POST'/);
+ assert.ok(js.includes("api('ceo-activate','POST'"));
+ assert.ok(js.includes("api('members','POST'"));
+ assert.ok(js.includes("api('messages','POST'"));
+ assert.ok(js.includes("api('tasks','POST'"));
 });
 test('proof-based CEO bootstrap rejects wrong repository proof and invalid proof response',async()=>{
  const ticket='c'.repeat(64),stamp=new Date().toISOString().slice(0,19).replace(/[-:]/g,'')+'Z';
