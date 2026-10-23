@@ -136,7 +136,7 @@ export default {async fetch(request,env){
   const s=await session(request,env);
   return workApi(request,{token:s?.token});
  }
- if(path==='/api/v1/organization'||path==='/api/v1/organization/document')return organizationApi(request);
+ if(path==='/api/v1/organization'||path==='/api/v1/organization/document'||path==='/api/v1/organization/bundle'||path==='/api/v1/organization/bundle/document')return organizationApi(request);
  if(path==='/api/health')return reply({
   service:'AI Control Center',version:7,owner:OWNER,ai_provider:'none',
   repositories:REPOS.map(name=>OWNER+'/'+name),
