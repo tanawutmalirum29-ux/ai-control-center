@@ -113,13 +113,20 @@ export async function processBridgeCommand(db,input){
   if(uuid(id)&&okRepo(input?.repo))await store(db,receipt({id,repo:input.repo,action:String(input.action||'invalid')},'REJECTED',String(error.message).slice(0,120)));
   return {id,status:'REJECTED',detail:String(error.message)};
  }
+ // Reserve the file ID before mutating the room, so a retry/crash can never
+ // execute the same command twice. A stuck PROCESSING receipt is visible to the owner.
+ const claimed=await db.prepare('INSERT OR IGNORE INTO bridge_receipts(id,repo,action,status,detail) VALUES(?,?,?,?,?)')
+  .bind(cmd.id,cmd.repo,cmd.action,'PROCESSING','Accepted from GitHub main').run();
+ if(!claimed.meta?.changes)return {...await one(db,'SELECT * FROM bridge_receipts WHERE id=?',cmd.id),replayed:true};
  try{
   const result=await apply(db,cmd);
-  await store(db,result);
+  await db.prepare('UPDATE bridge_receipts SET status=?,detail=?,room_id=?,code=? WHERE id=?')
+   .bind(result.status,result.detail,result.room_id,result.code,cmd.id).run();
   return result;
  }catch(error){
   const result=receipt(cmd,'REJECTED',String(error.message).slice(0,160),cmd.room_id||null);
-  await store(db,result);
+  await db.prepare('UPDATE bridge_receipts SET status=?,detail=?,room_id=? WHERE id=?')
+   .bind(result.status,result.detail,result.room_id,cmd.id).run();
   return result;
  }
 }
