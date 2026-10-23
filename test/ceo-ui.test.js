@@ -26,7 +26,7 @@ test('source browsing works without authenticated code writes',()=>{
  assert.match(client,/\/api\/v1\/source\/file/);
  assert.match(client,/\/api\/auth\/me/);
  assert.match(client,/\/api\/agent\/me/);
- assert.match(client,/branch\.startsWith\('acc\/'\)/);
+ assert.match(client,/workBranch\(branch\)/);
 });
 test('server routes public mission reads separately from authenticated write operations',()=>{
  const worker=read('src/worker.js');
