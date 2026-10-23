@@ -33,18 +33,11 @@ test('organization bundle API works without GitHub API access',async()=>{
  assert.equal(result.status,400);
  assert.equal(calls,0);
 });
-test('organization rules, D1 workrooms, in-site QA, and legacy cleanup remain accessible',()=>{
+test('new AI site removes old organization editor and retains QA plus bridge',()=>{
  const html=readFileSync(new URL('../public/index.html',import.meta.url),'utf8');
- const org=readFileSync(new URL('../public/organization.js',import.meta.url),'utf8');
- for(const id of ['view-organization','org-documents','org-full-document',
-  'view-orgrooms','orgw-message-form','orgw-task-form',
-  'view-qa','qa-pr-output','qa-runs','view-operations',
-  'cleanup-panel','branch-panel']){
-   assert.ok(html.includes('id="'+id+'"'),id+' missing from HTML');
- }
- assert.ok(html.includes('src="./organization.js"'));
- assert.ok(!html.includes('src="./operations.js"'));
- assert.ok(!html.includes('id="ops-create"'));
- assert.ok(!html.includes('id="ops-comment-send"'));
- assert.match(org,/organization\/bundle/);
+ for(const id of ['view-bridge','bridge-rooms','bridge-receipts','view-qa','qa-pr-output','qa-runs'])
+  assert.ok(html.includes('id="'+id+'"'),id);
+ for(const old of ['view-organization','orgw-message-form','orgw-task-form','cleanup-panel','branch-panel'])
+  assert.ok(!html.includes('id="'+old+'"'),'retired '+old);
+ assert.ok(!html.includes('src="./organization.js"'));
 });
