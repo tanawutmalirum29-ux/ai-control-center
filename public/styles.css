@@ -12,3 +12,17 @@
 
 /* Scroll affordance: independent of panel height and Safari toolbar changes. */
 .back-to-top{position:fixed;right:clamp(12px,3vw,24px);bottom:calc(16px + env(safe-area-inset-bottom,0px));z-index:1000;width:46px;height:46px;border:1px solid #446f77;border-radius:13px;background:#24544d;color:#f2fff9;font-size:25px;line-height:1;box-shadow:0 7px 28px #0008;display:grid;place-items:center;touch-action:manipulation}.back-to-top[hidden]{display:none!important}.back-to-top:focus-visible{outline:3px solid var(--accent);outline-offset:3px}
+
+/* V4: Compact controls and per-PR QA evidence. Mobile touch and viewport safe. */
+.top-actions{flex-wrap:wrap;max-width:100%;justify-content:flex-end}
+.top-actions>.auth-status{white-space:normal;max-width:180px}
+.list-item{flex-wrap:wrap;min-width:0}
+.list-item>div:nth-child(2){min-width:0;flex:1}
+.pr-qa-actions{width:100%;flex:0 0 100%;padding-left:42px;display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.pr-qa-actions button{min-height:36px;padding:7px 10px;font-size:12px}
+.pr-qa-output{font-size:12px;color:var(--muted);overflow-wrap:anywhere}
+.pr-qa-output small{display:block;margin-top:4px}
+.agent-task .status-tag{margin:0 0 0 8px}
+@media(max-width:850px){.main-area{padding-top:18px}.top-actions{gap:7px;justify-content:flex-start}.top-actions select{flex:1 1 175px;min-width:135px;max-width:100%}.top-actions .secondary-button{padding:9px 10px;min-height:40px}.navigation{scrollbar-width:thin}.topbar{gap:12px}}
+@media(max-width:520px){.top-actions>.auth-status{order:5;flex-basis:100%;max-width:none;font-size:11px}.top-actions select{flex-basis:100%}.pr-qa-actions{padding-left:0;display:block}.pr-qa-actions button{margin-bottom:8px}.pr-qa-output{width:100%}.agent-task{flex-wrap:wrap}.agent-task .secondary-button{width:100%}}
+@media(max-height:400px) and (orientation:landscape){.sidebar{padding:9px 12px}.navigation{margin-top:6px}.main-area{padding-top:12px}.hero{min-height:180px}.hero-inner{padding:20px}.topbar{margin-bottom:12px}}

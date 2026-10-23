@@ -1,8 +1,7 @@
 // AI Control Center: public read-only endpoints + owner-only GitHub App user OAuth.
 // No paid OpenAI API. No credentials or GitHub tokens in browser-facing JSON.
-const OWNER = 'tanawutmalirum29-ux';
-const REPOS = ['ARCANA-SURVIVOR', 'ai-control-center', 'appointment-CEO', 'Staging_area'];
-const WRITE_REPOS = ['ai-control-center'];
+import {OWNER, REPOS, WRITE_REPOS} from '../public/repositories.js';
+import {readApi} from './read-api.js';
 const jsonHeaders = {'content-type':'application/json; charset=utf-8','cache-control':'no-store','x-content-type-options':'nosniff'};
 const publicHeaders = {...jsonHeaders,'access-control-allow-origin':'*','access-control-allow-methods':'GET, HEAD, OPTIONS'};
 const reply=(data,status=200,isPublic=false)=>new Response(JSON.stringify(data),{status,headers:isPublic?publicHeaders:jsonHeaders});
@@ -101,21 +100,6 @@ function getRole(title=''){
  const m=String(title).match(/^\[?(CEO|DIR(?:-[A-Z])?|TL(?:-[A-Z0-9]+)?|ENGINEER(?:-[A-Z0-9]+)?|QA-REVIEWER|PROJECT-LEAD)\]?(?=[\s:-])/i);
  return m?m[1].toUpperCase():'UNASSIGNED';
 }
-async function queue(name){
- const repo=OWNER+'/'+name;
- const list=await github('/repos/'+repo+'/issues?state=open&sort=updated&direction=desc&per_page=50');
- return {repo,fetched_at:new Date().toISOString(),truncated:list.length===50,read_only:true,tasks:list.filter(x=>!x.pull_request).map(x=>({number:x.number,title:x.title,role:getRole(x.title),url:'https://github.com/'+repo+'/issues/'+x.number,updated_at:x.updated_at}))};
-}
-async function summary(name){
- const repo=OWNER+'/'+name;
- const [issues,prs,runs]=await Promise.all([
-  github('/repos/'+repo+'/issues?state=open&per_page=100'),
-  github('/repos/'+repo+'/pulls?state=open&per_page=100'),
-  github('/repos/'+repo+'/actions/runs?per_page=1')
- ]);
- const latest=runs.workflow_runs?.[0];
- return {repo,fetched_at:new Date().toISOString(),open_issues_in_page:issues.filter(x=>!x.pull_request).length,issues_truncated:issues.length===100,open_prs_in_page:prs.length,prs_truncated:prs.length===100,latest_qa:latest?{name:latest.name,status:latest.status,conclusion:latest.conclusion,url:latest.html_url}:null,read_only:true};
-}
 async function newIssue(request,env,url){
  if(request.method!=='POST')return reply({error:'method_not_allowed'},405);
  if(request.headers.get('origin')!==url.origin)return reply({error:'forbidden_origin'},403);
@@ -141,12 +125,12 @@ export default {async fetch(request,env){
  if(!path.startsWith('/api/'))return env.ASSETS.fetch(request);
  if(path.startsWith('/api/auth/'))return auth(request,env,url);
  if(path==='/api/v1/issues')return newIssue(request,env,url);
- if(request.method==='OPTIONS')return new Response(null,{status:204,headers:publicHeaders});
- if(request.method!=='GET'&&request.method!=='HEAD')return reply({error:'method_not_allowed',writes_enabled:false},405);
- if(path==='/api/health')return reply({service:'AI Control Center',version:3,mode:configured(env)?'github-app-owner-auth':'public-read-only',ai_provider:'none',owner:OWNER,repositories:REPOS.map(n=>OWNER+'/'+n),write_repositories:WRITE_REPOS.map(n=>OWNER+'/'+n),auth_ready:configured(env),endpoints:['/api/health','/api/auth/me','/api/v1/queue?repo=ARCANA-SURVIVOR','/api/v1/summary?repo=ARCANA-SURVIVOR','POST /api/v1/issues (owner login only)']},200,true);
- if(!['/api/v1/queue','/api/v1/summary'].includes(path))return reply({error:'not_found'},404,true);
- const name=url.searchParams.get('repo');
- if(!REPOS.includes(name))return reply({error:'repository_not_allowed',allowed:REPOS},400,true);
- try{return reply(path==='/api/v1/queue'?await queue(name):await summary(name),200,true);}
- catch{return reply({error:'github_unavailable',message:'GitHub public API unavailable or rate limited.'},503,true);}
+ if(path==='/api/health')return reply({
+  service:'AI Control Center',version:4,owner:OWNER,ai_provider:'none',
+  repositories:REPOS.map(name=>OWNER+'/'+name),
+  write_repositories:WRITE_REPOS.map(name=>OWNER+'/'+name),
+  auth_ready:configured(env),qa_note:'PR QA and head SHA are inspected separately from repository CI',
+  endpoints:['/api/health','/api/auth/me','/api/v1/repositories','/api/v1/queue?repo=ARCANA-SURVIVOR','/api/v1/summary?repo=ARCANA-SURVIVOR','/api/v1/pr-qa?repo=ARCANA-SURVIVOR&pr=1','POST /api/v1/issues (owner only)']
+ },200,true);
+ return readApi(request);
 }};

@@ -51,3 +51,11 @@ Production URL: https://ai-control-center.tanawutmalirum29.workers.dev/
 
 ## GitHub App owner login (V3)
 See [docs/GITHUB_APP_SETUP.md](docs/GITHUB_APP_SETUP.md). After adding Client ID and Client Secret as Cloudflare Secrets, owner login and direct Issue creation are available **only for ai-control-center**. No paid OpenAI API used.
+
+## V4: Reliable work queue and PR-specific QA
+- Source of truth for both Worker and browser: `public/repositories.js`, including ant-project and ai-organization-hub.
+- Worker cache: 2 minutes, stale fallback up to 15 minutes; client queue retains most recent data up to one hour and marks stale content.
+- Issue statuses from explicit labels only; without status labels, `UNCLASSIFIED`.
+- PR QA is inspected on demand via `/api/v1/pr-qa?repo=...&pr=...`. Includes head SHA, check runs, latest reviewer state, and linked issue references. It **never** authorizes merge.
+- No changes to owner OAuth or to write permissions. Read `docs/QUEUE_QA.md` for contract and limitations.
+- Run `npm test` (Node 20+) for the no-dependency unit tests.

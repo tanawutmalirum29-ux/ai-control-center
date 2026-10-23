@@ -1,10 +1,6 @@
-/* AI Control Center V1: public, read-only GitHub data. No credentials or write endpoints. */
-const DEFAULT_REPOS = [
-  'tanawutmalirum29-ux/ARCANA-SURVIVOR',
-  'tanawutmalirum29-ux/ai-control-center',
-  'tanawutmalirum29-ux/appointment-CEO',
-  'tanawutmalirum29-ux/Staging_area'
-];
+import {FULL_REPOS} from './repositories.js';
+/* Shared GitHub repository allowlist; browser reads only, authenticated writes use separate owner endpoint. */
+const DEFAULT_REPOS = FULL_REPOS;
 const REPO_PATTERN = /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/;
 const CACHE_TTL = 120000;
 const memoryCache = new Map();
@@ -12,8 +8,8 @@ const el = (id) => document.getElementById(id);
 const escapeHtml = (value) => String(value ?? '').replace(/[&<>"']/g, (char) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
 const readStored = (key, fallback) => { try { const value = localStorage.getItem(key); return value ? JSON.parse(value) : fallback; } catch { return fallback; } };
 const store = (key, value) => { try { localStorage.setItem(key, JSON.stringify(value)); } catch { /* optional local preference */ } };
-const uniqueRepos = (repos) => [...new Set(repos.filter((value) => typeof value === 'string' && REPO_PATTERN.test(value)))].slice(0, 12);
-let repos = uniqueRepos(readStored('acc.repos.v1', DEFAULT_REPOS));
+const uniqueRepos = (repos) => [...new Set(repos.filter((value) => typeof value === 'string' && REPO_PATTERN.test(value) && FULL_REPOS.includes(value)))].slice(0, 12);
+let repos = uniqueRepos(readStored('acc.repos.v2', DEFAULT_REPOS));
 if (!repos.length) repos = [...DEFAULT_REPOS];
 let selected = readStored('acc.selected.v1', repos[0]);
 if (!repos.includes(selected)) selected = repos[0];
@@ -87,7 +83,7 @@ function renderRepoSettings() {
     row.append(name, remove); el('repo-list').append(row);
   }
 }
-function persistRepos() { store('acc.repos.v1', repos); store('acc.selected.v1', selected); }
+function persistRepos() { store('acc.repos.v2', repos); store('acc.selected.v1', selected); }
 function setLinks() {
   el('hero-repo').href = repoPage();
   el('issues-open').href = repoPage() + '/issues';
@@ -171,7 +167,7 @@ function setup() {
   el('repo-form').addEventListener('submit', (event) => {
     event.preventDefault();
     const value = el('repo-add').value.trim();
-    if (!REPO_PATTERN.test(value)) { el('repo-notice').textContent = 'ใช้รูปแบบ owner/repository เท่านั้น'; return; }
+    if (!REPO_PATTERN.test(value) || !FULL_REPOS.includes(value)) { el('repo-notice').textContent = 'Repository นี้ยังไม่ได้รับอนุญาตในระบบกลาง (public/repositories.js)'; return; }
     if (repos.includes(value)) { el('repo-notice').textContent = 'มี Repository นี้อยู่แล้ว'; return; }
     if (repos.length >= 12) { el('repo-notice').textContent = 'ติดตามได้ไม่เกิน 12 Repository'; return; }
     repos.push(value); selected = value; persistRepos(); renderRepoSettings(); renderPicker(); el('repo-add').value = '';

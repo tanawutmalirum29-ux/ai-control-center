@@ -23,7 +23,12 @@ async function refresh(){
   create.hidden=!authenticated;
   exit.hidden=!authenticated;
   link.hidden=authenticated||!me.configured;
-  meNotice.textContent=authenticated?'เชื่อมต่อ: '+me.login:me.configured?'ยังไม่เข้าสู่ระบบ':'รอตั้งค่า GitHub App';
+  meNotice.textContent=authenticated?'Owner: '+me.login:me.configured?'ยังไม่เข้าสู่ระบบ':'รอตั้งค่า GitHub App';
+  const side=document.querySelector('.side-bottom');
+  if(side)side.textContent=authenticated?'Owner ยืนยันตัวตน · สร้าง Issue เฉพาะ ai-control-center':'GitHub Public API · อ่านเท่านั้นจนกว่า Owner จะ Login';
+  const settings=document.querySelectorAll('.settings-grid>div p');
+  if(settings[0])settings[0].textContent=authenticated?'อ่าน GitHub และสร้าง Issue ตามสิทธิ์ Owner':'อ่าน Public Repository (ยังไม่เข้าสู่ระบบ)';
+  if(settings[1])settings[1].textContent=authenticated?'สร้าง Issue ได้เฉพาะ ai-control-center':'ต้องยืนยันผ่าน GitHub App ก่อนเขียน';
  }catch{meNotice.textContent='ตรวจสถานะ GitHub ไม่ได้';}
 }
 create.addEventListener('click',async()=>{

@@ -1,55 +1,69 @@
-// AI task queue using public read-only bridge; no secrets, no automated AI execution.
+// AI queue: status evidence only; never run an AI job or write to GitHub silently.
+import {OWNER, FULL_REPOS} from './repositories.js';
 (()=>{
-'use strict';
-const el=id=>document.getElementById(id);
-const current=()=>el('repo-select')?.value||'';
-const allowed=repo=>/^tanawutmalirum29-ux\/[A-Za-z0-9_.-]+$/.test(repo);
-let loaded='',tasks=[],nonce=0;
-function instruction(repo,t){
- const info=t?'Issue #'+t.number+': '+t.title+'\n'+t.url:'ตรวจรายการงานค้างและเลือกสิ่งที่ต้องดำเนินการ';
- return ['AI CONTROL CENTER / MN','Repository: https://github.com/'+repo,info,'','ดำเนินงานด้วย GitHub Connector ที่ได้รับสิทธิ์ ตรวจงานซ้ำก่อนแก้','รายงาน MN/MQ/TR/C ให้สั้นตามกฎองค์กร','ต้องมีหลักฐาน QA ก่อน Merge เข้า main','ห้ามลบ Repository/Branch/Issue หรือข้าม QA โดยไม่มีการอนุมัติ'].join('\n');
-}
-async function copy(text){
- try{await navigator.clipboard.writeText(text);el('agent-notice').textContent='คัดลอกแล้ว — วางในแชท GPT ที่เชื่อม GitHub';}
- catch(_){el('agent-notice').textContent='ไม่สามารถคัดลอกได้ โปรดอนุญาต Clipboard';}
-}
-function render(repo){
- const panel=el('agent-items');panel.replaceChildren();
- if(!tasks.length){const p=document.createElement('p');p.className='empty';p.textContent='ไม่มี Issue เปิดอยู่ในรายการล่าสุด';panel.append(p);return;}
- for(const task of tasks){
-  const row=document.createElement('div');row.className='agent-task';
-  const info=document.createElement('div');info.className='agent-task-info';
-  const a=document.createElement('a');a.textContent='#'+task.number+' · '+task.title;a.href=task.url;a.target='_blank';a.rel='noopener noreferrer';
-  const small=document.createElement('small');small.textContent=task.role+' · '+new Date(task.updated_at).toLocaleDateString('th-TH');
-  const btn=document.createElement('button');btn.type='button';btn.className='secondary-button';btn.textContent='คัดลอก MN';btn.addEventListener('click',()=>copy(instruction(repo,task)));
-  info.append(a,small);row.append(info,btn);panel.append(row);
+ 'use strict';
+ const el=id=>document.getElementById(id);
+ const current=()=>el('repo-select')?.value||'';
+ const allowed=repo=>FULL_REPOS.includes(repo);
+ let loaded='',tasks=[],nonce=0;
+ const actions={READY:'เริ่มงาน',IN_PROGRESS:'ติดตามงานเดิม',WAITING_QA:'ส่งตรวจ QA',QA_BLOCK:'รายงานสิ่งที่บล็อก',PAUSED:'ตรวจเหตุผลที่พัก',UNCLASSIFIED:'ตรวจสถานะก่อน'};
+ const colors={READY:'good',IN_PROGRESS:'wait',WAITING_QA:'wait',QA_BLOCK:'bad',PAUSED:'bad',UNCLASSIFIED:'wait'};
+ function instruction(repo,task){
+  const target=task?`Issue #${task.number}: ${task.title}\n${task.url}\nสถานะ: ${task.status} (${task.source})`:'ตรวจสถานะงานล่าสุด เลือกเฉพาะงาน READY ที่ยังไม่มีผู้รับผิดชอบและไม่ซ้ำ';
+  const rule=task?.status==='READY'?'ตรวจว่ามีผู้รับงานแล้วหรือไม่ก่อนลงมือ':task?.status==='IN_PROGRESS'?'ติดตามผู้รับงานเดิม ห้ามเริ่มซ้ำ':task?.status==='WAITING_QA'?'ตรวจหลักฐาน QA ห้าม Merge หากยังไม่ผ่าน':task?.status==='QA_BLOCK'?'รายงานจุด Block ห้าม Merge':task?.status==='PAUSED'?'ห้ามเริ่มงานจนกว่าจะปลดพัก':'ไม่ทราบสถานะที่ยืนยันได้ ต้องตรวจ Issue ก่อนเริ่ม';
+  return ['AI CONTROL CENTER / MN','Repository: https://github.com/'+repo,target,rule,
+   'ใช้ GitHub Connector ที่ได้รับสิทธิ์เพื่ออ่านข้อมูลจริง',
+   'รายงาน MN/MQ/TR/C สั้นตามกฎองค์กร','ต้องมี QA ตรงกับ PR และ head SHA ก่อน Merge','ห้ามลบ Repository หรือข้าม QA โดยไม่ได้รับอนุมัติ'].join('\n');
  }
-}
-async function refresh(){
- const repo=current();const id=++nonce;loaded=repo;tasks=[];el('agent-items').replaceChildren();
- if(!allowed(repo)){el('agent-state').textContent='รองรับเฉพาะ Repository ที่กำหนด';return;}
- el('agent-state').textContent='กำลังโหลดงาน...';
- try{
-  const r=await fetch('/api/v1/queue?repo='+encodeURIComponent(repo.split('/')[1]),{headers:{Accept:'application/json'}});
-  if(!r.ok)throw Error('HTTP '+r.status);
-  const data=await r.json();
+ async function copy(s){
+  try{await navigator.clipboard.writeText(s);el('agent-notice').textContent='คัดลอกแล้ว — วางใน ChatGPT ที่เชื่อม GitHub';}
+  catch{el('agent-notice').textContent='คัดลอกไม่สำเร็จ กรุณาอนุญาต Clipboard';}
+ }
+ function render(repo){
+  const panel=el('agent-items');panel.replaceChildren();
+  if(!tasks.length){const p=document.createElement('p');p.className='empty';p.textContent='ยังไม่มี Issue เปิดอยู่';panel.append(p);return;}
+  for(const task of tasks){
+   const row=document.createElement('div');row.className='agent-task';
+   const info=document.createElement('div');info.className='agent-task-info';
+   const title=document.createElement('a');title.textContent='#'+task.number+' · '+task.title;title.href=task.url;title.target='_blank';title.rel='noopener noreferrer';
+   const tag=document.createElement('span');tag.className='status-tag '+(colors[task.status]||'wait');tag.textContent=task.status;
+   tag.title=task.source==='label'?'จาก GitHub Label':'ไม่พบ Label ระบุสถานะ';
+   const small=document.createElement('small');small.textContent=task.role+' · '+(task.source==='label'?'Label ยืนยัน':'ยังไม่ยืนยันสถานะ')+' · '+new Date(task.updated_at).toLocaleDateString('th-TH');
+   const b=document.createElement('button');b.type='button';b.className='secondary-button';b.textContent=actions[task.status]||'ตรวจงาน';b.addEventListener('click',()=>copy(instruction(repo,task)));
+   info.append(title,tag,small);row.append(info,b);panel.append(row);
+  }
+ }
+ function remember(key,payload){try{localStorage.setItem(key,JSON.stringify({at:Date.now(),payload}));}catch{}}
+ function recall(key){try{const d=JSON.parse(localStorage.getItem(key));return Date.now()-d.at<3600000?d.payload:null;}catch{return null;}}
+ async function refresh(){
+  const repo=current();const id=++nonce;loaded=repo;tasks=[];el('agent-items').replaceChildren();
+  if(!allowed(repo)){el('agent-state').textContent='Repository นี้ไม่ได้เปิดใน Bridge';return;}
+  el('agent-state').textContent='กำลังโหลดงาน...';
+  let data;
+  const key='acc.queue.'+repo;
+  try{
+   const response=await fetch('/api/v1/queue?repo='+encodeURIComponent(repo.split('/')[1]),{headers:{Accept:'application/json'}});
+   data=await response.json();
+   if(!response.ok)throw new Error(data.reason||data.error||'API unavailable');
+   if(data.repo!==repo||!Array.isArray(data.tasks))throw Error('Invalid queue');
+   if(!data.stale)remember(key,data);
+  }catch(error){
+   data=recall(key);
+   if(!data){if(id!==nonce)return;el('agent-state').textContent='โหลดไม่สำเร็จ: '+(error.message||'GitHub API')+' · ไม่มีข้อมูลสำรอง';return;}
+   data={...data,stale:true,warning:error.message};
+  }
   if(id!==nonce||repo!==current())return;
-  if(data.repo!==repo||!Array.isArray(data.tasks))throw Error('invalid');
   tasks=data.tasks.filter(t=>Number.isSafeInteger(t.number)&&t.number>0&&Number.isFinite(Date.parse(t.updated_at)));
-  el('agent-state').textContent='พบงาน '+tasks.length+' รายการ'+(data.truncated?' (สูงสุด 50)':'')+' · ข้อมูลจาก GitHub';
+  const stale=data.stale?' · ข้อมูลสำรอง (อาจไม่ล่าสุด)'+(data.warning?' · '+data.warning:''):'';
+  el('agent-state').textContent='งาน '+tasks.length+' รายการ'+(data.truncated?' (สูงสุด 100)':'')+stale;
   render(repo);
- }catch(_){
-  if(id!==nonce)return;
-  el('agent-state').textContent='GitHub API ยังไม่พร้อม ลองรีเฟรชอีกครั้ง';
-  const a=document.createElement('a');a.textContent='เปิด GitHub Issues ↗';a.className='primary-button';a.href='https://github.com/'+repo+'/issues';a.target='_blank';a.rel='noopener noreferrer';el('agent-items').append(a);
  }
-}
-function setup(){
- const nav=document.querySelector('.navigation [data-view="agents"]');if(!nav)return;
- nav.addEventListener('click',()=>{if(loaded!==current()||!tasks.length)refresh();});
- el('repo-select').addEventListener('change',()=>{loaded='';tasks=[];if(!el('view-agents').classList.contains('hidden'))refresh();});
- el('agent-refresh').addEventListener('click',refresh);
- el('agent-copy-all').addEventListener('click',()=>{if(allowed(current()))copy(instruction(current(),null));});
-}
-if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',setup);else setup();
+ function setup(){
+  const nav=document.querySelector('.navigation [data-view="agents"]');if(!nav)return;
+  nav.addEventListener('click',()=>{if(loaded!==current()||!tasks.length)refresh();});
+  el('repo-select').addEventListener('change',()=>{loaded='';tasks=[];if(!el('view-agents').classList.contains('hidden'))refresh();});
+  el('agent-refresh').addEventListener('click',refresh);
+  el('agent-copy-all').addEventListener('click',()=>{if(allowed(current()))copy(instruction(current(),null));});
+ }
+ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',setup);else setup();
 })();

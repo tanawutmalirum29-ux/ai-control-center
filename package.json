@@ -1,0 +1,1 @@
+{"name":"ai-control-center","private":true,"type":"module","scripts":{"test":"node --test test/*.test.js","check":"node --check src/read-api.js && node --check src/worker.js && node --check public/agent.js && node --check public/qa.js"}}
