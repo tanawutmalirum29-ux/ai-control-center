@@ -22,6 +22,7 @@
 | Actions | Owner-only list Workflows, Runs and Jobs/Steps; dispatch on `acc/` Branch requires Actions Write permission and explicit confirmation |
 | Automated code checks | `npm run check` + `npm test` via .github/workflows/qa.yml |
 | Merge, repository deletion, branch deletion | Not exposed through the website |
+| Permanent Issue deletion | Owner-only Preview + confirmed batched GitHub GraphQL deleteIssue, including Open/Closed, excluding PRs |
 | Autonomous agents, independent agent auth, durable claims, multi-agent execution | **Not implemented** |
 
 ## First-time setup
@@ -47,7 +48,7 @@ Writes require owner authorization and same-origin JSON. Tokens are held inside 
 
 - All edits go through an isolated `acc/` Branch; direct editing of `main` is blocked by the workspace API.
 - PR creation is **Draft only**. CI pass is not independent QA, and `CHECKS_PASS_REVIEWED` is not permission to merge.
-- No browser-based Delete/Merge buttons or endpoints. Workflow dispatch is restricted to `acc/` Branches and requires explicit confirmation.
+- No browser-based Merge or repository/branch deletion buttons. Issue deletion is an OWNER-only exception requiring preview, typed repository confirmation, checkbox, and fresh GitHub node verification. Workflow dispatch is restricted to `acc/` Branches and requires explicit confirmation.
 - Assignment of a GitHub issue to a username is not execution of a ChatGPT agent. A generated AP-ROLE is an instruction record awaiting real session activation by the OWNER.
 - The website currently has **one authorized OWNER GitHub identity**, not distinct AI agent credentials. Multiple browser sessions sharing that owner identity must not be treated as separately authorized engineers or independent QA.
 - The bundled organization rules can become older than `ai-organization-hub/main`; snapshot SHA and live SHA are displayed separately.
@@ -79,3 +80,14 @@ The owner uses the signed-in GitHub OAuth session only to issue the first CEO li
 OWNER or an authorized CEO can issue a limited GUEST-ENGINEER link from CEO Dashboard > AI ภายนอกที่กำลังทำงาน. No AP-ROLE or organization membership is needed. The existing AI receives a one-line MN link, opens Workspace, creates its own guest branch, commits text files and opens a Draft PR. Main merges, delete operations, Issue mutations and delegation are not permitted.
 
 Without GITHUB_APP_PRIVATE_KEY, OWNER may still mint a short temporary guest link from the existing GitHub App OAuth session, capped by its remaining lifetime. The signed link contains an AES-GCM encrypted OAuth credential; the Worker decrypts it server-side and enforces guest branch isolation. No plaintext GitHub OAuth token is sent to JavaScript. GitHub App installation and permissions on the target project are still required. Possession of the URL grants use until expiry. GitHub App installation-based team delegation remains separately configured.
+
+## Permanent Issue cleanup (OWNER only)
+
+The **ศูนย์สั่งงาน GitHub** page includes a permanently destructive Issue cleanup panel for the selected repository. GitHub GraphQL `deleteIssue` removes the issue itself (and its discussion), not just its state. Open and closed Issues are included, but pull requests are excluded. The GitHub issue-number sequence cannot be reset by deletion.
+
+1. Sign into the configured GitHub App as the exact repository owner (server-verified encrypted owner session); a central `GITHUB_WRITE_TOKEN` or delegated AI credential can **never** authorize deletion.
+2. Select the repository, open **ศูนย์สั่งงาน GitHub**, and click **ตรวจรายการ (Preview)**. Inspect the total and export the JSON snapshot if needed. This export is *not* a backup of comments or attachments.
+3. Enter the exact phrase `DELETE tanawutmalirum29-ux/<repository>`, tick the irreversible-deletion checkbox, then press **ลบทั้งหมดแบบถาวร**. Batches contain up to five issues, each verified against current GitHub node ID, number, repository, and updatedAt. A mismatch or GitHub API error stops the batch and requires a fresh preview.
+4. Verify the final recount reads 0. GitHub Actions unit tests use mocked GraphQL: they never delete real issues. In addition, manual owner-login and live GraphQL permission checks must be performed against a **disposable test repository** before relying on deletion for important data.
+
+API: `GET /api/v1/maintenance/issues/preview?repo=...` and `POST /api/v1/maintenance/issues/delete`. Both strictly require the owner OAuth session. The GitHub App must have suitable permissions for the GraphQL mutation, and GitHub itself requires the personal account owner for permanent deletion. This intentionally is not available to CEO/Engineer/QA delegated sessions or anonymous central-token users.
