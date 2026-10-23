@@ -5,7 +5,10 @@ import {ORG_SCHEMA} from './org-schema.js';
 const validRepo=repo=>WRITE_REPOS.includes(repo);
 const idOK=id=>typeof id==='string'&&/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
 const slotOK=slot=>typeof slot==='string'&&/^[A-Z][A-Z0-9_-]{0,39}$/.test(slot);
-const roles=['CEO','PROJECT-LEAD','DIR','TL','ENGINEER','QA-REVIEWER'];
+// New organizations have exactly one CEO, one independent QA, and EN1..EN5.
+const roles=['ENGINEER','QA-REVIEWER'];
+const engineerSlot=slot=>/^EN[1-5]$/.test(slot);
+const qaSlot=slot=>slot==='QA';
 const stateOK=s=>['READY','IN_PROGRESS','WAITING_QA','QA_HOLD','DONE','CANCELLED'].includes(s);
 const format=(prefix,n)=>prefix+String(n).padStart(5,'0');
 const res=(data,status=200,headers={})=>new Response(JSON.stringify(data),{status,headers:{
@@ -52,9 +55,7 @@ function checkWrite(request,url){
 async function dataInput(request){
  try{return await request.json();}catch{return null;}
 }
-function adminRole(actor){
- return actor?.role==='CEO'||actor?.role==='PROJECT-LEAD';
-}
+function adminRole(actor){return actor?.role==='CEO';}
 async function nextMessage(db,room,actor,to,body){
  // SQLite write serialization + UNIQUE(room_id,seq) prevents duplicate M IDs.
  // Retry constraint conflicts; do not overwrite existing messages.
@@ -225,13 +226,18 @@ export async function orgWorkspaceApi(request,{db,owner=false,agent=null}={}){
    return result?res({sent:true,room_id:room,...result,code:format('M',result.seq)},201):res({error:'room_closed'},409);
   }
   if(route==='/api/v1/org/members'&&verb==='POST'){
-   if(!adminRole(who))return res({error:'ceo_or_project_lead_only'},403);
+   if(!adminRole(who))return res({error:'ceo_only_can_appoint'},403);
    const slot=clean(data.slot,40).toUpperCase(),role=clean(data.role,30).toUpperCase();
-   if(!slotOK(slot)||!roles.includes(role)||role==='CEO')return res({error:'invalid_slot_or_role'},400);
-   const count=await db.prepare('SELECT COUNT(*) AS total FROM org_members WHERE room_id=? AND revoked_at IS NULL').bind(room).first();
-   if(Number(count?.total)>=10)return res({error:'ten_member_limit'},409);
-   const existing=await db.prepare('SELECT id FROM org_members WHERE room_id=? AND slot=?').bind(room,slot).first();
-   if(existing)return res({error:'slot_already_assigned'},409);
+   if(!roles.includes(role)||!(role==='ENGINEER'?engineerSlot(slot):qaSlot(slot)))
+    return res({error:'only_EN1_to_EN5_or_one_QA_allowed'},400);
+   const roster=await db.prepare('SELECT slot,role FROM org_members WHERE room_id=? AND revoked_at IS NULL').bind(room).all();
+   const members=roster.results||[];
+   if(members.filter(m=>m.role==='ENGINEER').length>=5&&role==='ENGINEER')
+    return res({error:'maximum_five_engineers'},409);
+   if(members.some(m=>m.role==='QA-REVIEWER')&&role==='QA-REVIEWER')
+    return res({error:'one_independent_qa_only'},409);
+   if(members.length>=7)return res({error:'maximum_seven_agents'},409);
+   if(members.some(m=>m.slot===slot))return res({error:'slot_already_assigned'},409);
    const ticket=secret();
    await db.prepare('INSERT INTO org_members(id,room_id,slot,role,token_hash,expires_at) VALUES(?,?,?,?,?,?)')
     .bind(crypto.randomUUID(),room,slot,role,await digest(ticket),expiration()).run();
@@ -240,7 +246,7 @@ export async function orgWorkspaceApi(request,{db,owner=false,agent=null}={}){
     warning:'Invitation contains a secret. Share only with the intended AI chat; access expires in 30 days.'},201);
   }
   if(route==='/api/v1/org/tasks'&&verb==='POST'){
-   if(!['CEO','PROJECT-LEAD','DIR','TL'].includes(who.role))return res({error:'team_lead_only'},403);
+   if(who.role!=='CEO')return res({error:'ceo_only_can_assign_tasks'},403);
    const title=clean(data.title,200),description=clean(data.description||'',3000),
     to=clean(data.assignee_slot,40).toUpperCase();
    if(title.length<3||title.length>200||description.length>3000||!slotOK(to))return res({error:'invalid_task'},400);
@@ -254,11 +260,25 @@ export async function orgWorkspaceApi(request,{db,owner=false,agent=null}={}){
    if(!Number.isSafeInteger(seq)||seq<1||seq>99999||!stateOK(status))return res({error:'invalid_task_status'},400);
    const task=await db.prepare('SELECT assignee_slot FROM org_tasks WHERE room_id=? AND seq=?').bind(room,seq).first();
    if(!task)return res({error:'task_not_found'},404);
-   if(task.assignee_slot!==who.slot&&!['CEO','PROJECT-LEAD','DIR','TL'].includes(who.role))
-    return res({error:'task_owner_or_manager_only'},403);
+   // Engineers submit to independent QA; only the QA role can accept/reject.
+   // CEO may reopen/cancel but cannot approve own team's output.
+   const allowed=(who.role==='CEO'&&['READY','IN_PROGRESS','WAITING_QA','CANCELLED'].includes(status))||
+    (who.role==='ENGINEER'&&task.assignee_slot===who.slot&&['IN_PROGRESS','WAITING_QA'].includes(status))||
+    (who.role==='QA-REVIEWER'&&['DONE','QA_HOLD'].includes(status));
+   if(!allowed)return res({error:'independent_qa_gate',hint:'Only QA may mark DONE or QA_HOLD; CEO/EN cannot self-approve'},403);
+   if(who.role==='QA-REVIEWER'){
+    const state=await db.prepare('SELECT status FROM org_tasks WHERE room_id=? AND seq=?').bind(room,seq).first();
+    if(state?.status!=='WAITING_QA'&&state?.status!=='QA_HOLD')return res({error:'task_not_ready_for_qa'},409);
+    const evidence=clean(data.evidence,1000);
+    if(evidence.length<12||evidence.length>1000)return res({error:'qa_evidence_required',hint:'Enter checked SHA, CI and test evidence (12-1000 characters)'},400);
+    // Before approving, the reviewer records a room-auditable M message.
+    const msg=await nextMessage(db,room,who.slot,'CEO',
+      'QA '+format('T',seq)+' '+status+' · '+evidence);
+    if(!msg)return res({error:'room_closed'},409);
+   }
    await db.prepare(`UPDATE org_tasks SET status=?,updated_at=strftime('%Y-%m-%dT%H:%M:%fZ','now')
     WHERE room_id=? AND seq=?`).bind(status,room,seq).run();
-   return res({updated:true,room_id:room,code:format('T',seq),status});
+   return res({updated:true,room_id:room,code:format('T',seq),status,verified_by:who.role==='QA-REVIEWER'?'QA':null});
   }
   if(route==='/api/v1/org/close'&&verb==='POST'){
    if(who.role!=='CEO')return res({error:'ceo_only'},403);

@@ -59,8 +59,8 @@ import {FULL_REPOS} from './repositories.js';
   $('orgw-share-repo').textContent='ห้องนี้แยกจากองค์กรอื่น ไม่มี Issue ใหม่ และการส่ง M ไม่เรียก AI อัตโนมัติ';
   $('orgw-create').hidden=d.role!=='CEO';
   $('orgw-close').disabled=d.role!=='CEO'||d.status!=='ACTIVE';
-  $('orgw-invite').disabled=!['CEO','PROJECT-LEAD'].includes(d.role)||d.status!=='ACTIVE';
-  $('orgw-task-form').hidden=!['CEO','PROJECT-LEAD','DIR','TL'].includes(d.role)||d.status!=='ACTIVE';
+  $('orgw-invite').disabled=d.role!=='CEO'||d.status!=='ACTIVE';
+  $('orgw-task-form').hidden=d.role!=='CEO'||d.status!=='ACTIVE';
   $('orgw-message-form').hidden=d.status!=='ACTIVE';
   history.replaceState(null,'','/?repo='+encodeURIComponent(d.repo)+'&org='+id);
   await Promise.all([loadMembers(),loadMessages(),loadTasks()]);
@@ -69,9 +69,12 @@ import {FULL_REPOS} from './repositories.js';
  async function loadMembers(){
   const d=await api('members?room_id='+roomId);
   const root=$('orgw-members');root.replaceChildren();
-  for(const m of d.members||[]){
-   root.append(make('div',m.slot+' · '+m.role,'orgw-item'));
-  }
+  const members=d.members||[];
+  for(const m of members)root.append(make('div',m.slot+' · '+m.role,'orgw-item'));
+  const enCount=members.filter(m=>m.role==='ENGINEER').length;
+  const qaCount=members.filter(m=>m.role==='QA-REVIEWER').length;
+  $('orgw-roster-summary').textContent='CEO 1 · EN '+enCount+'/5 · QA '+qaCount+'/1 · CEO เลือกใช้ EN 1–5 ตัวตามขนาดงาน';
+  $('orgw-invite').disabled=identity?.role!=='CEO'||identity?.status!=='ACTIVE'||(enCount===5&&qaCount===1);
  }
  async function loadMessages(){
   lastSeq=0;
@@ -98,14 +101,21 @@ import {FULL_REPOS} from './repositories.js';
    const card=make('article',undefined,'orgw-item');
    card.append(make('strong',t.code+' '+t.title),make('small','ผู้รับ '+t.assignee_slot+' · '+t.status,'small-note'));
    if(t.description)card.append(make('p',t.description));
-   if(identity?.slot===t.assignee_slot||['CEO','PROJECT-LEAD','DIR','TL'].includes(identity?.role)){
+   if(identity?.role==='CEO'||identity?.role==='QA-REVIEWER'||
+    (identity?.role==='ENGINEER'&&identity?.slot===t.assignee_slot)){
     const choices=make('select');choices.setAttribute('aria-label','สถานะงาน '+t.code);
-    for(const state of ['READY','IN_PROGRESS','WAITING_QA','QA_HOLD','DONE','CANCELLED']){
+    const selectable=identity?.role==='QA-REVIEWER'?['DONE','QA_HOLD']:
+     identity?.role==='CEO'?['READY','IN_PROGRESS','WAITING_QA','CANCELLED']:['IN_PROGRESS','WAITING_QA'];
+    for(const state of selectable){
      const option=make('option',state);option.value=state;option.selected=state===t.status;choices.append(option);
     }
     const save=make('button','บันทึกสถานะ','secondary-button');save.type='button';
     save.addEventListener('click',()=>busy(save,async()=>{
-     await api('task-status','POST',{room_id:roomId,seq:t.seq,status:choices.value});
+     const evidence=identity?.role==='QA-REVIEWER'?prompt('QA อิสระ: ใส่หลักฐานการตรวจ CI, SHA และผลทดสอบก่อนอนุมัติ/ปฏิเสธ'):'';
+     if(identity?.role==='QA-REVIEWER'&&(!evidence||evidence.trim().length<12)){
+      status('QA ต้องระบุหลักฐานอย่างน้อย 12 ตัวอักษรก่อนตัดสิน');return;
+     }
+     await api('task-status','POST',{room_id:roomId,seq:t.seq,status:choices.value,evidence});
      await loadTasks();
      status(t.code+' เปลี่ยนเป็น '+choices.value);
     }));
@@ -128,10 +138,12 @@ import {FULL_REPOS} from './repositories.js';
   e.preventDefault();
   const btn=$('orgw-invite');
   await busy(btn,async()=>{
-   const d=await api('members','POST',{room_id:roomId,slot:formValue('orgw-slot'),role:$('orgw-role').value});
+   const slot=formValue('orgw-slot').toUpperCase();
+   const role=slot==='QA'?'QA-REVIEWER':'ENGINEER';
+   const d=await api('members','POST',{room_id:roomId,slot,role});
    $('orgw-invite-url').value=d.invite_url;
    await loadMembers();
-   status('สร้างลิงก์แต่งตั้ง '+d.slot+' แล้ว · OWNER ส่งลิงก์นี้ให้แชท AI ที่ตรงตำแหน่ง');
+   status('CEO แต่งตั้ง '+d.slot+' แล้ว · ส่งลิงก์เฉพาะตำแหน่งให้ OWNER ส่ง MN ต่อแชทนั้น');
   });
  }
  async function message(e){

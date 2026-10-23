@@ -277,7 +277,7 @@
 
 <section class="view hidden" id="view-orgrooms">
  <div class="section-title">
-  <div><h2>พื้นที่ทำงานองค์กร</h2><p>ห้องแยกรอบ CEO · ข้อความ M00001 · งาน T00001 · ไม่ใช้ GitHub Issues สำหรับคุยกัน</p></div>
+  <div><h2>พื้นที่ทำงานองค์กร</h2><p>CEO 1 · EN 1–5 ตามขนาดงาน · QA อิสระ 1 · ห้องแยกตามภารกิจ · M00001 ไม่ใช้ Issues</p></div>
   <button id="orgw-refresh" type="button" class="secondary-button">↻ โหลดพื้นที่</button>
  </div>
  <p id="orgw-status" class="small-note" aria-live="polite">กำลังตรวจสิทธิ์ห้ององค์กร...</p>
@@ -318,14 +318,18 @@
  </div>
  <div id="orgw-current" hidden>
   <div class="panel">
-   <h3>สมาชิกและตำแหน่ง</h3>
+   <h3>ทีมองค์กร — CEO / EN1–EN5 / QA</h3>
+   <p id="orgw-roster-summary" class="small-note">CEO เลือกจำนวน EN ตามงาน · QA ต้องเป็นคนละบทบาทกับผู้แก้โค้ด</p>
    <div id="orgw-members" class="orgw-scroll"></div>
    <form id="orgw-invite-form" class="orgw-form">
     <div class="workspace-grid">
-     <label>ชื่อช่องตำแหน่ง<input id="orgw-slot" maxlength="40" required placeholder="ENGINEER-A1"/></label>
-     <label>บทบาท<select id="orgw-role">
-      <option value="DIR">DIR</option><option value="TL">TL</option><option value="ENGINEER">ENGINEER</option>
-      <option value="QA-REVIEWER">QA-REVIEWER</option><option value="PROJECT-LEAD">PROJECT-LEAD</option>
+     <label>ตำแหน่งที่ CEO ต้องการแต่งตั้ง<select id="orgw-slot" required>
+      <option value="EN1">EN1 — วิศวกร 1</option>
+      <option value="EN2">EN2 — วิศวกร 2</option>
+      <option value="EN3">EN3 — วิศวกร 3</option>
+      <option value="EN4">EN4 — วิศวกร 4</option>
+      <option value="EN5">EN5 — วิศวกร 5</option>
+      <option value="QA">QA — ผู้ตรวจรับอิสระ</option>
      </select></label>
     </div>
     <button id="orgw-invite" type="submit" class="secondary-button">สร้างลิงก์เชิญ AI</button>
@@ -340,7 +344,7 @@
    <button id="orgw-more" type="button" class="secondary-button" disabled>อ่านข้อความถัดไป</button>
    <form id="orgw-message-form" class="orgw-form">
     <div class="workspace-grid">
-     <label>ส่งถึง<input id="orgw-to" required placeholder="DIR-A หรือ ALL" maxlength="40"/></label>
+     <label>ส่งถึง<input id="orgw-to" required placeholder="CEO, EN1–EN5, QA หรือ ALL" maxlength="40"/></label>
      <label>ข้อความองค์กร<input id="orgw-message" required maxlength="4000" placeholder="MN: ตรวจงานตาม SHA ล่าสุด" spellcheck="false"/></label>
     </div>
     <button id="orgw-send" type="submit" class="primary-button">ส่งข้อความเข้าห้อง (ออกเลข M อัตโนมัติ)</button>
@@ -352,14 +356,14 @@
    <form id="orgw-task-form" class="orgw-form">
     <div class="workspace-grid">
      <label>หัวข้องาน<input id="orgw-task-title" required maxlength="200" placeholder="ปรับอนิเมชัน Astra"/></label>
-     <label>มอบหมายให้<input id="orgw-task-to" required maxlength="40" placeholder="ENGINEER-A1"/></label>
+     <label>มอบหมายให้<input id="orgw-task-to" required maxlength="40" placeholder="EN1"/></label>
     </div>
     <label>รายละเอียดงาน<input id="orgw-task-body" maxlength="3000" spellcheck="false" placeholder="ขอบเขตงาน / QA / SHA"/></label>
     <button id="orgw-task-send" type="submit" class="secondary-button">เพิ่มงานในห้ององค์กร</button>
    </form>
   </div>
  </div>
- <p class="small-note">OWNER ส่ง MN หาแต่ละแชทเองตามเดิม · เว็บเก็บข้อความและงานแยกตามรอบ CEO · GitHub ยังใช้เฉพาะ Source, PR และ CI</p>
+ <p class="small-note">OWNER เพียงบอกเป้าหมาย CEO และส่งข้อความ MN ให้แต่ละแชทเอง · CEO วางแผน เลือก EN 1–5 คน มอบหมายงานและประสาน QA อิสระ · หากติดขัดจึงแจ้ง OWNER · บันทึก M ในเว็บไม่ปลุกแชทอื่นเอง</p>
 </section>
 
 <section class="view hidden" id="view-organization">

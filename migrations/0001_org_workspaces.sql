@@ -17,7 +17,7 @@ CREATE TABLE IF NOT EXISTS org_members (
   id TEXT PRIMARY KEY,
   room_id TEXT NOT NULL REFERENCES org_rooms(id),
   slot TEXT NOT NULL,
-  role TEXT NOT NULL CHECK(role IN ('CEO','DIR','TL','ENGINEER','QA-REVIEWER','PROJECT-LEAD')),
+  role TEXT NOT NULL CHECK(role IN ('CEO','ENGINEER','QA-REVIEWER')),
   token_hash TEXT NOT NULL UNIQUE,
   created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
   expires_at TEXT NOT NULL,
