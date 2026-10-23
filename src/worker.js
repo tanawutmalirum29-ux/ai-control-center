@@ -12,6 +12,7 @@ import {detailApi} from './issue-detail.js';
 import {orgWorkspaceApi} from './org-workspaces.js';
 import {centralGithubAccess,centralCredentialConfigured} from './central-github.js';
 import {issueCleanupApi} from './issue-cleanup.js';
+import {branchCleanupApi} from './branch-cleanup.js';
 const credentialedFetcher=token=>(endpoint,init={})=>fetch(endpoint,{...init,headers:{...init.headers,authorization:'Bearer '+token}});
 const jsonHeaders = {'content-type':'application/json; charset=utf-8','cache-control':'no-store','x-content-type-options':'nosniff'};
 const publicHeaders = {...jsonHeaders,'access-control-allow-origin':'*','access-control-allow-methods':'GET, HEAD, OPTIONS'};
@@ -136,6 +137,11 @@ export default {async fetch(request,env){
  if(!path.startsWith('/api/'))return env.ASSETS.fetch(request);
  if(path.startsWith('/api/auth/'))return auth(request,env,url);
  if(path==='/api/v1/issues')return newIssue(request,env,url);
+ if(path.startsWith('/api/v1/maintenance/branches/')){
+  // Branch removal is always tied to verified OWNER OAuth, never central/delegated tokens.
+  const ownerSession=await session(request,env);
+  return branchCleanupApi(request,{token:ownerSession?.token||null});
+ }
  if(path.startsWith('/api/v1/maintenance/issues/')){
   // Never grant deletion through the public central token or a delegated AI claim.
   const ownerSession=await session(request,env);
@@ -185,11 +191,11 @@ export default {async fetch(request,env){
  }
  if(path==='/api/v1/organization'||path==='/api/v1/organization/document'||path==='/api/v1/organization/bundle'||path==='/api/v1/organization/bundle/document')return organizationApi(request);
  if(path==='/api/health')return reply({
-  service:'AI Control Center',version:16,owner:OWNER,ai_provider:'none',
+  service:'AI Control Center',version:17,owner:OWNER,ai_provider:'none',
   repositories:REPOS.map(name=>OWNER+'/'+name),
   write_repositories:WRITE_REPOS.map(name=>OWNER+'/'+name),
   auth_ready:configured(env),delegation_ready:issuerReady(env),guest_oauth_ready:configured(env),central_credential_present:centralCredentialConfigured(env),organization_workspaces_ready:Boolean(env.ORG_DB),qa_note:'PR QA and head SHA are inspected separately from repository CI',
-  endpoints:['/api/v1/org/rooms','POST /api/v1/org/rooms (verified CEO)','POST /api/v1/org/join','GET /api/v1/org/messages','POST /api/v1/org/messages','POST /api/v1/org/members','/api/health','/api/auth/me','/api/v1/repositories','/api/v1/queue?repo=ARCANA-SURVIVOR','/api/v1/summary?repo=ARCANA-SURVIVOR','/api/v1/pr-qa?repo=ARCANA-SURVIVOR&pr=1','POST /api/v1/issues (owner only)','GET /api/v1/maintenance/issues/preview?repo=ARCANA-SURVIVOR (owner only)','POST /api/v1/maintenance/issues/delete (owner only, permanent)','/api/v1/organization','/api/v1/organization/document?name=RULES.md','/api/v1/organization/bundle','/api/v1/ops/issues','/api/v1/ops/workflows','/api/v1/ops/runs','/api/v1/ops/jobs','POST /api/v1/ops/issue','POST /api/v1/ops/comment','POST /api/v1/ops/assign','POST /api/v1/ops/status','POST /api/v1/ops/dispatch (Actions write required)','/api/v1/source/branches','/api/v1/source/tree','/api/v1/source/file','/api/agent/me','POST /api/agent/invite','GET /api/agent/activate','GET /api/v1/mission?repo=ARCANA-SURVIVOR','GET /api/v1/work/branches','GET /api/v1/work/tree','GET /api/v1/work/file','POST /api/v1/work/branch','POST /api/v1/work/file','POST /api/v1/work/pr (draft only)']
+  endpoints:['/api/v1/org/rooms','POST /api/v1/org/rooms (verified CEO)','POST /api/v1/org/join','GET /api/v1/org/messages','POST /api/v1/org/messages','POST /api/v1/org/members','/api/health','/api/auth/me','/api/v1/repositories','/api/v1/queue?repo=ARCANA-SURVIVOR','/api/v1/summary?repo=ARCANA-SURVIVOR','/api/v1/pr-qa?repo=ARCANA-SURVIVOR&pr=1','POST /api/v1/issues (owner only)','GET /api/v1/maintenance/issues/preview?repo=ARCANA-SURVIVOR (owner only)','POST /api/v1/maintenance/issues/delete (owner only, permanent)','GET /api/v1/maintenance/branches/preview?repo=ARCANA-SURVIVOR (owner only)','POST /api/v1/maintenance/branches/delete (owner only, preserves main)','/api/v1/organization','/api/v1/organization/document?name=RULES.md','/api/v1/organization/bundle','/api/v1/ops/issues','/api/v1/ops/workflows','/api/v1/ops/runs','/api/v1/ops/jobs','POST /api/v1/ops/issue','POST /api/v1/ops/comment','POST /api/v1/ops/assign','POST /api/v1/ops/status','POST /api/v1/ops/dispatch (Actions write required)','/api/v1/source/branches','/api/v1/source/tree','/api/v1/source/file','/api/agent/me','POST /api/agent/invite','GET /api/agent/activate','GET /api/v1/mission?repo=ARCANA-SURVIVOR','GET /api/v1/work/branches','GET /api/v1/work/tree','GET /api/v1/work/file','POST /api/v1/work/branch','POST /api/v1/work/file','POST /api/v1/work/pr (draft only)']
  },200,true);
  const shared=await centralGithubAccess(env,url.searchParams.get('repo'));
  return readApi(request,shared.token?{fetcher:credentialedFetcher(shared.token)}:{});
