@@ -27,7 +27,7 @@ import {FULL_REPOS,OWNER} from './repositories.js';
   const r=await fetch('/api/auth/me',{cache:'no-store'});const user=await r.json();
   authorized=Boolean(user.authenticated);
   el('ops-auth').textContent=authorized?'บัญชีเจ้าของ: '+user.login+' · ใช้สิทธิ์ GitHub App ตามแต่ละ Repository':'ยังไม่ล็อกอิน · กด “เชื่อมต่อ GitHub” ด้านบน';
-  for(const id of ['ops-create','ops-comment-send','ops-assign-send','ops-dispatch-send'])el(id).disabled=!authorized;
+  for(const id of ['ops-create','ops-comment-send','ops-assign-send','ops-status-send','ops-dispatch-send'])el(id).disabled=!authorized;
   return authorized;
  }
  function showIssues(issues){
@@ -112,6 +112,13 @@ import {FULL_REPOS,OWNER} from './repositories.js';
    if(!number||!username)throw Error('ต้องกรอก Issue # และชื่อบัญชี GitHub จริง');
    const d=await api('assign',{number,username});
    note('มอบหมายบน GitHub Issue #'+d.issue+' ให้ '+d.assignees.join(', ')+' · ไม่ได้เรียก AI ใหม่ให้เริ่มงาน');
+  }));
+  el('ops-status-send').addEventListener('click',e=>action(e.currentTarget,async()=>{
+   const number=el('ops-number').value,status=el('ops-status').value;
+   if(!number)throw Error('เลือก Issue ก่อนเปลี่ยนสถานะ');
+   const data=await api('status',{number,status,confirm:'CHANGE_STATUS'});
+   note('เปลี่ยน Issue #'+data.issue+' เป็น '+data.status+' แล้ว · ยังไม่ถือว่า QA อนุมัติหรือ AI เริ่มงาน');
+   reload();
   }));
   el('ops-dispatch-send').addEventListener('click',e=>action(e.currentTarget,async()=>{
    const workflow=el('ops-workflow').value,branch=el('ops-branch').value;

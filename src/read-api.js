@@ -23,6 +23,7 @@ export function taskStatus(issue){
  if(has('WAITING_QA','QA_PENDING','PENDING_QA','READY_FOR_QA','STATUS_WAITING_QA'))return {status:'WAITING_QA',source:'label'};
  if(has('IN_PROGRESS','INPROGRESS','WIP','DOING','STATUS_IN_PROGRESS'))return {status:'IN_PROGRESS',source:'label'};
  if(has('READY','TODO','TO_DO','STATUS_READY'))return {status:'READY',source:'label'};
+ if(/^SESSION_ACTIVATION:\s*AWAITING_OWNER_RELAY\s*$/im.test(issue.body||''))return {status:'APPOINTED',source:'appointment_body'};
  return {status:'UNCLASSIFIED',source:'no_status_label'};
 }
 export function reviewStatus(reviews){
@@ -121,7 +122,7 @@ async function queue(repo,fetcher){
   url:'https://github.com/'+OWNER+'/'+repo+'/issues/'+issue.number,
   updated_at:issue.updated_at
  }));
- const priority={READY:0,WAITING_QA:1,IN_PROGRESS:2,UNCLASSIFIED:3,QA_BLOCK:4,PAUSED:5};
+ const priority={READY:0,WAITING_QA:1,IN_PROGRESS:2,UNCLASSIFIED:3,APPOINTED:4,QA_BLOCK:5,PAUSED:6};
  tasks.sort((a,b)=>priority[a.status]-priority[b.status]||Date.parse(b.updated_at)-Date.parse(a.updated_at));
  return {repo:OWNER+'/'+repo,fetched_at:new Date().toISOString(),truncated:issues.length===100,read_only:true,tasks};
 }

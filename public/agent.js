@@ -6,11 +6,11 @@ import {OWNER, FULL_REPOS} from './repositories.js';
  const current=()=>el('repo-select')?.value||'';
  const allowed=repo=>FULL_REPOS.includes(repo);
  let loaded='',tasks=[],nonce=0;
- const actions={READY:'เริ่มงาน',IN_PROGRESS:'ติดตามงานเดิม',WAITING_QA:'ส่งตรวจ QA',QA_BLOCK:'รายงานสิ่งที่บล็อก',PAUSED:'ตรวจเหตุผลที่พัก',UNCLASSIFIED:'ตรวจสถานะก่อน'};
- const colors={READY:'good',IN_PROGRESS:'wait',WAITING_QA:'wait',QA_BLOCK:'bad',PAUSED:'bad',UNCLASSIFIED:'wait'};
+ const actions={READY:'เริ่มงาน',IN_PROGRESS:'ติดตามงานเดิม',WAITING_QA:'ส่งตรวจ QA',QA_BLOCK:'รายงานสิ่งที่บล็อก',PAUSED:'ตรวจเหตุผลที่พัก',APPOINTED:'รอ OWNER ส่งคำสั่ง',UNCLASSIFIED:'ตรวจสถานะก่อน'};
+ const colors={READY:'good',IN_PROGRESS:'wait',WAITING_QA:'wait',QA_BLOCK:'bad',PAUSED:'bad',APPOINTED:'wait',UNCLASSIFIED:'wait'};
  function instruction(repo,task){
   const target=task?`Issue #${task.number}: ${task.title}\n${task.url}\nสถานะ: ${task.status} (${task.source})`:'ตรวจสถานะงานล่าสุด เลือกเฉพาะงาน READY ที่ยังไม่มีผู้รับผิดชอบและไม่ซ้ำ';
-  const rule=task?.status==='READY'?'ตรวจว่ามีผู้รับงานแล้วหรือไม่ก่อนลงมือ':task?.status==='IN_PROGRESS'?'ติดตามผู้รับงานเดิม ห้ามเริ่มซ้ำ':task?.status==='WAITING_QA'?'ตรวจหลักฐาน QA ห้าม Merge หากยังไม่ผ่าน':task?.status==='QA_BLOCK'?'รายงานจุด Block ห้าม Merge':task?.status==='PAUSED'?'ห้ามเริ่มงานจนกว่าจะปลดพัก':'ไม่ทราบสถานะที่ยืนยันได้ ต้องตรวจ Issue ก่อนเริ่ม';
+  const rule=task?.status==='READY'?'ตรวจว่ามีผู้รับงานแล้วหรือไม่ก่อนลงมือ':task?.status==='IN_PROGRESS'?'ติดตามผู้รับงานเดิม ห้ามเริ่มซ้ำ':task?.status==='WAITING_QA'?'ตรวจหลักฐาน QA ห้าม Merge หากยังไม่ผ่าน':task?.status==='QA_BLOCK'?'รายงานจุด Block ห้าม Merge':task?.status==='PAUSED'?'ห้ามเริ่มงานจนกว่าจะปลดพัก':task?.status==='APPOINTED'?'ยังไม่มีการเรียกเซสชัน AI ผู้รับ ต้องรอ OWNER ส่ง AP-ROLE และยืนยันขอบเขต':'ไม่ทราบสถานะที่ยืนยันได้ ต้องตรวจ Issue ก่อนเริ่ม';
   return ['AI CONTROL CENTER / MN','Repository: https://github.com/'+repo,target,rule,
    'อ่านกฎล่าสุดที่ https://github.com/'+OWNER+'/ai-organization-hub/blob/main/RULES.md และ COMMANDS.md ก่อนเริ่ม',
    'ORG_WORKSPACE_REPO: https://github.com/'+OWNER+'/ai-organization-hub',

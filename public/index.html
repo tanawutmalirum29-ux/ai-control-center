@@ -121,6 +121,16 @@
    <button type="button" class="secondary-button" id="ops-comment-send">ส่ง Comment เข้า Issue</button>
    <label>GitHub Assignee<input id="ops-username" maxlength="39" placeholder="ชื่อบัญชี GitHub จริง"/></label>
    <button type="button" class="secondary-button" id="ops-assign-send">มอบหมาย GitHub Issue</button>
+   <label>สถานะงาน (GitHub Label)
+     <select id="ops-status">
+       <option value="READY">READY — พร้อมเริ่ม</option>
+       <option value="IN_PROGRESS">IN_PROGRESS — กำลังทำ</option>
+       <option value="WAITING_QA">WAITING_QA — รอตรวจ QA</option>
+       <option value="QA_BLOCK">QA_BLOCK — QA ไม่ผ่าน/ติดขัด</option>
+       <option value="PAUSED">PAUSED — พักงาน</option>
+     </select>
+   </label>
+   <button type="button" class="secondary-button" id="ops-status-send">เปลี่ยนสถานะ Issue</button>
    <p class="small-note">การ Assign เป็นการมอบหมายให้บัญชี GitHub ไม่ใช่การสร้างตัว AI หรือเริ่มเซสชันของ AI อัตโนมัติ</p>
   </section>
  </div>
