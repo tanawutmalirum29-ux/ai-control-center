@@ -235,8 +235,8 @@
    <p id="ws-lines-status" class="small-note" aria-live="polite">เลือก Branch และไฟล์ แล้วกด อ่านทั้งไฟล์ ได้เลย</p>
    <div id="ws-lines-preview" class="ws-line-diff" aria-live="polite"></div>
   </section>
-  <details class="ws-full-editor"><summary>ตัวแก้ไขทั้งไฟล์ (ทางเลือกสำหรับไฟล์ที่อ่านได้ครบ)</summary>
-  <label>ตัวแก้ไขไฟล์ข้อความ UTF-8 (ไม่เกิน 200 KB)<textarea id="ws-content" rows="13" spellcheck="false" placeholder="เลือก Branch และอ่านไฟล์เดิมก่อนแก้ไข"></textarea></label>
+  <details class="ws-full-editor" open><summary>ตัวแก้ไขทั้งไฟล์ (เปิดแสดงเนื้อหาทันทีเมื่ออ่านไฟล์)</summary>
+  <label>ตัวแก้ไขไฟล์ข้อความ UTF-8 (ไม่เกิน 200 KB)<p id="ws-loaded-file" class="small-note" aria-live="polite">ยังไม่ได้โหลดเนื้อหา / SHA จาก GitHub</p><textarea id="ws-content" rows="13" spellcheck="false" placeholder="เลือก Branch และอ่านไฟล์เดิมก่อนแก้ไข"></textarea></label>
   <div class="workspace-control">
    <button type="button" id="ws-preview-file" class="secondary-button">1. ตรวจ Diff และ SHA ก่อนบันทึก</button>
    <button type="button" id="ws-save" class="primary-button" disabled>2. ยืนยัน Commit ตาม Diff</button>
