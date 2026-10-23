@@ -193,11 +193,11 @@
  <div class="section-title"><div><h2>พื้นที่ทำงานโค้ด</h2><p>Branch แยกใน GitHub · แก้ไฟล์และส่ง Draft PR โดยไม่ต้องเข้าหน้า GitHub</p></div><button type="button" id="ws-refresh" class="secondary-button">↻ โหลดพื้นที่</button></div>
  <div class="panel">
   <div class="workspace-notice"><strong>GitHub Token กลาง · ไม่ต้องล็อกอิน</strong><p id="ws-auth" aria-live="polite">กำลังตรวจสิทธิ์...</p></div>
-  <p class="small-note">ทุกคนที่เปิดเว็บสามารถสร้าง Branch acc/ แก้ไฟล์ข้อความ และเปิด Draft PR ได้ผ่าน Token กลาง · ไม่เขียนทับ main</p>
+  <p class="small-note">ทุกคนที่เปิดเว็บแก้ Branch acc/ หรือ feat/ เดิมของ PR ได้ · อัปเดตไฟล์และ Commit ได้ ไม่เขียน main · ไม่สร้าง PR ซ้ำ</p>
   <div class="workspace-grid"><label>หัวข้องาน<input id="ws-title" maxlength="120" placeholder="เช่น ปรับหน้าเกมมือถือ"/></label><div class="workspace-control"><button type="button" id="ws-create-branch" class="primary-button">+ สร้าง Branch งาน</button></div></div>
   <label>เลือกพื้นที่ทำงาน<select id="ws-branches" aria-label="Branch ที่ใช้ทำงาน"><option value="">ยังไม่มี Branch ที่เลือก</option></select></label>
   <div class="workspace-grid"><label>พาธไฟล์ที่จะแก้<input id="ws-path" maxlength="240" spellcheck="false" placeholder="src/game.js"/></label><div class="workspace-control"><button type="button" id="ws-browse" class="secondary-button">ดูไฟล์</button><button type="button" id="ws-load" class="secondary-button">อ่านไฟล์</button><button type="button" id="ws-new" class="secondary-button">ไฟล์ใหม่</button></div></div>
-  <div id="ws-tree" class="workspace-tree" aria-live="polite"></div><label>ตัวแก้ไขไฟล์ข้อความ UTF-8 (ไม่เกิน 45 KB)<textarea id="ws-content" rows="13" spellcheck="false" placeholder="เลือก Branch และอ่านไฟล์เดิมก่อนแก้ไข"></textarea></label>
+  <div id="ws-tree" class="workspace-tree" aria-live="polite"></div><label>ตัวแก้ไขไฟล์ข้อความ UTF-8 (ไม่เกิน 200 KB)<textarea id="ws-content" rows="13" spellcheck="false" placeholder="เลือก Branch และอ่านไฟล์เดิมก่อนแก้ไข"></textarea></label>
   <div class="workspace-control"><button type="button" id="ws-save" class="primary-button">บันทึก Commit ลง Branch</button></div>
   <p id="ws-notice" class="small-note" aria-live="polite">เลือกโปรเจกต์และสร้าง Branch งานได้เลย</p>
  </div>

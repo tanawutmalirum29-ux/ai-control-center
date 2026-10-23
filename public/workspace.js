@@ -3,13 +3,17 @@ import {FULL_REPOS} from './repositories.js';
 const el=id=>document.getElementById(id);
 const repo=()=>el('repo-select')?.value?.split('/')[1]||'';
 const current=()=>el('ws-branches')?.value||'';
+const workBranch=name=>/^(?:acc|feat|fix)\/[a-z0-9][a-z0-9._/-]{0,180}$/.test(name)&&!name.includes('..')&&!name.includes('//');
 let fileSha='',lastFile='',auth=false;
 const state=(msg)=>{el('ws-notice').textContent=msg};
 const status=(msg)=>{el('ws-auth').textContent=msg};
 async function api(path,method='GET',body){
  const response=await fetch('/api/v1/work/'+path,{method,credentials:'same-origin',headers:body?{'content-type':'application/json'}:{},body:body?JSON.stringify(body):undefined,cache:'no-store'});
  const value=await response.json();
- if(!response.ok)throw Error(value.message||value.error||'HTTP '+response.status);
+ if(!response.ok)throw Error([
+  'HTTP '+response.status,value.error,value.hint||value.github_message||value.message,
+  ...(Array.isArray(value.github_errors)?value.github_errors:[])
+ ].filter(Boolean).join(' · '));
  return value;
 }
 async function login(){
@@ -49,10 +53,10 @@ async function refresh(){
    const response=await fetch('/api/v1/source/branches?repo='+encodeURIComponent(repo()),{cache:'no-store'});
    data=await response.json();if(!response.ok)throw Error(data.reason||data.error);
   }
-  const choices=['main',...data.branches.filter(b=>b.name.startsWith('acc/')).map(b=>b.name)];
+  const choices=['main',...data.branches.filter(b=>workBranch(b.name)).map(b=>b.name)];
   for(const name of new Set(choices))el('ws-branches').add(new Option(name,name));
   el('ws-branches').value='main';
-  state('โหลด Branch ผ่าน '+via+' · สร้าง Branch acc/ ก่อนแก้ไฟล์และส่ง Draft PR');
+  state('Branch โหลดผ่าน '+via+' · แก้งานบน Branch acc/ หรือ feat/ เดิมของ PR ได้ ไม่ต้องสร้าง PR ซ้ำ');
  }catch(e){state('โหลด Branch ไม่สำเร็จ: '+e.message+' · หากเป็น 403 ให้ตรวจการติดตั้ง GitHub App ในโปรเจกต์');}
 }
 function chosen(){if(!current())throw Error('กรุณาเลือก Branch ก่อน');return current();}
@@ -71,7 +75,7 @@ function setup(){
   const folder=path.endsWith('/')?path.slice(0,-1):path.includes('/')?path.slice(0,path.lastIndexOf('/')):'';
   const query='repo='+encodeURIComponent(repo())+'&path='+encodeURIComponent(folder);
   let data;
-  if(auth&&branch.startsWith('acc/'))data=await api('tree?'+query+'&branch='+encodeURIComponent(branch));
+  if(auth&&workBranch(branch))data=await api('tree?'+query+'&branch='+encodeURIComponent(branch));
   else{
    const result=await fetch('/api/v1/source/tree?'+query+'&ref='+encodeURIComponent(branch),{cache:'no-store'});
    data=await result.json();if(!result.ok)throw Error(data.reason||data.error);
@@ -102,7 +106,7 @@ function setup(){
   if(!path)throw Error('กรอกพาธไฟล์');
   state('กำลังอ่านไฟล์...');
   let data;
-  if(auth&&branch.startsWith('acc/'))data=await api('file?repo='+encodeURIComponent(repo())+'&branch='+encodeURIComponent(branch)+'&path='+encodeURIComponent(path));
+  if(auth&&workBranch(branch))data=await api('file?repo='+encodeURIComponent(repo())+'&branch='+encodeURIComponent(branch)+'&path='+encodeURIComponent(path));
   else{
    const response=await fetch('/api/v1/source/file?repo='+encodeURIComponent(repo())+'&ref='+encodeURIComponent(branch)+'&path='+encodeURIComponent(path));
    data=await response.json();if(!response.ok)throw Error(data.reason||data.error);
@@ -115,8 +119,8 @@ function setup(){
   const branch=chosen(),path=el('ws-path').value.trim(),content=el('ws-content').value;
   if(!path)throw Error('กรอกพาธไฟล์ก่อน');
   if(fileSha&&lastFile!==path)throw Error('พาธเปลี่ยน กรุณาอ่านไฟล์ใหม่ก่อนบันทึก');
-  if(new TextEncoder().encode(content).length>45000)throw Error('ไฟล์ใหญ่กว่า 45 KB');
-  if(!auth||!branch.startsWith('acc/'))throw Error('การแก้ไขต้องมีสิทธิ์และใช้ Branch acc/ เท่านั้น');
+  if(new TextEncoder().encode(content).length>200000)throw Error('ไฟล์ใหญ่กว่า 200 KB');
+  if(!auth||!workBranch(branch))throw Error('โปรดเลือก Branch acc/, feat/ หรือ fix/ ห้าม Commit เข้า main');
   state('กำลัง Commit ไปยัง '+branch+' (ไม่แตะ main)...');
   const payload={repo:repo(),branch,path,content};
   if(fileSha)payload.sha=fileSha;
@@ -127,6 +131,17 @@ function setup(){
   const branch=chosen(),title=el('ws-pr-title').value.trim(),body=el('ws-pr-body').value.trim();
   if(title.length<3)throw Error('กรอกชื่อ Draft PR');
   state('กำลังสร้าง Draft PR สำหรับ QA...');
+  const response=await fetch('/api/v1/mission?repo='+encodeURIComponent(repo()),{cache:'no-store'});
+  if(response.ok){
+   const mission=await response.json();
+   const existing=(mission.prs||[]).find(p=>p.head_branch===branch);
+   if(existing){
+    const area=el('ws-result');area.replaceChildren(document.createTextNode('Branch นี้มี PR #'+existing.number+' อยู่แล้ว · '));
+    const link=document.createElement('a');link.href=existing.url;link.textContent='เปิด PR เดิม';link.target='_self';area.append(link);
+    state('ไม่สร้าง PR ซ้ำ: พบ PR #'+existing.number+' สำหรับ Branch '+branch);
+    return;
+   }
+  }
   const r=await api('pr','POST',{repo:repo(),branch,title,body});
   const area=el('ws-result');area.replaceChildren(document.createTextNode('สร้าง Draft PR #'+r.number+' แล้ว · '));
   const a=document.createElement('a');a.href=r.url;a.textContent='เปิด PR';a.target='_blank';a.rel='noopener noreferrer';area.append(a);
@@ -135,7 +150,7 @@ function setup(){
  el('ws-copy-agent').addEventListener('click',async()=>{
   const msg=['เปิด https://ai-control-center.tanawutmalirum29.workers.dev','เข้าเมนู พื้นที่ทำงาน และเลือกโปรเจกต์ '+el('repo-select').value,
    'ทำงานนี้: '+(el('ws-title').value||'(อ่านคิวงานและเลือกงาน READY ก่อน)'),
-   'สร้าง Branch acc/ แยก อ่านไฟล์ก่อนแก้ บันทึก Commit บน Branch เท่านั้น แล้วสร้าง Draft PR',
+   'ใช้ Branch acc/ หรือ feat/ ของ PR ที่มีอยู่ อ่านไฟล์ก่อนแก้ แล้ว Commit และตรวจว่า PR เดิมมีหรือไม่',
    'ห้าม Merge/Delete หรือถือว่า QA ผ่านเอง ต้องให้ QA ตรวจ head SHA','รายงาน MN/MQ/TR/C สั้น ๆ'].join('\n');
   try{await navigator.clipboard.writeText(msg);state('คัดลอกคำสั่งสำหรับ ChatGPT Work แล้ว');}
   catch{state('คัดลอกไม่สำเร็จ ให้ใช้ HTTPS และอนุญาต Clipboard');}

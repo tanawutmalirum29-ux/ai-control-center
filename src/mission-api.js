@@ -60,7 +60,7 @@ async function load(repo,fetcher){
   tasks,prs:prs.map(p=>({number:p.number,title:p.title,
    url:'https://ai-control-center.tanawutmalirum29.workers.dev/?repo='+encodeURIComponent(repo)+'&pr='+p.number,
    github_source_url:p.html_url,draft:p.draft,
-   head_sha:p.head?.sha,base:p.base?.ref,updated_at:p.updated_at,
+   head_sha:p.head?.sha,head_branch:p.head?.ref,base:p.base?.ref,updated_at:p.updated_at,
    qa:'UNVERIFIED_USE_PR_QA_ENDPOINT'})),
   counts:{open_tasks:tasks.length,appointments:tasks.filter(t=>t.relay).length,
    awaiting_relay:tasks.filter(t=>t.status==='APPOINTED').length,
