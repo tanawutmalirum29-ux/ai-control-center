@@ -33,15 +33,18 @@ test('organization bundle API works without GitHub API access',async()=>{
  assert.equal(result.status,400);
  assert.equal(calls,0);
 });
-test('Operations and workspace controls linked in HTML and JS',()=>{
+test('organization rules, D1 workrooms, in-site QA, and legacy cleanup remain accessible',()=>{
  const html=readFileSync(new URL('../public/index.html',import.meta.url),'utf8');
- const ops=readFileSync(new URL('../public/operations.js',import.meta.url),'utf8');
  const org=readFileSync(new URL('../public/organization.js',import.meta.url),'utf8');
- for(const id of ['view-organization','org-documents','org-full-document','view-operations','ops-workflow','ops-run-list','ops-issue-list','ops-status-send','ops-dispatch-send']){
-  assert.ok(html.includes('id="'+id+'"'),id+' missing from HTML');
+ for(const id of ['view-organization','org-documents','org-full-document',
+  'view-orgrooms','orgw-message-form','orgw-task-form',
+  'view-qa','qa-pr-output','qa-runs','view-operations',
+  'cleanup-panel','branch-panel']){
+   assert.ok(html.includes('id="'+id+'"'),id+' missing from HTML');
  }
- assert.ok(html.includes('src="./operations.js"'));
  assert.ok(html.includes('src="./organization.js"'));
- assert.match(ops,/ops-status-send/);
+ assert.ok(!html.includes('src="./operations.js"'));
+ assert.ok(!html.includes('id="ops-create"'));
+ assert.ok(!html.includes('id="ops-comment-send"'));
  assert.match(org,/organization\/bundle/);
 });
