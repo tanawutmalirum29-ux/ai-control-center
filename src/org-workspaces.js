@@ -101,7 +101,7 @@ async function initializeSchema(db){
  for(const statement of statements)await db.prepare(statement).run();
  return statements.length;
 }
-export async function orgWorkspaceApi(request,{db,owner=false,agent=null}={}){
+export async function orgWorkspaceApi(request,{db,owner=false,agent=null,fetcher=globalThis.fetch}={}){
  const url=new URL(request.url),route=url.pathname,verb=request.method;
  if(!db||typeof db.prepare!=='function')return res({
   error:'organization_database_not_configured',
@@ -166,6 +166,38 @@ export async function orgWorkspaceApi(request,{db,owner=false,agent=null}={}){
    const ticket=data.ticket;
    if(typeof ticket!=='string'||!/^[0-9a-f]{64}$/.test(ticket))
     return res({error:'invalid_ceo_ticket'},400);
+   // Optional trusted self-bootstrap for a new AI CEO: a GitHub writer first
+   // creates a repo-scoped proof ref containing only a SHA-256 hash, not the
+   // private bearer. Public visitors cannot manufacture a GitHub write ref.
+   // This removes repeated OWNER login, not the authorization boundary.
+   if(data.bootstrap_repo!==undefined||data.bootstrap_stamp!==undefined){
+    const repo=clean(data.bootstrap_repo,60),stamp=data.bootstrap_stamp;
+    if(!validRepo(repo)||typeof stamp!=='string'||!/^[0-9]{8}T[0-9]{6}Z$/.test(stamp))
+     return res({error:'invalid_github_ceo_proof'},400);
+    const iso=stamp.slice(0,4)+'-'+stamp.slice(4,6)+'-'+stamp.slice(6,8)+'T'+
+     stamp.slice(9,11)+':'+stamp.slice(11,13)+':'+stamp.slice(13,15)+'Z';
+    const issued=Date.parse(iso),elapsed=Date.now()-issued;
+    if(!Number.isFinite(issued)||elapsed< -300000||elapsed>86400000)
+     return res({error:'github_ceo_proof_expired_or_future'},403);
+    const proofHash=await digest('CEO-GITHUB-PROOF:'+ticket);
+    const ref='refs/heads/acc/ceo-bootstrap/'+stamp+'-'+proofHash;
+    let evidence;
+    try{
+     const response=await fetcher('https://api.github.com/repos/tanawutmalirum29-ux/'+repo+
+      '/git/ref/heads/acc/ceo-bootstrap/'+stamp+'-'+proofHash,{
+      headers:{accept:'application/vnd.github+json','user-agent':'AI-Control-Center-CEO-Auth'}});
+     if(!response.ok)return res({error:'github_write_proof_not_found'},403);
+     evidence=await response.json();
+    }catch{return res({error:'github_write_proof_unavailable'},503);}
+    if(evidence?.ref!==ref||evidence?.object?.type!=='commit'||
+     !/^[0-9a-f]{40}$/.test(evidence.object.sha||''))
+     return res({error:'invalid_github_write_proof'},403);
+    // Claim the same one-time D1 ticket as OWNER-issued CEO links. Replaying
+    // the bearer can never create a second session, even if the proof ref
+    // stays visible on GitHub after activation.
+    await db.prepare('INSERT OR IGNORE INTO org_ceo_tickets(token_hash,repo,expires_at) VALUES(?,?,?)')
+     .bind(await digest('CEO-INVITE:'+ticket),repo,new Date(issued+86400000).toISOString()).run();
+   }
    const hash=await digest('CEO-INVITE:'+ticket),time=now();
    const row=await db.prepare('SELECT repo FROM org_ceo_tickets WHERE token_hash=? AND used_at IS NULL AND expires_at>?')
     .bind(hash,time).first();
