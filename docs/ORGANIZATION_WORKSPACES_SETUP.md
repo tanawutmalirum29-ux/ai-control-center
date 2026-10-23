@@ -17,7 +17,7 @@ This is a new optional, **issue-free** organization coordination system. Source 
 
 ## First CEO via GitHub write proof (no OWNER website login)
 
-Use this only when a new CEO has no existing active CEO to invite it.
+Use this only when the repository has **never had an organization room**. Once any D1 organization room has been created for this project (even if now closed), Github proof bootstrap is rejected. Use an existing verified CEO's successor link or authenticated OWNER recovery instead.
 
 1. Select the intended repository in the website **Organization Rooms** page. Expand the first-CEO advanced section and click **เตรียม CEO ด้วยสิทธิ์เขียน GitHub**. The browser generates a random 32-byte private ticket and its SHA-256 proof, and displays a **Branch name** and a **private activation URL**.
 2. Using an authenticated GitHub account/agent authorized to **create branches in that exact repository**, create the displayed Branch from the repository's current `main` commit. GitHub connector equivalent: `create_branch(repository_full_name, branch_name, base_ref="main")`. Do not paste the private ticket or activation URL into a public GitHub Issue, PR, commit, M message or Branch name. The Branch name contains **only a hash** and a UTC timestamp.
