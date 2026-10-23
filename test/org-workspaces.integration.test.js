@@ -5,9 +5,9 @@ import {ORG_SCHEMA} from '../src/org-schema.js';
 import {orgWorkspaceApi} from '../src/org-workspaces.js';
 
 // Same SQLite engine/constraints as D1; this shim keeps D1's async methods.
-function makeD1(){
+function makeD1({schema=true}={}){
  const db=new DatabaseSync(':memory:');
- db.exec(ORG_SCHEMA);
+ if(schema)db.exec(ORG_SCHEMA);
  return {
   prepare(sql){
    const stmt=db.prepare(sql);
@@ -158,5 +158,20 @@ test('ENGINEER and CEO cannot approve; only independent QA may complete with rev
   assert.equal((await updated.json()).tasks[0].status,'DONE');
   const messages=await orgWorkspaceApi(read('messages','room_id='+room,ceo),{db});
   assert.match((await messages.json()).messages[0].body,/QA T00001 DONE/);
+ }finally{db.close();}
+});
+
+test('fresh D1 initializes tables automatically on first request without OWNER login',async()=>{
+ const db=makeD1({schema:false});
+ try{
+  const req=read('rooms','repo=ARCANA-SURVIVOR');
+  const response=await orgWorkspaceApi(req,{db});
+  assert.equal(response.status,200);
+  assert.deepEqual((await response.json()).rooms,[]);
+  const tables=(await db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name LIKE 'org_%' ORDER BY name").all()).results;
+  assert.equal(tables.length,6);
+  const second=await orgWorkspaceApi(read('schema-health',''),{db});
+  assert.equal(second.status,200);
+  assert.equal((await second.json()).database_ready,true);
  }finally{db.close();}
 });

@@ -135,18 +135,6 @@ export default {async fetch(request,env){
  if(!path.startsWith('/api/'))return env.ASSETS.fetch(request);
  if(path.startsWith('/api/auth/'))return auth(request,env,url);
  if(path==='/api/v1/issues')return newIssue(request,env,url);
- if(path==='/api/v1/org/db-probe'&&request.method==='GET'){
-  if(!env.ORG_DB)return reply({error:'D1_binding_missing'},503);
-  try{
-   const row=await env.ORG_DB.prepare('SELECT 1 AS ok').first();
-   const tableQuery=await env.ORG_DB.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name LIKE 'org_%' ORDER BY name").all();
-   return reply({binding_works:row?.ok===1,tables:(tableQuery.results||[]).map(x=>x.name)});
-  }catch(e){
-   // Temporary read-only diagnosis; no SQL arguments or credentials.
-   return reply({error:'D1_probe_failed',name:String(e.name||'').slice(0,50),
-    message:String(e.message||'').slice(0,240),cause:String(e.cause?.message||'').slice(0,160)},503);
-  }
- }
  if(path.startsWith('/api/v1/org/')){
   const [ownerSession,agent]=await Promise.all([session(request,env),agentSession(request,env)]);
   return orgWorkspaceApi(request,{db:env.ORG_DB,owner:Boolean(ownerSession),agent});
