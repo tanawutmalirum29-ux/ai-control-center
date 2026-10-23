@@ -1,7 +1,7 @@
 // Owner-only GitHub project operations: issues, comments, assignees, CI visibility,
 // workflow_dispatch on isolated work branches. No merges, deletes or background agents.
 import {OWNER,REPOS} from '../public/repositories.js';
-import bundle from '../public/organization-bundle.json';
+import bundle from '../public/organization-bundle.json' with { type: 'json' };
 const make=(data,status=200)=>new Response(JSON.stringify(data),{status,headers:{
  'content-type':'application/json; charset=utf-8','cache-control':'no-store',
  'x-content-type-options':'nosniff','referrer-policy':'no-referrer'}});

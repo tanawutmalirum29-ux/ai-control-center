@@ -1,6 +1,6 @@
 // Live read-only org policy bridge. The GitHub repository is the authority;
 // a page, prompt or local memory cannot silently override the current main.
-import bundle from '../public/organization-bundle.json';
+import bundle from '../public/organization-bundle.json' with { type: 'json' };
 const ORG='tanawutmalirum29-ux/ai-organization-hub';
 const FILES=['README.md','COMMANDS.md','RULES.md'];
 const TTL=120000,STALE=900000;
