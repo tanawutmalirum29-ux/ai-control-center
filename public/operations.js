@@ -24,14 +24,21 @@ import {FULL_REPOS,OWNER} from './repositories.js';
   finally{btn.disabled=false}
  }
  async function login(){
-  const [user,agent]=await Promise.all([
+  const [user,agent,health]=await Promise.all([
    fetch('/api/auth/me',{credentials:'same-origin',cache:'no-store'}).then(r=>r.json()),
-   fetch('/api/agent/me',{credentials:'same-origin',cache:'no-store'}).then(r=>r.json())]);
-  authorized=Boolean(user.authenticated||(agent.agent_authenticated&&agent.agent_repo===repo()));
-  const manager=Boolean(user.authenticated||(authorized&&['CEO','PROJECT-LEAD'].includes(agent.agent_role)));
-  el('ops-auth').textContent=user.authenticated?'OWNER · ใช้ GitHub App ตาม Repo':authorized?'AI '+agent.agent_role+' · '+agent.agent_slot+' · สิทธิ์ตามงาน':'ไม่มีสิทธิ์เขียน โปรดรับลิงก์ AP-ROLE จาก CEO';
+   fetch('/api/agent/me',{credentials:'same-origin',cache:'no-store'}).then(r=>r.json()),
+   fetch('/api/health',{cache:'no-store'}).then(r=>r.json())]);
+  const identified=Boolean(user.authenticated||(agent.agent_authenticated&&agent.agent_repo===repo()));
+  const central=Boolean(health.central_credential_present&&health.write_repositories?.includes(el('repo-select').value));
+  authorized=Boolean(identified||central);
+  const manager=Boolean(user.authenticated||(identified&&['CEO','PROJECT-LEAD'].includes(agent.agent_role)));
+  el('ops-auth').textContent=central?'Token กลางพร้อมส่งความคิดเห็นใน Issue โดยไม่ล็อกอิน':
+   user.authenticated?'OWNER · ใช้ GitHub App ตาม Repo':
+   identified?'AI '+agent.agent_role+' · '+agent.agent_slot+' · สิทธิ์ตามงาน':
+   'ยังไม่มีสิทธิ์ GitHub สำหรับการเขียน';
   for(const id of ['ops-create','ops-assign-send','ops-dispatch-send'])el(id).disabled=!manager;
-  for(const id of ['ops-comment-send','ops-status-send'])el(id).disabled=!authorized;
+  el('ops-comment-send').disabled=!authorized;
+  el('ops-status-send').disabled=!identified;
   return authorized;
  }
  function showIssues(issues){
