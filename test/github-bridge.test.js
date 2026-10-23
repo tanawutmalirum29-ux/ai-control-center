@@ -4,8 +4,8 @@ import {DatabaseSync} from 'node:sqlite';
 import {ORG_SCHEMA} from '../src/org-schema.js';
 import {processBridgeCommand,githubBridgeApi,syncGithubBridge} from '../src/github-bridge.js';
 
-function makeD1(){
- const sqlite=new DatabaseSync(':memory:');sqlite.exec(ORG_SCHEMA);
+function makeD1({schema=true}={}){
+ const sqlite=new DatabaseSync(':memory:');if(schema)sqlite.exec(ORG_SCHEMA);
  return {prepare(sql){
    const stmt=sqlite.prepare(sql);
    return {values:[],bind(...a){this.values=a;return this;},
@@ -107,5 +107,17 @@ test('HTTP bridge rejects cross-origin sync; status read has no secret capabilit
   const info=await health.json();
   assert.equal(info.no_tinyfish,true);assert.equal(info.public_commands,true);
   assert.equal(info.cron,'*/5 * * * *');
+ }finally{db.close();}
+});
+
+test('Fresh D1 self-initializes org tables and bridge receipts without owner login',async()=>{
+ const db=makeD1({schema:false});
+ try{
+  const health=await githubBridgeApi(new Request('https://site.example/api/v1/bridge/health'),{db});
+  assert.equal(health.status,200);
+  const rooms=await db.prepare("SELECT name FROM sqlite_master WHERE name='org_rooms'").first();
+  assert.equal(rooms.name,'org_rooms');
+  const cmdResult=await processBridgeCommand(db,open());
+  assert.equal(cmdResult.status,'DONE');
  }finally{db.close();}
 });
