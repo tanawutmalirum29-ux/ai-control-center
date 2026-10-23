@@ -57,7 +57,8 @@ export async function opsApi(request,{token,allowedRepo=null,fetcher=globalThis.
   if(!body||typeof body!=='object'||Array.isArray(body))return make({error:'invalid_body'},400);
  }
  const name=verb==='GET'?url.searchParams.get('repo'):body?.repo;
- if(!validName(name)||allowedRepo&&allowedRepo!==name)return make({error:'unsupported_repo'},403);
+ if(!validName(name))return make({error:'unsupported_repo'},400);
+ if(allowedRepo&&allowedRepo!==name)return make({error:'agent_repo_scope_denied'},403);
  const prefix='/repos/'+OWNER+'/'+name;
  const fetchGh=(p,m='GET',b)=>gh(prefix+p,token,fetcher,m,b);
  try{

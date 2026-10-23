@@ -52,7 +52,8 @@ export async function workApi(request,{token,allowedRepo=null,fetcher=globalThis
   if(!data)return send({error:'invalid_json'},400);
  }
  const repo=verb==='GET'?name:data?.repo;
- if(!nameOk(repo)||allowedRepo&&allowedRepo!==repo)return send({error:'repository_not_allowed',allowed:allowedRepo?[allowedRepo]:REPOS},403);
+ if(!nameOk(repo))return send({error:'repository_not_allowed',allowed:REPOS},403);
+ if(allowedRepo&&allowedRepo!==repo)return send({error:'agent_repo_scope_denied'},403);
  const root=base(repo);
  const gh=(path,method='GET',body)=>requestGh(path,token,fetcher,method,body);
  try{
