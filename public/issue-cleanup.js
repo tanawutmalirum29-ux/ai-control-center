@@ -1,135 +1,163 @@
-// Browser-agent-friendly, owner-only permanent Issue cleanup console.
-// Preview first, typed repository confirmation, resumable batches, and final recount.
-// Never call this API with the site-wide shared credential.
+// Click-to-select Issue cleanup. Both the selection and final confirmation are in-page.
+// Server still requires OAuth OWNER, exact repository confirmation, and fresh node checks.
 import {OWNER,WRITE_REPOS} from './repositories.js';
 (()=>{
 'use strict';
 const el=id=>document.getElementById(id);
 const repo=()=>el('repo-select')?.value?.split('/')[1]||'';
-let snapshot=null,working=false,stop=false,owner=false,context='';
-const status=s=>{el('cleanup-status').textContent=s;};
-function reset(){
- snapshot=null;context=repo();stop=false;
- el('cleanup-count').textContent='—';
- el('cleanup-confirm').value='';
- el('cleanup-agree').checked=false;
- el('cleanup-sample').replaceChildren();
- el('cleanup-delete').disabled=true;
- el('cleanup-copy').disabled=true;
- el('cleanup-stop').hidden=true;
- status('เลือก Repository แล้วกด “ตรวจรายการ” เพื่อโหลดรายการ Issues ทั้ง Open และ Closed');
+const selected=new Set();
+let snapshot=null,context='',owner=false,busy=false,stop=false;
+const note=s=>{el('cleanup-status').textContent=s;};
+const items=()=>snapshot?.issues||[];
+const chosen=()=>items().filter(x=>selected.has(x.id));
+function closeConfirm(){el('cleanup-final').hidden=true;}
+function refresh(){
+ const ready=owner&&!busy&&context===repo()&&snapshot?.repo===OWNER+'/'+repo();
+ const count=chosen().length;
+ el('cleanup-selected-count').textContent='เลือก '+count+' / '+items().length+' Issues';
+ el('cleanup-delete').disabled=!ready||!count;
+ el('cleanup-delete').textContent='2. ลบ '+count+' Issues ที่เลือก';
+ el('cleanup-select-all').disabled=!ready||!items().length;
+ el('cleanup-clear-selection').disabled=!ready||!count;
+ el('cleanup-copy').disabled=!ready;
+ el('cleanup-preview').disabled=!owner||busy||!WRITE_REPOS.includes(repo());
 }
-async function request(path,data){
- const options={credentials:'same-origin',cache:'no-store'};
- if(data!==undefined){options.method='POST';options.headers={'content-type':'application/json'};options.body=JSON.stringify(data);}
- const url='/api/v1/maintenance/issues/'+path+(data===undefined?'?repo='+encodeURIComponent(repo()):'');
- const response=await fetch(url,options);
- const result=await response.json().catch(()=>({}));
- if(!response.ok&&response.status!==207)throw Error(result.detail||result.error||'HTTP '+response.status);
- return {result,status:response.status};
+function clear(){
+ snapshot=null;context=repo();selected.clear();stop=false;closeConfirm();
+ el('cleanup-count').textContent='—';el('cleanup-sample').replaceChildren();
+ el('cleanup-stop').hidden=true;refresh();
+ note('เลือก Repository แล้วกดตรวจ Issues เพื่อแสดงรายการให้ติ๊กเลือก');
 }
-function confirmed(){
- return owner&&!working&&snapshot&&context===repo()&&snapshot.repo===OWNER+'/'+repo()&&
-  snapshot.issues.length>0&&el('cleanup-confirm').value.trim()==='DELETE '+snapshot.repo&&el('cleanup-agree').checked;
+function select(ids){
+ if(busy||!snapshot)return;
+ closeConfirm();selected.clear();
+ for(const id of ids)selected.add(id);
+ for(const input of el('cleanup-sample').querySelectorAll('input[type=checkbox]'))
+  input.checked=selected.has(input.value);
+ refresh();
 }
-function ready(){el('cleanup-delete').disabled=!confirmed();}
 async function auth(){
- const resp=await fetch('/api/auth/me',{credentials:'same-origin',cache:'no-store'});
- const data=await resp.json();
+ const r=await fetch('/api/auth/me',{credentials:'same-origin',cache:'no-store'});
+ if(!r.ok)throw Error('owner_auth_unavailable');
+ const data=await r.json();
  owner=Boolean(data.authenticated&&data.login===OWNER);
  el('cleanup-login').hidden=owner;
- el('cleanup-owner').textContent=owner?
-  'OWNER ยืนยันตัวตนแล้ว — ลบถาวรได้เฉพาะ Repository ที่อนุญาต':
-  'ต้องเข้าสู่ระบบ GitHub ด้วยบัญชี OWNER ก่อนใช้การลบถาวร (Token กลางและ AI ไม่ได้รับสิทธิ์นี้)';
- el('cleanup-preview').disabled=!owner||!WRITE_REPOS.includes(repo())||working;
- ready();
- return owner;
+ el('cleanup-owner').textContent=owner?'OWNER พร้อมจัดการ Issues ของ Repository ที่เลือก':
+  'ต้องเชื่อมต่อ GitHub บัญชี OWNER ก่อน (AI และ Token กลางไม่มีสิทธิ์ลบ)';
+ refresh();return owner;
+}
+async function call(path,body,repository=repo()){
+ const options={cache:'no-store',credentials:'same-origin'};
+ if(body!==undefined){
+  options.method='POST';options.headers={'content-type':'application/json'};
+  options.body=JSON.stringify(body);
+ }
+ const r=await fetch('/api/v1/maintenance/issues/'+path+
+  (body===undefined?'?repo='+encodeURIComponent(repository):''),options);
+ const data=await r.json().catch(()=>({}));
+ if(!r.ok&&r.status!==207)throw Error(data.detail||data.error||'HTTP '+r.status);
+ return {data,status:r.status};
 }
 function render(data){
- snapshot=data;context=repo();
+ if(data.repo!==OWNER+'/'+repo()||!Array.isArray(data.issues)||
+    data.total!==data.issues.length)throw Error('invalid_preview');
+ snapshot=data;context=repo();selected.clear();closeConfirm();
  el('cleanup-count').textContent=String(data.total);
- el('cleanup-copy').disabled=false;
- const view=el('cleanup-sample');view.replaceChildren();
- const examples=data.issues.slice(0,25);
- for(const issue of examples){
-  const line=document.createElement('div');line.className='cleanup-entry';
-  line.textContent='#'+issue.number+' ['+issue.state+'] '+issue.title;
-  view.append(line);
+ const list=el('cleanup-sample');list.replaceChildren();
+ for(const issue of data.issues){
+  const label=document.createElement('label');label.className='cleanup-option';
+  const input=document.createElement('input');input.type='checkbox';input.value=issue.id;
+  input.setAttribute('aria-label','เลือก Issue #'+issue.number);
+  input.addEventListener('change',()=>{
+   if(busy){input.checked=selected.has(issue.id);return;}
+   input.checked?selected.add(issue.id):selected.delete(issue.id);
+   closeConfirm();refresh();
+  });
+  const info=document.createElement('span');info.className='cleanup-option-info';
+  const title=document.createElement('strong');title.textContent='#'+issue.number+' · '+issue.title;
+  const meta=document.createElement('small');meta.textContent=issue.state+' · '+issue.updatedAt;
+  info.append(title,meta);label.append(input,info);list.append(label);
  }
- if(data.total>examples.length){
-  const extra=document.createElement('p');extra.textContent='… และอีก '+(data.total-examples.length)+' Issues (ส่งออก JSON ได้ทั้งหมด)';view.append(extra);
- }
- if(!data.total){status('ไม่พบ Issues แล้ว (รวม Open + Closed) — รายการปัจจุบัน = 0');}
- else{status('Preview สำเร็จ: '+data.total+' Issues ใน '+data.repo+' · ไม่รวม Pull Requests · ยังไม่ได้ลบข้อมูล');}
- ready();
+ refresh();
+ note(data.total?'โหลด '+data.total+' Issues · ติ๊กเลือกหรือกดเลือกทั้งหมด ไม่ต้องพิมพ์ข้อความ':
+  'ไม่พบ Issues ทั้ง Open และ Closed — เหลือ 0');
 }
 async function preview(){
- if(working)return;
- const button=el('cleanup-preview');button.disabled=true;
+ if(busy)return;
+ const previous=repo();
  try{
-  if(!await auth())throw Error('owner_github_login_required');
-  snapshot=null;el('cleanup-copy').disabled=true;ready();
-  status('กำลังตรวจ Issues ทั้งหมดจาก GitHub…');
-  const {result}=await request('preview');
-  if(result.repo!==OWNER+'/'+repo()||result.total!==result.issues.length)throw Error('repository_or_snapshot_mismatch');
-  render(result);
- }catch(error){snapshot=null;el('cleanup-count').textContent='—';status('Preview ไม่สำเร็จ: '+error.message);}
- finally{button.disabled=!owner;}
+  if(!await auth())throw Error('กรุณาเข้าสู่ระบบ OWNER');
+  snapshot=null;selected.clear();closeConfirm();refresh();
+  note('กำลังอ่าน Issues ทั้งหมดจาก GitHub…');
+  const {data}=await call('preview',undefined,previous);
+  if(repo()!==previous)throw Error('เปลี่ยน Repository ระหว่างโหลด');
+  render(data);
+ }catch(error){
+  if(repo()===previous){snapshot=null;selected.clear();el('cleanup-count').textContent='—';refresh();
+   note('อ่าน Issues ไม่สำเร็จ: '+error.message);}
+ }
 }
-async function run(){
- if(!confirmed())return;
- const original=snapshot,selected=repo(),button=el('cleanup-delete');
- working=true;stop=false;button.disabled=true;el('cleanup-preview').disabled=true;el('cleanup-stop').hidden=false;
- el('cleanup-confirm').disabled=true;el('cleanup-agree').disabled=true;
- let deleted=0,failure='';
+function stage(){
+ if(busy||!owner||!snapshot||context!==repo()||!chosen().length)return;
+ const batch=chosen();
+ el('cleanup-final-title').textContent='ยืนยันลบ '+batch.length+' Issues อย่างถาวร?';
+ el('cleanup-final-detail').textContent='Repository: '+snapshot.repo+
+  ' · รวม Open และ Closed · ไม่รวม Pull Requests · ลบแล้วไม่สามารถ Undo ได้';
+ el('cleanup-final').hidden=false;
+ el('cleanup-final-yes').focus();
+}
+async function execute(){
+ if(el('cleanup-final').hidden||busy||!owner||!snapshot||context!==repo())return;
+ const target=chosen().map(x=>({id:x.id,number:x.number,updatedAt:x.updatedAt}));
+ if(!target.length)return;
+ const original=snapshot,repository=repo();
+ closeConfirm();busy=true;stop=false;refresh();
+ el('cleanup-stop').hidden=false;
+ let done=0,failure='';
  try{
-  for(let at=0;at<original.issues.length;at+=5){
-   if(stop||repo()!==selected){failure='หยุดตามคำสั่งหรือ Repository เปลี่ยน';break;}
-   const batch=original.issues.slice(at,at+5).map(x=>({id:x.id,number:x.number,updatedAt:x.updatedAt}));
-   status('กำลังลบถาวร '+deleted+'/'+original.total+' ใน '+original.repo+' · หยุดได้หลังจบ Batch');
-   let value;
-   try{value=await request('delete',{repo:selected,confirm:'DELETE '+original.repo,issues:batch});}
-   catch(error){failure=error.message;break;}
-   const outcome=value.result;
-   deleted+=(outcome.deleted||[]).length;
-   if(value.status===207||outcome.error){failure='หยุดที่ #'+(outcome.failed||'?')+': '+(outcome.detail||outcome.error);break;}
+  for(let at=0;at<target.length;at+=5){
+   if(stop||repo()!==repository){failure='หยุดตามคำสั่งหรือ Repository เปลี่ยน';break;}
+   note('ลบถาวร '+done+' / '+target.length+' Issues ใน '+original.repo);
+   let r;
+   try{r=await call('delete',{repo:repository,confirm:'DELETE '+original.repo,issues:target.slice(at,at+5)},repository);}
+   catch(e){failure=e.message;break;}
+   done+=(r.data.deleted||[]).length;
+   if(r.status===207||r.data.error){failure='หยุดที่ #'+(r.data.failed||'?')+': '+(r.data.detail||r.data.error);break;}
   }
  }finally{
-  working=false;el('cleanup-stop').hidden=true;el('cleanup-confirm').disabled=false;el('cleanup-agree').disabled=false;
-  el('cleanup-confirm').value='';el('cleanup-agree').checked=false;
-  snapshot=null;ready();
+  busy=false;el('cleanup-stop').hidden=true;snapshot=null;selected.clear();refresh();
  }
- if(failure||stop){
-  status('ลบสำเร็จ '+deleted+'/'+original.total+' · '+(failure||'หยุดแล้ว')+' · กดตรวจรายการใหม่ก่อนเริ่มต่อ');
- }else{
-  status('ลบไป '+deleted+' รายการ กำลังตรวจจำนวนที่เหลือบน GitHub…');
- }
+ note('ลบ '+done+' / '+target.length+' Issues · กำลังตรวจรายการที่เหลือ…');
  try{
-  const {result}=await request('preview');
-  if(repo()===selected){
-   render(result);
-   if(failure||stop)status('ลบถาวร '+deleted+' รายการ · '+(failure||'หยุดตามคำสั่ง')+' · เหลือ '+result.total+' รายการ');
-   else status('ลบถาวร '+deleted+' รายการ · ตรวจสอบ GitHub แล้ว: เหลือ '+result.total+
-     (result.total===0?' (เสร็จสมบูรณ์)':' (มีรายการใหม่/ข้อมูลเปลี่ยน โปรดตรวจอีกครั้ง)'));
+  const {data}=await call('preview',undefined,repository);
+  if(repo()===repository){
+   render(data);
+   note('ลบถาวร '+done+' / '+target.length+' รายการ · เหลือ '+data.total+
+     ' Issues'+(failure?' · '+failure:''));
   }
- }catch(error){status('ลบไป '+deleted+' รายการ แต่ตรวจจำนวนที่เหลือไม่ได้: '+error.message);}
- el('cleanup-preview').disabled=!owner;
- // Existing operations list is intentionally a secondary cache, refresh on demand.
+ }catch(e){note('ลบ '+done+' รายการ แต่ตรวจยอดคงเหลือไม่ได้: '+e.message);}
 }
 function setup(){
  if(!el('cleanup-panel'))return;
  el('cleanup-preview').addEventListener('click',preview);
- el('cleanup-delete').addEventListener('click',run);
- el('cleanup-stop').addEventListener('click',()=>{stop=true;status('ได้รับคำสั่งหยุดแล้ว · จบรอบปัจจุบันก่อนหยุด');});
+ el('cleanup-select-all').addEventListener('click',()=>select(items().map(x=>x.id)));
+ el('cleanup-clear-selection').addEventListener('click',()=>select([]));
+ el('cleanup-delete').addEventListener('click',stage);
+ el('cleanup-final-yes').addEventListener('click',execute);
+ el('cleanup-final-no').addEventListener('click',closeConfirm);
+ el('cleanup-stop').addEventListener('click',()=>{stop=true;note('หยุดหลังชุดปัจจุบัน');});
  el('cleanup-copy').addEventListener('click',async()=>{
   if(!snapshot)return;
-  try{await navigator.clipboard.writeText(JSON.stringify(snapshot,null,2));status('คัดลอก Issue snapshot JSON แล้ว ('+snapshot.total+' รายการ)');}
-  catch{status('คัดลอกไม่สำเร็จ ใช้การตรวจรายการบนหน้าเว็บแทน');}
+  try{await navigator.clipboard.writeText(JSON.stringify(snapshot,null,2));
+   note('คัดลอกรายการ JSON '+snapshot.total+' Issues แล้ว');}
+  catch{note('คัดลอกไม่ได้');}
  });
- el('cleanup-confirm').addEventListener('input',ready);
- el('cleanup-agree').addEventListener('change',ready);
- el('repo-select').addEventListener('change',()=>{if(working)stop=true;reset();auth().catch(()=>status('ตรวจสิทธิ์ OWNER ไม่ได้'));});
- reset();auth().catch(()=>status('ตรวจสิทธิ์ OWNER ไม่ได้'));
+ el('repo-select').addEventListener('change',()=>{
+  if(busy)stop=true;
+  clear();auth().catch(()=>note('ตรวจ OWNER ไม่สำเร็จ'));
+ });
+ clear();auth().catch(()=>note('ตรวจ OWNER ไม่สำเร็จ'));
 }
-if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',setup);else setup();
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',setup);
+else setup();
 })();
