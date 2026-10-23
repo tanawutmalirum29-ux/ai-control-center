@@ -1,5 +1,6 @@
 // AI queue: status evidence only; never run an AI job or write to GitHub silently.
 import {OWNER, FULL_REPOS} from './repositories.js';
+import {cadenceNote} from './agent-automation.js';
 (()=>{
  'use strict';
  const el=id=>document.getElementById(id);
@@ -17,7 +18,7 @@ import {OWNER, FULL_REPOS} from './repositories.js';
    'โปรเจกต์และแหล่งสำรองให้เข้าผ่านเมนูของ Control Center ก่อน ไม่ต้องเปิด GitHub เพื่ออ่าน Issue',
    'ตรวจ Repository, main SHA และขอบเขตงานที่ผู้สั่งระบุ ไม่ต้องลงทะเบียน AI หรือเชื่อม GitHub',
    'เปิด Control Center > แก้โค้ด สร้าง Branch acc/ แล้วอ่านไฟล์ แก้ Commit และส่ง Draft PR',
-   'รายงานผลสั้นพร้อม Branch, Commit SHA และ PR','ต้องมี QA ตรงกับ PR และ head SHA ก่อน Merge','ห้ามลบ Repository หรือข้าม QA โดยไม่ได้รับอนุมัติ'].join('\n');
+   cadenceNote,'รายงานผลสั้นพร้อม Branch, Commit SHA และ PR','ต้องมี QA ตรงกับ PR และ head SHA ก่อน Merge','ห้ามลบ Repository หรือข้าม QA โดยไม่ได้รับอนุมัติ'].join('\n');
  }
  async function copy(s){
   try{await navigator.clipboard.writeText(s);el('agent-notice').textContent='คัดลอกแล้ว — ส่งให้ AI เปิด Control Center ทำงานได้โดยไม่ต้องเชื่อม GitHub';}
