@@ -77,7 +77,7 @@ test('PR #99 HEAD is refreshed on every PR QA request, never stale after a new c
  assert.equal(value.stale,false);
  assert.equal(seen.filter(x=>x.endsWith('/pulls/99')).length,2);
  current=first;
- const failed=await readApi(new Request(url+'unsafefresh'),{
+ const failed=await readApi(new Request(url+'&fresh=1'),{
   fetcher:async()=>new Response('{}',{status:403}),edge:null,now:1750000000200});
  assert.equal(failed.status,503,'failed fresh PR query must not return cached SHA');
 });
