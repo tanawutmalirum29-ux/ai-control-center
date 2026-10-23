@@ -110,3 +110,13 @@ Owner-only endpoints: `GET /api/v1/maintenance/branches/preview?repo=...` and `P
 ### Simple click-based deletion UI (October 23, 2026)
 
 Both cleanup panels use only mouse/touch/keyboard selection: load preview → select individual or all items → click Delete Selected → review the selected repository and count → click Final Confirm. Changing repository or selection closes the confirmation; successful/partial deletion triggers a fresh GitHub recount. Protected branches are not selectable. Keeping the backend's exact confirmation phrase is intentional to prevent ambiguous API calls, even though the user never has to type it.
+
+## MN handoff: hourly task request (not a background agent)
+
+A newly created appointment Issue now includes `SCHEDULE_REQUEST: EVERY_1_HOUR`, an assigned-chat-only scope and a public mission-queue URL. The Relay Inbox and manual delegation copy text include a short request for the receiving ChatGPT chat to create **one hourly Scheduled Task**, if that chat has access to scheduling. The receiving chat must check whether an equivalent task already exists before creating another.
+
+When a CEO with delegated access creates an Engineer/QA Issue, or an authenticated OWNER creates a CEO Issue, the Relay UI also attempts to mint a **scoped, expiring agent activation link** in the same flow. One MN/AP-ROLE message can carry that URL. If minting fails, the UI explicitly marks the fallback as **read-only**, rather than implying the worker can write. Existing appointment rows can mint a fresh link on click.
+
+**Not automatic:** The control center cannot create Scheduled Tasks on behalf of arbitrary ChatGPT conversations, wake a different chat, or guarantee a scheduled run has browser/write access. A real recipient must receive the MN in their own chat and create the task there. Cloud Browser or GitHub connector access is separate from task scheduling and must be available in that chat. The web app does not include OpenAI API agents, and no TinyFish integration is required for GitHub-connector reads/writes.
+
+**Retained guardrails:** The 10-agent mission limit, delegated role/Issue/file permissions, temporary link expiry, independent QA and main-branch protections are not removed. Activation links are bearer credentials: share only with the intended chat, never paste them into public Issues, and reissue if expired.
