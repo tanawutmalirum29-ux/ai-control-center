@@ -59,10 +59,10 @@ test('AI QA can inspect CI and job status through Worker, no GitHub page or logi
  globalThis.fetch=async(url,init={})=>{
   const path=new URL(url).pathname;
   seen.push({path,auth:init.headers?.authorization});
-  if(path.endsWith('/actions/runs?per_page=50'))return new Response(JSON.stringify({
+  if(path.endsWith('/actions/runs'))return new Response(JSON.stringify({
    workflow_runs:[{id:987,name:'QA',status:'completed',conclusion:'success',
     head_sha:'a'.repeat(40),head_branch:'main'}]}),{status:200});
-  if(path.endsWith('/actions/runs/987/jobs?per_page=100'))return new Response(JSON.stringify({
+  if(path.endsWith('/actions/runs/987/jobs'))return new Response(JSON.stringify({
    jobs:[{id:4,name:'browser-qa',status:'completed',conclusion:'success',steps:[]}]}),{status:200});
   throw Error('unexpected upstream '+path);
  };
