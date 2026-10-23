@@ -4,7 +4,7 @@ const el=id=>document.getElementById(id);
 const repo=()=>el('repo-select')?.value?.split('/')[1]||'';
 const current=()=>el('ws-branches')?.value||'';
 const workBranch=name=>/^(?:acc|feat|fix)\/[a-z0-9][a-z0-9._/-]{0,180}$/.test(name)&&!name.includes('..')&&!name.includes('//');
-let fileSha='',lastFile='',auth=false,loadedContent=null,fullPreview=null;
+let fileSha='',lastFile='',auth=false,loadedContent=null,fullPreview=null,refreshEpoch=0;
 const state=(msg)=>{el('ws-notice').textContent=msg};
 const status=(msg)=>{el('ws-auth').textContent=msg};
 async function api(path,method='GET',body){
@@ -38,8 +38,13 @@ async function login(){
   return auth;
 }
 async function refresh(){
- fileSha='';lastFile='';loadedContent=null;resetFullPreview();el('ws-branches').replaceChildren(new Option('เลือกพื้นที่ (Branch)',''));
+ const n=++refreshEpoch,rememberBranch=current(),rememberRepo=repo();
+ fileSha='';lastFile='';loadedContent=null;resetFullPreview();
+ el('ws-loaded-file').textContent='ไฟล์ยังไม่ได้โหลด · เมื่อเลือก Branch อีกครั้งให้กดอ่านไฟล์';
+ el('ws-content').value='';
+ el('ws-branches').replaceChildren(new Option('เลือกพื้นที่ (Branch)',''));
  await login();
+ if(n!==refreshEpoch||rememberRepo!==repo())return;
  if(!FULL_REPOS.includes(el('repo-select').value)){state('ไม่รองรับ Repository');return;}
  state('กำลังโหลด Branch ของโปรเจกต์...');
  try{
@@ -56,10 +61,11 @@ async function refresh(){
    const response=await fetch('/api/v1/source/branches?repo='+encodeURIComponent(repo()),{cache:'no-store'});
    data=await response.json();if(!response.ok)throw Error(data.reason||data.error);
   }
+  if(n!==refreshEpoch||rememberRepo!==repo())return;
   const choices=['main',...data.branches.filter(b=>workBranch(b.name)).map(b=>b.name)];
   for(const name of new Set(choices))el('ws-branches').add(new Option(name,name));
-  el('ws-branches').value='main';
-  state('Branch โหลดผ่าน '+via+' · แก้งานบน Branch acc/ หรือ feat/ เดิมของ PR ได้ ไม่ต้องสร้าง PR ซ้ำ');
+  el('ws-branches').value=choices.includes(rememberBranch)?rememberBranch:'main';
+  state('Branch โหลดผ่าน '+via+' · เลือก '+current()+' · คลิกไฟล์ในรายการเพื่อโหลดเนื้อหาจริงเข้า Editor');
  }catch(e){state('โหลด Branch ไม่สำเร็จ: '+e.message+' · หากเป็น 403 ให้ตรวจการติดตั้ง GitHub App ในโปรเจกต์');}
 }
 function chosen(){if(!current())throw Error('กรุณาเลือก Branch ก่อน');return current();}
@@ -92,12 +98,18 @@ function setup(){
    b.textContent=(item.type==='dir'?'▸ ':'• ')+item.path;
    b.addEventListener('click',()=>{
     el('ws-path').value=item.type==='dir'?item.path+'/':item.path;
-    state(item.type==='dir'?'กดดูรายการไฟล์อีกครั้งเพื่อเปิดโฟลเดอร์':'กดอ่านไฟล์เพื่อเปิดโค้ด');
+    if(item.type==='dir'){state('กด ดูไฟล์ อีกครั้งเพื่อเปิดโฟลเดอร์');return;}
+    // An agent choosing a file expects the editor to contain that exact source.
+    el('ws-load').click();
    });list.append(b);
   }
   state('โหลดรายการไฟล์ '+data.entries.length+' รายการจาก '+branch);
  }));
- el('ws-branches').addEventListener('change',()=>{fileSha='';lastFile='';loadedContent=null;resetFullPreview();state('เลือก Branch แล้ว · อ่านไฟล์ก่อนแก้เพื่อรับ SHA ที่ตรงกัน');});
+ el('ws-branches').addEventListener('change',()=>{
+  fileSha='';lastFile='';loadedContent=null;el('ws-content').value='';
+  el('ws-loaded-file').textContent='เลือก Branch ใหม่แล้ว · ต้องโหลดไฟล์และ SHA ใหม่';
+  resetFullPreview();state('เลือก Branch แล้ว · อ่านไฟล์ก่อนแก้เพื่อรับ SHA ที่ตรงกัน');
+ });
  el('ws-create-branch').addEventListener('click',e=>handle(e.currentTarget,async()=>{
   const title=el('ws-title').value.trim();
   if(title.length<3)throw Error('กรอกหัวข้องานอย่างน้อย 3 ตัวอักษร');
@@ -117,10 +129,18 @@ function setup(){
    const response=await fetch('/api/v1/source/file?repo='+encodeURIComponent(repo())+'&ref='+encodeURIComponent(branch)+'&path='+encodeURIComponent(path));
    data=await response.json();if(!response.ok)throw Error(data.reason||data.error);
   }
+  if(typeof data.content!=='string'||!/^[a-f0-9]{40}$/.test(data.sha||'')||
+     data.path!==path||data.branch!==branch)
+    throw Error('ข้อมูลไฟล์/Blob SHA จาก API ไม่ครบหรือต่างจาก Branch ที่เลือก');
+  if(branch!==current()||path!==el('ws-path').value.trim())
+    throw Error('Branch หรือพาธถูกเปลี่ยนระหว่างโหลดไฟล์ กรุณาอ่านอีกครั้ง');
   el('ws-content').value=data.content;fileSha=data.sha;lastFile=path;loadedContent=data.content;resetFullPreview();
-  state('อ่านไฟล์สำเร็จ · Blob SHA '+fileSha.slice(0,10)+' · พร้อมแก้ไข');
+  el('view-workspace').querySelector('.ws-full-editor').open=true;
+  el('ws-loaded-file').textContent='อ่านครบ '+data.content.split('\n').length+' บรรทัด · '+data.content.length+
+    ' ตัวอักษร · '+data.branch+' · Blob SHA '+fileSha;
+  state('อ่านไฟล์สำเร็จ · Blob SHA '+fileSha+' · Editor แสดงเนื้อหาทั้งไฟล์แล้ว');
  }));
- el('ws-new').addEventListener('click',()=>{fileSha='';lastFile=el('ws-path').value.trim();el('ws-content').value='';loadedContent='';resetFullPreview();state('โหมดไฟล์ใหม่ · ระบุพาธที่ยังไม่มีใน Branch');});
+ el('ws-new').addEventListener('click',()=>{fileSha='';lastFile=el('ws-path').value.trim();el('ws-content').value='';loadedContent='';resetFullPreview();el('ws-loaded-file').textContent='ไฟล์ใหม่: ยังไม่มี SHA';state('โหมดไฟล์ใหม่ · ระบุพาธที่ยังไม่มีใน Branch');});
  el('ws-content').addEventListener('input',resetFullPreview);
  el('ws-path').addEventListener('input',resetFullPreview);
  el('ws-preview-file').addEventListener('click',e=>handle(e.currentTarget,async()=>{
@@ -168,6 +188,7 @@ function setup(){
   if(verify.content!==content||verify.sha!==saved.sha)
    throw Error('GitHub บันทึก Commit '+saved.commit_sha+' แล้ว แต่การอ่านยืนยันเนื้อหาหลังบันทึกไม่ตรง · ห้ามกดซ้ำ');
   fileSha=saved.sha;lastFile=path;loadedContent=content;
+  el('ws-loaded-file').textContent='ยืนยันหลังบันทึก Blob SHA '+saved.sha+' · Commit '+saved.commit_sha;
   state('ยืนยัน Commit SHA '+saved.commit_sha+' และ Blob SHA '+saved.sha+' · เนื้อหาหลังบันทึกตรงกับ Diff');
  }));
  el('ws-pr-create').addEventListener('click',e=>handle(e.currentTarget,async()=>{
