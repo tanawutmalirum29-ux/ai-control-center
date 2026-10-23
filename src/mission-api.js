@@ -56,7 +56,7 @@ async function load(repo,fetcher){
  const tasks=issues.filter(i=>!i.pull_request).map(i=>asTask(i,repo));
  const priority={APPOINTED:0,READY:1,IN_PROGRESS:2,WAITING_QA:3,QA_BLOCK:4,PAUSED:5,UNCLASSIFIED:6};
  tasks.sort((a,b)=>(priority[a.status]??7)-(priority[b.status]??7)||Date.parse(b.updated_at)-Date.parse(a.updated_at));
- return {repo:OWNER+'/'+repo,source:'PUBLIC_GITHUB',
+ return {repo:OWNER+'/'+repo,source:'GITHUB_API',
   tasks,prs:prs.map(p=>({number:p.number,title:p.title,
    url:'https://ai-control-center.tanawutmalirum29.workers.dev/?repo='+encodeURIComponent(repo)+'&pr='+p.number,
    github_source_url:p.html_url,draft:p.draft,
@@ -79,15 +79,15 @@ async function edgeSave(edge,key,entry){
  try{await edge.put(new Request('https://acc-mission-cache.invalid/'+encodeURIComponent(key)),
    new Response(JSON.stringify(entry),{headers:{'cache-control':'public,max-age=900'}}));}catch{}
 }
-async function cached(repo,fetcher,edge,now){
+async function cached(repo,fetcher,edge,now,forceFresh=false){
  const time=typeof now==='number'?now:Date.now(),hit=local.get(repo)||await edgeGet(edge,repo);
- if(hit&&time-hit.at<FRESH){local.set(repo,hit);return {...hit.value,stale:false,cached_at:new Date(hit.at).toISOString()};}
- if(pending.has(repo))return pending.get(repo);
+ if(!forceFresh&&hit&&time-hit.at<FRESH){local.set(repo,hit);return {...hit.value,stale:false,cached_at:new Date(hit.at).toISOString()};}
+ if(!forceFresh&&pending.has(repo))return pending.get(repo);
  const promise=(async()=>{
   try{const result=await load(repo,fetcher),entry={at:time,value:result};
    local.set(repo,entry);await edgeSave(edge,repo,entry);
    return {...result,stale:false,cached_at:new Date(time).toISOString()};}
-  catch(e){if(hit&&time-hit.at<STALE)return {...hit.value,stale:true,warning:e.code||'UPSTREAM_ERROR',cached_at:new Date(hit.at).toISOString()};
+  catch(e){if(!forceFresh&&hit&&time-hit.at<STALE)return {...hit.value,stale:true,warning:e.code||'UPSTREAM_ERROR',cached_at:new Date(hit.at).toISOString()};
    const error=new Error('github_unavailable');error.code=e.code||503;throw error;}
  })();
  pending.set(repo,promise);
@@ -99,7 +99,7 @@ export async function missionApi(request,{fetcher=globalThis.fetch,edge=globalTh
  const url=new URL(request.url),repo=url.searchParams.get('repo');
  if(url.pathname!=='/api/v1/mission')return answer({error:'not_found'},404);
  if(!REPOS.includes(repo))return answer({error:'unsupported_repo',allowed:REPOS},400);
- try{return answer(await cached(repo,fetcher,edge,now));}
+ try{return answer(await cached(repo,fetcher,edge,now,url.searchParams.get('fresh')==='1'));}
  catch(e){return answer({error:'mission_unavailable',reason:e.code===403?'PUBLIC_GITHUB_RATE_LIMIT':'GITHUB_UNAVAILABLE',
   retry_after_seconds:120},503);}
 }
