@@ -60,5 +60,5 @@ test('Issue reader has been removed from AI website; deep-linked API is retired'
  assert.ok(!html.includes('src="./issue-reader.js"'));
  assert.ok(!html.includes('id="detail-comment-form"'));
  assert.ok(worker.includes("'/api/v1/detail'"));
- assert.ok(worker.includes('legacy_issue_workflow_retired'));
+ assert.ok(worker.includes('browser_write_retired'));
 });
