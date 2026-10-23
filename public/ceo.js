@@ -14,9 +14,9 @@ function link(label,url){
  const a=el('a','ceo-link',label);a.href=url;a.target='_blank';a.rel='noopener noreferrer';return a;
 }
 function setView(name){document.querySelector('.navigation [data-view="'+name+'"]')?.click();}
-function taskUrl(task){return task.url||base+currentRepo()+'/issues/'+task.number;}
+function taskUrl(task){return '/?repo='+encodeURIComponent(currentRepo())+'&issue='+task.number;}
 function copyRelay(task){
- const code=task.relay||task.role+': MN #'+task.number+' '+taskUrl(task);
+ const code=(task.agent_slot||task.role)+': '+(task.status==='APPOINTED'?'AP-ROLE':'MN')+' #'+task.number+' '+new URL(taskUrl(task),location.origin).href;
  message('relay-copy',code);
  e('relay-text').value=code;
  try{navigator.clipboard.writeText(code).then(()=>message('relay-state','คัดลอก 1 บรรทัดแล้ว · ส่งเข้าแชทผู้รับโดยตรง')).catch(()=>{e('relay-text').focus();e('relay-text').select();message('relay-state','เลือกข้อความแล้ว · คัดลอกได้จากช่องข้อความ');});}
@@ -27,8 +27,8 @@ function workOn(task){
  e('work-current').textContent='งาน #'+task.number+' · '+task.title;
  e('work-metadata').textContent=(task.agent_slot||task.role)+' · '+task.status+
    ' · รายงานต่อ '+(task.reports_to||'ไม่ระบุ')+' · ขอบเขตไฟล์ '+(task.editable_paths||'ยังไม่กำหนด');
- e('work-source').replaceChildren(link('เปิด Issue #'+task.number,taskUrl(task)));
- e('relay-text').value=task.relay||'';
+ e('work-source').replaceChildren(link('อ่าน Issue #'+task.number+' ภายในเว็บ',taskUrl(task)));
+ e('relay-text').value=(task.agent_slot||task.role)+': MN #'+task.number+' '+new URL(taskUrl(task),location.origin).href;
 }
 function renderCounts(counts,stale){
  e('ceo-total').textContent=counts.open_tasks;
@@ -89,7 +89,7 @@ function renderPRs(){
  if(!prs.length){area.append(el('p','small-note','ไม่มี PR เปิดอยู่'));return;}
  for(const pr of prs){
   const row=el('div','ceo-task');const content=el('div','ceo-task-main');
-  const heading=el('div','ceo-task-title');heading.append(link('#'+pr.number+' '+pr.title,pr.url));
+  const heading=el('div','ceo-task-title');heading.append(link('#'+pr.number+' '+pr.title,'/?repo='+encodeURIComponent(currentRepo())+'&pr='+pr.number));
   heading.append(el('span','ceo-state',pr.draft?'DRAFT':'OPEN'));
   content.append(heading,el('small','ceo-meta','HEAD: '+(pr.head_sha||'UNKNOWN')+' · QA: ยังไม่ตรวจแยก PR'));
   const check=el('button','secondary-button','ตรวจ SHA / QA');check.type='button';
@@ -157,7 +157,7 @@ async function createIssue(event){
   const r=await fetch('/api/v1/ops/issue',{method:'POST',credentials:'same-origin',
    headers:{'content-type':'application/json'},body:JSON.stringify(payload)});
   const data=await r.json();if(!r.ok)throw Error(data.hint||data.error);
-  const relay=(slot||role)+': AP-ROLE #'+data.issue.number+' '+data.issue.url;
+  const relay=(slot||role)+': AP-ROLE #'+data.issue.number+' '+location.origin+'/?repo='+encodeURIComponent(currentRepo())+'&issue='+data.issue.number;
   e('relay-text').value=relay;message('ceo-create-state','สร้าง Issue #'+data.issue.number+' แล้ว · ส่งข้อความนี้ให้ AI ผู้รับ: '+relay);
   e('ceo-title').value='';await load();setView('relay');
   message('relay-copy',relay);
