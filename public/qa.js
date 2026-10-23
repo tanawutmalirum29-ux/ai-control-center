@@ -11,11 +11,12 @@ import {FULL_REPOS} from './repositories.js';
   const repo=sel();if(!FULL_REPOS.includes(repo))return;
   button.disabled=true;notice.textContent='กำลังตรวจ QA...';
   try{
-   const response=await fetch('/api/v1/pr-qa?repo='+encodeURIComponent(repo.split('/')[1])+'&pr='+number,{headers:{Accept:'application/json'}});
+   const response=await fetch('/api/v1/pr-qa?repo='+encodeURIComponent(repo.split('/')[1])+'&pr='+number+'&fresh=1',{headers:{Accept:'application/json'},cache:'no-store'});
    const data=await response.json();
    if(!response.ok)throw new Error(data.reason||data.error);
    if(sel()!==repo||Number(data.pr)!==number)return;
-   const stale=data.stale?' (ข้อมูลสำรอง)':'';
+   if(data.stale)throw new Error('PR/CI data is stale, refresh GitHub before QA');
+   const stale='';
    notice.innerHTML='<span class="status-tag '+color(data.gate)+'">'+escape(label(data.gate))+'</span>'+
      '<small>SHA '+escape((data.head_sha||'').slice(0,10))+' · CI '+escape(data.checks_state)+' · Review '+escape(data.review_state)+stale+'</small>'+
      '<small>PR นี้ยังไม่ผ่านการตรวจ QA แบบ Manual อัตโนมัติ และเว็บไม่มีสิทธิ์ Merge</small>';

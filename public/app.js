@@ -97,7 +97,7 @@ function issueRows(items, limit) {
 }
 function prRows(items, limit) {
   if (!items.length) return '<p class="empty">ไม่มี Pull Request ที่เปิดอยู่</p>';
-  return items.slice(0, limit).map((item) => '<div class="list-item"><span class="list-icon purple">⑂</span><div><a href="' + repoPage() + '/pull/' + Number(item.number) + '" target="_blank" rel="noopener noreferrer">' + escapeHtml(item.title) + '</a><small>PR #' + Number(item.number) + ' · อัปเดต ' + escapeHtml(dateText(item.updated_at)) + '</small></div>' + statusTag(item.draft ? 'Draft' : 'Open', item.draft ? 'wait' : '') + '</div>').join('');
+  return items.slice(0, limit).map((item) => '<div class="list-item" data-head-sha="' + escapeHtml(item.head_sha||'') + '"><span class="list-icon purple">⑂</span><div><a href="' + repoPage() + '/pull/' + Number(item.number) + '" target="_blank" rel="noopener noreferrer">' + escapeHtml(item.title) + '</a><small>PR #' + Number(item.number) + ' · LIVE HEAD ' + escapeHtml(item.head_sha||'UNKNOWN') + ' · อัปเดต ' + escapeHtml(dateText(item.updated_at)) + '</small></div>' + statusTag(item.draft ? 'Draft' : 'Open', item.draft ? 'wait' : '') + '</div>').join('');
 }
 function runTag(run) {
   if (run.status !== 'completed') return statusTag('กำลังรัน','wait');
@@ -134,7 +134,12 @@ async function loadProject(force = false) {
   const results = await Promise.allSettled([
     getJSON('', force),
     getJSON('/issues?state=open&per_page=100', force),
-    getJSON('/pulls?state=open&per_page=30', force),
+    fetch('/api/v1/mission?repo='+encodeURIComponent(selected.split('/')[1])+'&fresh=1',
+      {cache:'no-store'}).then(async r=>{
+       const data=await r.json();if(!r.ok||data.stale)throw Error('Live PR data unavailable');
+       return (data.prs||[]).map(p=>({number:p.number,title:p.title,draft:p.draft,
+        head_sha:p.head_sha,updated_at:p.updated_at,html_url:p.github_source_url}));
+      }),
     getJSON('/actions/runs?per_page=12', force)
   ]);
   if (id !== requestId) return;
@@ -150,7 +155,8 @@ async function loadProject(force = false) {
     errors
   };
   renderAll();
-  setNotice(errors.length ? ('ข้อมูลบางส่วนไม่พร้อม · ' + errors[0]) : ('อัปเดต ' + dateText(new Date().toISOString()) + ' · ดูข้อมูล Public Repository'));
+  setNotice(errors.length ? ('ข้อมูลบางส่วนไม่พร้อม · ' + errors[0]+' · อย่าใช้ SHA เก่าในการตัดสิน QA') :
+    ('อัปเดต '+dateText(new Date().toISOString())+' · PR HEAD จาก Control Center/GitHub แบบสด · CI ต้องตรวจตาม SHA ของ PR'));
 }
 function createTaskText() {
   const role = el('task-role').value;

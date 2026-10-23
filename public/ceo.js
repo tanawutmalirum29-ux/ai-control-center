@@ -96,11 +96,13 @@ function renderPRs(){
   check.addEventListener('click',async()=>{
    check.disabled=true;check.textContent='กำลังตรวจ QA...';
    try{
-    const res=await fetch('/api/v1/pr-qa?repo='+encodeURIComponent(currentRepo())+'&pr='+pr.number,{cache:'no-store'});
+    const res=await fetch('/api/v1/pr-qa?repo='+encodeURIComponent(currentRepo())+'&pr='+pr.number+'&fresh=1',{cache:'no-store'});
     const data=await res.json();if(!res.ok)throw Error(data.reason||data.error);
     const current=data.head_sha===pr.head_sha;
-    message('ceo-qa-status','PR #'+pr.number+' · HEAD '+data.head_sha+' · CI '+data.checks_state+
-     ' · QA '+data.gate+(current?'':' · SHA เปลี่ยนแล้ว!')+' · Merge safe: NO (ต้องตรวจ QA อิสระ)');
+    if(!current){pr.head_sha=data.head_sha;renderPRs();}
+    message('ceo-qa-status','PR #'+pr.number+' · LIVE HEAD '+data.head_sha+' · CI '+data.checks_state+
+     ' · QA '+data.gate+(current?'':' · SHA เปลี่ยน: อัปเดตหน้า PR แล้ว')+
+     ' · Merge safe: NO (ต้องตรวจ QA อิสระ)');
    }catch(err){message('ceo-qa-status','ตรวจ QA ไม่สำเร็จ: '+err.message)}
    finally{check.disabled=false;check.textContent='ตรวจ SHA / QA';}
   });
@@ -128,7 +130,7 @@ async function load(){
  if(!FULL_REPOS.includes(e('repo-select').value)){message('ceo-source','Repository ไม่อยู่ในรายการที่เว็บรองรับ');return}
  message('ceo-source','กำลังอ่านโปรเจกต์ '+currentRepo()+' ...');
  try{
-  const [response]=await Promise.all([fetch('/api/v1/mission?repo='+encodeURIComponent(currentRepo()),{cache:'no-store'}),whoCanWrite()]);
+  const [response]=await Promise.all([fetch('/api/v1/mission?repo='+encodeURIComponent(currentRepo())+'&fresh=1',{cache:'no-store'}),whoCanWrite()]);
   const d=await response.json();if(!response.ok)throw Error(d.reason||d.error);
   if(id!==nonce)return;
   tasks=d.tasks||[];prs=d.prs||[];
