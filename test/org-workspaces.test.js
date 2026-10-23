@@ -216,23 +216,15 @@ test('public visitor cannot bootstrap a CEO from a missing or malformed GitHub p
   fetcher:async()=>{throw Error('must not fetch expired proofs')}});
  assert.equal(expired.status,403);
 });
-test('UI includes separate project organization rooms, M messages, T cards and owner relay',()=>{
+test('Public organization dashboard uses GitHub Connector and D1 bridge views',()=>{
  const html=readFileSync(new URL('../public/index.html',import.meta.url),'utf8');
- const js=readFileSync(new URL('../public/org-workspace.js',import.meta.url),'utf8');
  const worker=readFileSync(new URL('../src/worker.js',import.meta.url),'utf8');
- const migration=readFileSync(new URL('../migrations/0001_org_workspaces.sql',import.meta.url),'utf8');
- for(const id of ['view-orgrooms','orgw-create-form','orgw-owner-invite-form','orgw-invite-form',
- 'orgw-message-form','orgw-task-form','orgw-messages','orgw-tasks']){
+ for(const id of ['view-bridge','bridge-rooms','bridge-receipts','bridge-detail'])
   assert.match(html,new RegExp('id="'+id+'"'));
- }
- assert.match(js,/api\('messages','POST'/);
- assert.match(js,/api\('tasks','POST'/);
- assert.match(js,/api\('ceo-activate','POST'/);
+ assert.match(worker,/githubBridgeApi/);
+ assert.match(worker,/syncGithubBridge/);
  assert.match(worker,/db:env\.ORG_DB/);
- assert.match(migration,/UNIQUE\(room_id,seq\)/);
- assert.match(migration,/org_creator_sessions/);
 });
-
 test('OWNER D1 setup is secured and loads packaged schema before any member query',async()=>{
  let count=0,sql=[];
  const db={prepare(query){return {async run(){count++;sql.push(query);return {meta:{changes:1}}}}}};
@@ -252,28 +244,19 @@ test('packaged D1 schema matches the SQL migration file byte for byte',async()=>
  const sql=readFileSync(new URL('../migrations/0001_org_workspaces.sql',import.meta.url),'utf8');
  assert.equal(ORG_SCHEMA,sql);
 });
-test('invitation and CEO deep links do not leave bearer tickets in browser address bar',()=>{
- const script=readFileSync(new URL('../public/org-workspace.js',import.meta.url),'utf8');
+test('Bridge frontend has no browser bearer ticket activation inputs',()=>{
  const html=readFileSync(new URL('../public/index.html',import.meta.url),'utf8');
- assert.match(script,/history\.replaceState/);
- assert.match(script,/ceo-activate/);
  assert.match(html,/name="referrer" content="no-referrer"/);
+ assert.doesNotMatch(html,/name="ceo_ticket"|id="orgw-invite-url"|id="orgw-owner-invite-url"/);
 });
-
-test('AI-facing organization page uses website-only invitations, no GitHub proof UI',()=>{
- const js=readFileSync(new URL('../public/org-workspace.js',import.meta.url),'utf8');
+test('AI-facing page no longer asks AI to activate a CEO website invitation',()=>{
  const html=readFileSync(new URL('../public/index.html',import.meta.url),'utf8');
- assert.match(html,/id="orgw-owner-invite-form"/);
- assert.match(html,/id="orgw-create-form"/);
- assert.match(html,/id="orgw-invite-form"/);
- assert.doesNotMatch(html,/id="orgw-proof-form"/);
- assert.doesNotMatch(js,/prepareGithubProof/);
- assert.ok(js.includes("api('ceo-activate','POST'"));
- assert.ok(js.includes("api('members','POST'"));
- assert.ok(js.includes("api('messages','POST'"));
- assert.ok(js.includes("api('tasks','POST'"));
-});
-test('proof-based CEO bootstrap rejects wrong repository proof and invalid proof response',async()=>{
+ const js=readFileSync(new URL('../public/app.js',import.meta.url),'utf8');
+ for(const old of ['orgw-owner-invite-form','orgw-create-form','orgw-invite-form','orgw-proof-form'])
+  assert.ok(!html.includes('id="'+old+'"'),old);
+ assert.match(js,/\/api\/v1\/bridge\//);
+ assert.match(html,/bridge\/requests/);
+});test('proof-based CEO bootstrap rejects wrong repository proof and invalid proof response',async()=>{
  const ticket='c'.repeat(64),stamp=new Date().toISOString().slice(0,19).replace(/[-:]/g,'')+'Z';
  const payload={ticket,bootstrap_repo:'ARCANA-SURVIVOR',bootstrap_stamp:stamp};
  const wrongRepo=await orgWorkspaceApi(post('ceo-activate',payload),{db:emptyDB,

@@ -21,10 +21,10 @@ function fixture(){
  };
  return {calls,fetcher};
 }
-test('central site-wide token cannot authorize irreversible maintenance',async()=>{
+test('retired Issue deletion routes cannot run with central token',async()=>{
  const env={GITHUB_WRITE_TOKEN:'central-test-credential',ASSETS:{fetch:()=>new Response('ok')}};
  const r=await worker.fetch(run('GET','preview?repo='+repo),env);
- assert.equal(r.status,401);
+ assert.equal(r.status,410);
 });
 test('preview includes closed Issues and is non-destructive',async()=>{
  const f=fixture();

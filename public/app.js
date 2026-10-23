@@ -1,49 +1,111 @@
+// New AI-first frontend: read-only GitHub Connector bridge dashboard.
+// No legacy issue forms, browser code editing, role token creation or OS prompts.
 import {FULL_REPOS} from './repositories.js';
-// Website-first navigation. Legacy Issue, agent and relay panels are retired.
-const byId=id=>document.getElementById(id);
-const available=['orgrooms','workspace','qa','organization','operations','settings'];
-const repoPattern=/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/;
-function stored(key,fallback){try{return JSON.parse(localStorage.getItem(key))||fallback}catch{return fallback}}
-const validRepos=items=>[...new Set(items.filter(x=>FULL_REPOS.includes(x)&&repoPattern.test(x)))].slice(0,12);
-let repos=validRepos(stored('acc.repos.v2',FULL_REPOS));
-if(!repos.length)repos=[...FULL_REPOS];
-let selected=stored('acc.selected.v1',repos[0]);
-if(!repos.includes(selected))selected=repos[0];
-const requested=new URLSearchParams(location.search).get('repo');
-if(requested&&FULL_REPOS.includes('tanawutmalirum29-ux/'+requested)){
- selected='tanawutmalirum29-ux/'+requested;
- if(!repos.includes(selected))repos.push(selected);
+const $=id=>document.getElementById(id);
+const views=['bridge','qa','settings'];
+let roomId=null,busy=false;
+const repo=()=>$('repo-select').value.split('/')[1]||'';
+function node(tag,value,className=''){
+ const n=document.createElement(tag);if(value!==undefined)n.textContent=String(value);if(className)n.className=className;return n;
 }
-function persist(){localStorage.setItem('acc.repos.v2',JSON.stringify(repos));localStorage.setItem('acc.selected.v1',JSON.stringify(selected))}
-function switchView(name){
- if(!available.includes(name))return;
- document.querySelectorAll('.view').forEach(node=>node.classList.toggle('hidden',node.id!=='view-'+name));
- document.querySelectorAll('.navigation [data-view]').forEach(node=>node.classList.toggle('active',node.dataset.view===name));
- const labels={orgrooms:['องค์กร / ข้อความ M / งาน T','ORGANIZATION'],workspace:['แก้โค้ดและเปิด Draft PR','WORKSPACE'],qa:['ตรวจ CI และ QA','QUALITY'],organization:['กฎองค์กร','RULES'],operations:['บำรุงรักษาข้อมูลเก่า','MAINTENANCE'],settings:['โปรเจกต์','SETTINGS']};
- byId('page-heading').textContent=labels[name][0];
- byId('section-kicker').textContent=labels[name][1];
+function setStatus(s){$('bridge-status').textContent=s;$('load-state').textContent=s;}
+function switchView(view){
+ if(!views.includes(view))return;
+ for(const n of document.querySelectorAll('.view'))n.classList.toggle('hidden',n.id!=='view-'+view);
+ for(const n of document.querySelectorAll('[data-view]'))n.classList.toggle('active',n.dataset.view===view);
+ const heading={bridge:'ห้ององค์กร AI',qa:'ตรวจ PR / CI',settings:'โปรเจกต์ / วิธีใช้'};
+ $('page-heading').textContent=heading[view];$('section-kicker').textContent=view.toUpperCase();
 }
-function picker(){
- const el=byId('repo-select');el.replaceChildren();
- for(const item of repos)el.add(new Option(item,item));
- el.value=selected;
+async function get(path){
+ const r=await fetch('/api/v1/bridge/'+path,{cache:'no-store'});
+ const data=await r.json();if(!r.ok)throw Error(data.error||'Bridge unavailable');return data;
 }
-function listRepos(){
- const target=byId('repo-list');target.replaceChildren();
- for(const name of repos){const b=document.createElement('button');b.type='button';b.className='secondary-button';b.textContent=name+(name===selected?' · เลือกอยู่':'');b.onclick=()=>{selected=name;persist();picker();listRepos();byId('repo-select').dispatchEvent(new Event('change'))};target.append(b)}
+function selectedRoom(){
+ if(!roomId)return 'ยังไม่เลือกห้อง';
+ return 'ห้อง '+roomId;
+}
+function prompt(){
+ const project=repo();
+ $('bridge-prompt').value='CEO: MN — เริ่มงานใน '+project+' ผ่าน GitHub Connector เท่านั้น\n'+
+ '1. อ่าน https://github.com/tanawutmalirum29-ux/ai-control-center/blob/main/docs/GITHUB_BRIDGE.md\n'+
+ '2. ใช้ GitHub Connector สร้างไฟล์คำสั่งใน repo tanawutmalirum29-ux/ai-organization-hub ที่ main\n'+
+ '3. เลือก action open_room (actor CEO) หรือสานต่อห้อง '+(roomId||'(เปิดห้องใหม่)')+'\n'+
+ '4. ดูผลที่ https://ai-control-center.tanawutmalirum29.workers.dev/api/v1/bridge/status?id=<command_uuid>\n'+
+ '5. ดู M/T ที่ https://ai-control-center.tanawutmalirum29.workers.dev/api/v1/bridge/inbox?room_id=<room_uuid>\n'+
+ '6. ไม่ใช้ TinyFish/เว็บคลิก/Issues ห้ามใส่ Token, ลิงก์ลับ หรือข้อมูลส่วนตัวลง GitHub Public\n'+
+ '7. ตรวจ QA/CI ก่อน Merge; ตอบสั้น MN/MQ/TR/C';
+}
+async function showRoom(id){
+ roomId=id;prompt();
+ $('bridge-detail-heading').textContent='M / T · '+id;
+ const root=$('bridge-detail');root.textContent='กำลังโหลด...';
+ try{
+  const d=await get('inbox?room_id='+encodeURIComponent(id));
+  root.replaceChildren();
+  root.append(node('h4',d.room.title+' · '+d.room.status));
+  root.append(node('p',d.room.mission,'small-note'));
+  root.append(node('p','ทีม: '+d.members.map(m=>m.slot).join(' · '),'small-note'));
+  const tasks=node('div');tasks.append(node('h4','งาน T'));
+  for(const t of d.tasks){const entry=node('div',t.code+' · '+t.title+' · '+t.assignee_slot+' · '+t.status,'item');tasks.append(entry);}
+  if(!d.tasks.length)tasks.append(node('p','ยังไม่มีงาน','small-note'));
+  root.append(tasks);
+  const messages=node('div');messages.append(node('h4','ข้อความ M'));
+  for(const m of d.messages){const item=node('div',undefined,'item');item.append(node('strong',m.code+' · '+m.sender_slot+' → '+m.recipient_slot));item.append(node('p',m.body));messages.append(item);}
+  if(!d.messages.length)messages.append(node('p','ยังไม่มีข้อความ','small-note'));
+  root.append(messages);
+ }catch(e){root.textContent='โหลดห้องไม่สำเร็จ: '+e.message;}
+}
+async function refresh(){
+ if(busy)return;busy=true;$('bridge-refresh').disabled=true;
+ try{
+  const [health,rooms,receipts]=await Promise.all([get('health'),get('rooms?repo='+encodeURIComponent(repo())),get('status?repo='+encodeURIComponent(repo()))]);
+  setStatus(health.ready?'Bridge พร้อม · GitHub main → D1 · Cron ทุก 5 นาที':'Bridge ไม่พร้อม');
+  const r=$('bridge-rooms');r.replaceChildren();
+  $('bridge-room-count').textContent=rooms.rooms.length+' ห้อง';
+  for(const item of rooms.rooms){
+   const b=node('button',item.title+' · '+item.status,'item-button');b.type='button';b.onclick=()=>showRoom(item.id);r.append(b);
+  }
+  if(!rooms.rooms.length)r.append(node('p','ยังไม่มีห้องผ่าน GitHub Bridge','small-note'));
+  const a=$('bridge-receipts');a.replaceChildren();
+  for(const item of receipts.receipts){
+   const e=node('div',undefined,'item');
+   e.append(node('strong',item.action+' · '+item.status));
+   e.append(node('p',(item.code?item.code+' · ':'')+item.detail,'small-note'));
+   a.append(e);
+  }
+  if(!receipts.receipts.length)a.append(node('p','ยังไม่มีไฟล์คำสั่งที่ Worker ประมวลผล','small-note'));
+  if(roomId)await showRoom(roomId);
+ }catch(e){setStatus('Bridge ใช้งานไม่ได้: '+e.message);}
+ finally{busy=false;$('bridge-refresh').disabled=false;}
+}
+async function sync(){
+ const b=$('bridge-sync');b.disabled=true;setStatus('กำลังอ่าน GitHub Queue...');
+ try{
+  const r=await fetch('/api/v1/bridge/sync',{method:'POST',headers:{'content-type':'application/json'},body:'{}'});
+  const d=await r.json();if(!r.ok)throw Error(d.errors?.join(', ')||d.error||'Sync failed');
+  await refresh();setStatus('Sync สำเร็จ: '+d.processed+' คำสั่ง · ปฏิเสธ '+d.rejected+' · แสกน '+d.seen+' ไฟล์');
+ }catch(e){setStatus('Sync ไม่สำเร็จ: '+e.message);}
+ finally{b.disabled=false;}
 }
 function init(){
- picker();listRepos();persist();
- for(const button of document.querySelectorAll('[data-view]'))button.addEventListener('click',()=>switchView(button.dataset.view));
- byId('repo-select').addEventListener('change',e=>{selected=e.target.value;persist();listRepos();byId('load-state').textContent='เปลี่ยนโปรเจกต์แล้ว · เข้าห้ององค์กรเพื่อตรวจงาน'});
- byId('refresh-btn').addEventListener('click',()=>{byId('load-state').textContent='รีเฟรชโปรเจกต์แล้ว';document.querySelector('.navigation [data-view="orgrooms"]')?.click();document.getElementById('orgw-refresh')?.click()});
- byId('repo-form').addEventListener('submit',e=>{
-  e.preventDefault();const name=byId('repo-add').value.trim();
-  if(!FULL_REPOS.includes(name)||!repoPattern.test(name)){byId('repo-notice').textContent='โปรเจกต์นี้ไม่อยู่ในรายการที่เว็บรองรับ';return}
-  if(!repos.includes(name))repos.push(name);selected=name;persist();picker();listRepos();byId('repo-notice').textContent='เลือกโปรเจกต์ '+name;byId('repo-add').value='';
-  byId('repo-select').dispatchEvent(new Event('change'));
+ const select=$('repo-select');
+ for(const item of FULL_REPOS){const opt=node('option',item);opt.value=item;select.append(opt);}
+ const fromUrl=new URLSearchParams(location.search).get('repo');
+ const choice='tanawutmalirum29-ux/'+fromUrl;
+ const saved=localStorage.getItem('acc.bridge.repo');
+ select.value=FULL_REPOS.includes(choice)?choice:FULL_REPOS.includes(saved)?saved:FULL_REPOS[0];
+ select.addEventListener('change',()=>{localStorage.setItem('acc.bridge.repo',select.value);roomId=null;prompt();refresh();});
+ for(const n of document.querySelectorAll('[data-view]'))n.addEventListener('click',()=>switchView(n.dataset.view));
+ const list=$('repo-list');
+ for(const item of FULL_REPOS){
+  const b=node('button',item,'item-button');b.type='button';b.onclick=()=>{select.value=item;select.dispatchEvent(new Event('change'));switchView('bridge')};list.append(b);
+ }
+ $('bridge-refresh').addEventListener('click',refresh);
+ $('refresh-btn').addEventListener('click',refresh);
+ $('bridge-sync').addEventListener('click',sync);
+ $('bridge-copy').addEventListener('click',async()=>{
+  const value=$('bridge-prompt').value;try{await navigator.clipboard.writeText(value);setStatus('คัดลอกข้อความ CEO แล้ว');}catch{$('bridge-prompt').select();setStatus('เลือกข้อความแล้ว · คัดลอกด้วยเมนูเครื่อง');}
  });
- switchView('orgrooms');
- byId('load-state').textContent='พื้นที่องค์กร M/T พร้อมใช้งาน · เลือกโปรเจกต์และเปิดห้อง';
+ prompt();switchView('bridge');refresh();
 }
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);else init();

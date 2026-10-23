@@ -50,12 +50,12 @@ function fixture({default_branch='main',protectedBranch=false,stale=false,fail='
  };
  return {fetcher,calls,removed,state};
 }
-test('owner OAuth is always required even when central token is configured',async()=>{
+test('retired branch maintenance routes cannot run even with central token',async()=>{
  const env={GITHUB_WRITE_TOKEN:'public-shared-token',ASSETS:{fetch:()=>new Response('ok')}};
  const r=await worker.fetch(preview(),env);
- assert.equal(r.status,401);
+ assert.equal(r.status,410);
  const x=await worker.fetch(deleteRequest([{name:'acc/feature-1',sha:shaA}]),env);
- assert.equal(x.status,401);
+ assert.equal(x.status,410);
 });
 test('read-only preview reports branch and open PR risks but excludes main',async()=>{
  const f=fixture();
