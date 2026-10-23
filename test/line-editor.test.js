@@ -97,3 +97,29 @@ test('line editor UI has bounded source chunks, diff gate and no auto-merge',()=
  assert.match(client,/preview_digest/);
  assert.match(html,/id="ws-lines-commit"[^>]*disabled/);
 });
+
+test('read all 204 Astra CI YAML lines in a single GitHub request',async()=>{
+ const big=Array.from({length:204},(_,i)=>i===159?'    timeout-minutes: 30':'# line '+(i+1)).join('\n')+'\n';
+ const calls=[],reader=fixture(big,sha,calls);
+ const query='/api/v1/work/file-lines?repo='+repo+'&branch='+encodeURIComponent(branch)+
+  '&path='+encodeURIComponent(path)+'&all=true';
+ const response=await workApi(get(query),{token,fetcher:reader});
+ assert.equal(response.status,200);
+ const value=await response.json();
+ assert.equal(value.all,true);
+ assert.equal(value.total_lines,204);
+ assert.equal(value.lines.length,204);
+ assert.equal(value.lines[159].text,'    timeout-minutes: 30');
+ assert.equal(value.lines[203].number,204);
+ assert.equal(value.sha,sha);
+ assert.equal(calls.length,1,'whole-file view must request GitHub only once');
+});
+test('full-file UI available by default, 40-line paging remains optional',()=>{
+ const html=readFileSync(new URL('../public/index.html',import.meta.url),'utf8');
+ const client=readFileSync(new URL('../public/workspace-patch.js',import.meta.url),'utf8');
+ assert.match(html,/id="ws-lines-read"[^>]*>อ่านทั้งไฟล์</);
+ assert.match(html,/id="ws-lines-read-page"[^>]*>อ่านทีละ 40 บรรทัด</);
+ assert.match(client,/readLines\(true\)/);
+ assert.match(client,/readLines\(false\)/);
+ assert.match(client,/all:'true'/);
+});

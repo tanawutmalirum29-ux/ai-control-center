@@ -96,16 +96,19 @@ export async function workApi(request,{token,allowedRepo=null,claim=null,fetcher
   }
   if(route==='/api/v1/work/file-lines'&&verb==='GET'){
    const branch=url.searchParams.get('branch'),path=url.searchParams.get('path');
-   const start=Number(url.searchParams.get('start')||1),count=Number(url.searchParams.get('count')||40);
+   const all=url.searchParams.get('all')==='true';
+   const start=all?1:Number(url.searchParams.get('start')||1);
+   const count=all?MAX_TEXT_BYTES:Number(url.searchParams.get('count')||40);
    if(!branchOk(branch)||!pathOk(path,{repo})||!Number.isSafeInteger(start)||start<1||
-      !Number.isSafeInteger(count)||count<1||count>80)return send({error:'invalid_line_reader_request'},400);
+      !Number.isSafeInteger(count)||count<1||(!all&&count>80))
+    return send({error:'invalid_line_reader_request'},400);
    const entry=await gh(root+'/contents/'+encPath(path)+'?ref='+encodeURIComponent(branch));
    if(entry.type!=='file'||entry.encoding!=='base64'||entry.size>MAX_TEXT_BYTES)return send({error:'file_is_not_small_text'},422);
    let content;try{content=decodeText(entry.content||'');}catch{return send({error:'file_is_not_utf8'},422);}
    const {lines}=splitLines(content);
    if(start>Math.max(1,lines.length))return send({error:'line_start_beyond_end',total_lines:lines.length},400);
    return send({repo:OWNER+'/'+repo,branch,path,sha:entry.sha,
-    total_lines:lines.length,start,end:Math.min(start+count-1,lines.length),
+    all,total_lines:lines.length,start,end:Math.min(start+count-1,lines.length),
     lines:lines.slice(start-1,start+count-1).map((line,i)=>({
      number:start+i,text:line.endsWith('\r')?line.slice(0,-1):line
     }))});

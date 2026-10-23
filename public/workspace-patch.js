@@ -44,16 +44,17 @@
   }
   el('ws-lines-sha').textContent='SHA '+data.sha+' · '+data.total_lines+' บรรทัด · แสดง '+data.start+'–'+data.end;
  }
- async function readLines(){
+ async function readLines(all=false){
   invalidate();
   const s=validateScope(),start=Number(el('ws-lines-page').value)||1,count=40;
-  set('กำลังโหลดเนื้อหาเป็นช่วงบรรทัด...');
-  const query=new URLSearchParams({...s,start:String(start),count:String(count)});
+  set(all?'กำลังอ่านทั้งไฟล์พร้อมเลขบรรทัด...':'กำลังโหลดเนื้อหาเป็นช่วงบรรทัด...');
+  const query=new URLSearchParams({...s,...(all?{all:'true'}:{start:String(start),count:String(count)})});
   const data=await fetchWork('file-lines?'+query);
   view={...s,sha:data.sha,total_lines:data.total_lines,lines:data.lines,start:data.start,end:data.end};
   listLines(data);
-  set('อ่านไฟล์สำเร็จ · บรรทัด '+data.start+'–'+data.end+' จาก '+data.total_lines+
-   ' · การแก้จะผูกกับ SHA ของไฟล์นี้');
+  set((all?'อ่านไฟล์ครบทุกบรรทัดสำเร็จ':'อ่านช่วงบรรทัดสำเร็จ')+
+   ' · '+data.start+'–'+data.end+' จาก '+data.total_lines+
+   ' บรรทัด · การแก้จะผูกกับ SHA ของไฟล์นี้');
  }
  async function previewPatch(){
   invalidate();
@@ -122,7 +123,8 @@
   for(const id of ['repo-select','ws-branches','ws-path'])
    el(id).addEventListener(id==='ws-path'?'input':'change',()=>{view=null;invalidate();
     el('ws-lines-sha').textContent='เลือก Branch/ไฟล์แล้วกด อ่านบรรทัด ใหม่';});
-  el('ws-lines-read').addEventListener('click',e=>run(e.currentTarget,readLines));
+  el('ws-lines-read').addEventListener('click',e=>run(e.currentTarget,()=>readLines(true)));
+  el('ws-lines-read-page').addEventListener('click',e=>run(e.currentTarget,()=>readLines(false)));
   el('ws-lines-copy').addEventListener('click',e=>run(e.currentTarget,copySelected));
   el('ws-lines-preview-btn').addEventListener('click',e=>run(e.currentTarget,previewPatch));
   el('ws-lines-commit').addEventListener('click',e=>run(e.currentTarget,commitPatch));

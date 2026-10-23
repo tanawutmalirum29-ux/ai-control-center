@@ -201,10 +201,11 @@
   <div id="ws-tree" class="workspace-tree" aria-live="polite"></div>
   <section class="ws-line-editor" aria-label="อ่านและแก้ไขไฟล์เฉพาะช่วงบรรทัด">
    <h3>แก้เฉพาะช่วงบรรทัด — สำหรับ AI/TinyFish</h3>
-   <p class="small-note">ไม่ต้องอ่านหรือส่ง YAML ทั้งไฟล์ในช่องข้อความ · เลือกไฟล์ แล้วดูทีละ 40 บรรทัด · แก้เฉพาะช่วงที่เลือก · ดู Diff ก่อนบันทึก · ตรวจ Blob SHA ล่าสุดอีกครั้งอัตโนมัติ</p>
+   <p class="small-note">อ่านไฟล์ทั้งไฟล์ได้ในครั้งเดียวพร้อมเลขบรรทัด หรือเลือกดูทีละ 40 บรรทัดเมื่อไฟล์ยาว · แก้เฉพาะช่วงที่เลือก ดู Diff ก่อนบันทึก และตรวจ Blob SHA ล่าสุดอัตโนมัติ</p>
    <div class="ws-line-tools">
-    <label>เริ่มดูที่บรรทัด<input type="number" id="ws-lines-page" min="1" value="1"/></label>
-    <button id="ws-lines-read" class="secondary-button" type="button">อ่านบรรทัด</button>
+    <button id="ws-lines-read" class="primary-button" type="button">อ่านทั้งไฟล์</button>
+    <label>เริ่มบรรทัด (โหมดแบ่งช่วง)<input type="number" id="ws-lines-page" min="1" value="1"/></label>
+    <button id="ws-lines-read-page" class="secondary-button" type="button">อ่านทีละ 40 บรรทัด</button>
     <button id="ws-lines-prev" class="secondary-button" type="button">◀ ก่อนหน้า</button>
     <button id="ws-lines-next" class="secondary-button" type="button">ถัดไป ▶</button>
    </div>
@@ -220,7 +221,7 @@
     <button id="ws-lines-preview-btn" class="secondary-button" type="button">1. ดู Diff ก่อน Commit</button>
     <button id="ws-lines-commit" class="primary-button" type="button" disabled>2. ยืนยัน Commit ตาม Diff</button>
    </div>
-   <p id="ws-lines-status" class="small-note" aria-live="polite">เลือก Branch และไฟล์ แล้วกด อ่านบรรทัด ก่อน</p>
+   <p id="ws-lines-status" class="small-note" aria-live="polite">เลือก Branch และไฟล์ แล้วกด อ่านทั้งไฟล์ ได้เลย</p>
    <div id="ws-lines-preview" class="ws-line-diff" aria-live="polite"></div>
   </section>
   <details class="ws-full-editor"><summary>ตัวแก้ไขทั้งไฟล์ (ทางเลือกสำหรับไฟล์ที่อ่านได้ครบ)</summary>
