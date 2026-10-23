@@ -52,3 +52,19 @@ CREATE TABLE IF NOT EXISTS org_tasks (
   UNIQUE(room_id,seq)
 );
 CREATE INDEX IF NOT EXISTS idx_org_tasks_room_seq ON org_tasks(room_id,seq);
+
+-- Initial CEO bootstrap: OWNER creates an expiring one-time link; the CEO receives
+-- a browser cookie after redemption, and can create a room without GitHub login.
+CREATE TABLE IF NOT EXISTS org_ceo_tickets (
+  token_hash TEXT PRIMARY KEY,
+  repo TEXT NOT NULL,
+  created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+  expires_at TEXT NOT NULL,
+  used_at TEXT
+);
+CREATE TABLE IF NOT EXISTS org_creator_sessions (
+  id TEXT PRIMARY KEY,
+  token_hash TEXT NOT NULL UNIQUE,
+  repo TEXT NOT NULL,
+  expires_at TEXT NOT NULL
+);
