@@ -114,7 +114,7 @@ export default {async fetch(request,env){
  if(path.startsWith('/api/auth/'))return auth(request,env,url);
  // Block retired Issue/appointment endpoints at the server boundary.
  const retired=['/api/v1/issues','/api/v1/queue','/api/v1/detail',
-   '/api/agent/invite','/api/v1/ops/issue',
+   '/api/agent/invite','/api/v1/ops/issue','/api/v1/ops/issues',
    '/api/v1/ops/comment','/api/v1/ops/comments','/api/v1/ops/assign',
    '/api/v1/ops/status'];
  if(retired.includes(path))return reply({error:'legacy_issue_workflow_retired',
