@@ -38,3 +38,10 @@
 #view-workspace .small-note{overflow-wrap:anywhere;line-height:1.6}
 #view-workspace button:disabled{opacity:.55;cursor:not-allowed}
 @media(max-width:670px){.workspace-grid{grid-template-columns:1fr;gap:0}.workspace-control button{flex:1 1 140px}#ws-content{min-height:240px}}
+
+.org-documents{margin-top:15px;display:grid;gap:8px}
+.org-document{display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between;padding:9px 12px;border:1px solid var(--line);border-radius:10px}
+.org-document>a,.org-context a{color:var(--accent);text-decoration:underline;text-underline-offset:2px;overflow-wrap:anywhere}
+.org-document-text{display:block;margin:14px 0 20px;padding:14px;border:1px solid var(--line);border-radius:12px;background:#0d172a;color:var(--text);font:12px/1.7 ui-monospace,SFMono-Regular,Consolas,monospace;white-space:pre-wrap;overflow-wrap:anywhere;max-height:440px;overflow-y:auto;overscroll-behavior:contain}
+.org-document-text[hidden]{display:none}
+.org-context p{font-size:12px;overflow-wrap:anywhere;line-height:1.8;margin:4px 0}

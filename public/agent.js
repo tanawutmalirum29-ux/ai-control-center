@@ -12,7 +12,11 @@ import {OWNER, FULL_REPOS} from './repositories.js';
   const target=task?`Issue #${task.number}: ${task.title}\n${task.url}\nสถานะ: ${task.status} (${task.source})`:'ตรวจสถานะงานล่าสุด เลือกเฉพาะงาน READY ที่ยังไม่มีผู้รับผิดชอบและไม่ซ้ำ';
   const rule=task?.status==='READY'?'ตรวจว่ามีผู้รับงานแล้วหรือไม่ก่อนลงมือ':task?.status==='IN_PROGRESS'?'ติดตามผู้รับงานเดิม ห้ามเริ่มซ้ำ':task?.status==='WAITING_QA'?'ตรวจหลักฐาน QA ห้าม Merge หากยังไม่ผ่าน':task?.status==='QA_BLOCK'?'รายงานจุด Block ห้าม Merge':task?.status==='PAUSED'?'ห้ามเริ่มงานจนกว่าจะปลดพัก':'ไม่ทราบสถานะที่ยืนยันได้ ต้องตรวจ Issue ก่อนเริ่ม';
   return ['AI CONTROL CENTER / MN','Repository: https://github.com/'+repo,target,rule,
-   'ใช้ GitHub Connector ที่ได้รับสิทธิ์เพื่ออ่านข้อมูลจริง',
+   'อ่านกฎล่าสุดที่ https://github.com/'+OWNER+'/ai-organization-hub/blob/main/RULES.md และ COMMANDS.md ก่อนเริ่ม',
+   'ORG_WORKSPACE_REPO: https://github.com/'+OWNER+'/ai-organization-hub',
+   'STAGING_REPO: https://github.com/'+OWNER+'/Staging_area',
+   'ตรวจ PROJECT_REPO/main SHA, AP-ROLE, REPORTS_TO, EDITABLE_PATHS, BASE_SHA ก่อนทำงาน',
+   'ใช้ Control Center เป็นตัวกลาง หากการกระทำไม่รองรับให้รายงาน ไม่ข้ามสิทธิ์',
    'รายงาน MN/MQ/TR/C สั้นตามกฎองค์กร','ต้องมี QA ตรงกับ PR และ head SHA ก่อน Merge','ห้ามลบ Repository หรือข้าม QA โดยไม่ได้รับอนุมัติ'].join('\n');
  }
  async function copy(s){

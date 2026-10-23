@@ -62,3 +62,6 @@ See [docs/GITHUB_APP_SETUP.md](docs/GITHUB_APP_SETUP.md). After adding Client ID
 
 ## V5: GitHub-backed project workspaces
 Owner GitHub App login allows dedicated `acc/` branches, reading/editing UTF-8 files and creating Draft Pull Requests for QA via the website. No direct pushes to main, merge, delete, AI model API, or unapproved third-party bot token. See [docs/WORKSPACES.md](docs/WORKSPACES.md).
+
+## V6: Live organization policy bridge
+The website displays the current ai-organization-hub/main rules, commands, source SHA and all three repository links for the selected project. The /api/v1/organization and /api/v1/organization/document endpoints are public read-only. The copyable work order cites the pinned organization source SHA. This does not implement autonomous agents, credentials per AI, automatic dispatch, full Actions or Issue editing, project-role permission enforcement, or Merge.
