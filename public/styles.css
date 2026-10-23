@@ -45,3 +45,17 @@
 .org-document-text{display:block;margin:14px 0 20px;padding:14px;border:1px solid var(--line);border-radius:12px;background:#0d172a;color:var(--text);font:12px/1.7 ui-monospace,SFMono-Regular,Consolas,monospace;white-space:pre-wrap;overflow-wrap:anywhere;max-height:440px;overflow-y:auto;overscroll-behavior:contain}
 .org-document-text[hidden]{display:none}
 .org-context p{font-size:12px;overflow-wrap:anywhere;line-height:1.8;margin:4px 0}
+
+/* GitHub-backed operations console */
+#view-operations label{display:block;margin:14px 0 10px;color:var(--muted);font-size:12px;font-weight:650}
+#view-operations label>input:not([type=checkbox]),#view-operations label>select,#view-operations label>textarea{
+ display:block;width:100%;margin-top:7px;padding:12px;background:var(--panel2);border:1px solid #314059;border-radius:10px;color:var(--text);min-width:0
+}
+#view-operations .ops-check{display:flex;gap:12px;align-items:center;line-height:1.55;color:var(--text)}
+#view-operations .ops-check input{width:18px;height:18px;flex-shrink:0}
+#view-operations button:disabled{opacity:.55;cursor:not-allowed}
+#view-operations .ops-list{max-height:440px;overflow:auto;overscroll-behavior:contain;margin:14px 0 22px}
+#view-operations .ops-list small{display:block;color:var(--muted);font-size:11px;margin-top:4px;overflow-wrap:anywhere}
+#view-operations .agent-task-info{max-width:100%;overflow-wrap:anywhere}
+#view-operations .agent-task-info a{color:var(--accent);overflow-wrap:anywhere}
+@media(max-width:620px){#view-operations .org-document{flex-direction:column;align-items:stretch}}

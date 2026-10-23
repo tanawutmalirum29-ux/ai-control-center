@@ -49,11 +49,11 @@ async function getJSON(path, force = false) {
   } finally { clearTimeout(timeout); }
 }
 function switchView(view) {
-  if (!['overview','issues','pulls','qa','agents','workspace','organization','settings'].includes(view)) return;
+  if (!['overview','issues','pulls','qa','agents','workspace','organization','operations','settings'].includes(view)) return;
   currentView = view;
   document.querySelectorAll('.view').forEach((node) => node.classList.toggle('hidden', node.id !== 'view-' + view));
   document.querySelectorAll('.navigation .nav-item').forEach((node) => node.classList.toggle('active', node.dataset.view === view));
-  const titles = {overview:['ภาพรวมการพัฒนา','OVERVIEW'],issues:['งาน / Issues','ISSUES'],pulls:['Pull Requests','PULL REQUESTS'],qa:['QA & Actions','QUALITY GATE'],agents:['AI Work Queue','AI OPERATIONS'],workspace:['พื้นที่ทำงานโค้ด','PROJECT WORKSPACE'],organization:['องค์กร AI','ORGANIZATION'],settings:['โปรเจกต์และการตั้งค่า','SETTINGS']};
+  const titles = {overview:['ภาพรวมการพัฒนา','OVERVIEW'],issues:['งาน / Issues','ISSUES'],pulls:['Pull Requests','PULL REQUESTS'],qa:['QA & Actions','QUALITY GATE'],agents:['AI Work Queue','AI OPERATIONS'],workspace:['พื้นที่ทำงานโค้ด','PROJECT WORKSPACE'],organization:['องค์กร AI','ORGANIZATION'],operations:['ศูนย์สั่งงาน','OPERATIONS'],settings:['โปรเจกต์และการตั้งค่า','SETTINGS']};
   el('page-heading').textContent = titles[view][0];
   el('section-kicker').textContent = titles[view][1];
   window.scrollTo(0, 0);

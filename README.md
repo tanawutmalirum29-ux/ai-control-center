@@ -65,3 +65,6 @@ Owner GitHub App login allows dedicated `acc/` branches, reading/editing UTF-8 f
 
 ## V6: Live organization policy bridge
 The website displays the current ai-organization-hub/main rules, commands, source SHA and all three repository links for the selected project. The /api/v1/organization and /api/v1/organization/document endpoints are public read-only. The copyable work order cites the pinned organization source SHA. This does not implement autonomous agents, credentials per AI, automatic dispatch, full Actions or Issue editing, project-role permission enforcement, or Merge.
+
+## V7: Embedded organization and owner operations
+All 6 public organization policy files are bundled at [public/organization-bundle.json](public/organization-bundle.json), pinned to a specific main SHA. The Organization tab renders the embedded docs and templates offline from GitHub API. The Operations tab adds GitHub App owner-only issue creation with three-repository governance context, comments, assignment to real GitHub users, Actions workflows/runs/jobs, and guarded workflow dispatch on acc/ work branches (requires separate Actions Write permission). No AI model running on the website, multi-agent identities, job-claim database, merge or delete. No token is exposed to browser.

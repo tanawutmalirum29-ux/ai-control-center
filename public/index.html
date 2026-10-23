@@ -14,6 +14,7 @@
 <script type="module" src="./qa.js"></script>
 <script type="module" src="./workspace.js"></script>
 <script type="module" src="./organization.js"></script>
+<script type="module" src="./operations.js"></script>
 </head>
 <body>
   <div class="shell">
@@ -27,7 +28,8 @@
         <button class="nav-item" data-view="qa" type="button"><span>✓</span> QA &amp; Actions</button>
         <button class="nav-item" data-view="agents" type="button"><span>◈</span> AI Work Queue</button>
         <button class="nav-item" data-view="workspace" type="button"><span>⌘</span> พื้นที่ทำงาน</button>
-<button class="nav-item" data-view="organization" type="button"><span>♧</span> องค์กร AI</button><button class="nav-item" data-view="settings" type="button"><span>⚙</span> โปรเจกต์</button>
+<button class="nav-item" data-view="organization" type="button"><span>♧</span> องค์กร AI</button>
+<button class="nav-item" data-view="operations" type="button"><span>▣</span> ควบคุมงาน</button><button class="nav-item" data-view="settings" type="button"><span>⚙</span> โปรเจกต์</button>
       </nav>
       <div class="side-bottom"><span class="live-dot"></span> GitHub Public API <span class="muted">· อ่านข้อมูล</span><small>ไม่มี Token ฝังในเว็บไซต์</small></div>
     </aside>
@@ -82,6 +84,62 @@
  <div class="panel"><h3>เปิดเอกสารฉบับเต็ม</h3><p id="org-document-title" class="small-note">กดเปิดอ่านจากชื่อเอกสารด้านบน</p><pre id="org-full-document" class="org-document-text" hidden></pre></div>
  <div class="note-box"><strong>ขอบเขต V6</strong><p>AI ต้องได้รับ AP-ROLE ในเซสชันจริงก่อนเริ่มงาน ปุ่มคัดลอกไม่ได้แต่งตั้งหรือเรียก AI เอง ระบบยังไม่มี Agent Identity, การจองงาน, ล็อกไฟล์, Audit Log และสิทธิ์ตามบทบาท</p></div>
 </section>
+<section class="view hidden" id="view-operations">
+ <div class="section-title">
+  <div><h2>ศูนย์สั่งงาน GitHub</h2><p>สร้างงาน · มอบหมาย · คอมเมนต์ · อ่าน Actions/Jobs · ส่ง Workflow Run</p></div>
+  <button type="button" class="secondary-button" id="ops-refresh">↻ โหลดข้อมูล</button>
+ </div>
+ <div class="panel">
+  <h3>สิทธิ์การทำงาน</h3>
+  <p id="ops-auth" class="small-note" aria-live="polite">กำลังตรวจ Login</p>
+  <p>GitHub App จะต้องติดตั้งใน Repository ที่เลือก · ใช้สิทธิ์บัญชีเจ้าของเท่านั้น (ยังไม่มีบัญชี AI แยกแต่ละตัว) · การแต่งตั้งใน Issue ยังต้องส่งคำสั่งไปยัง AI จริง</p>
+  <p id="ops-notice" class="small-note" aria-live="polite">เปิดเมนูนี้เพื่ออ่านข้อมูลงาน</p>
+ </div>
+ <div class="two-col">
+  <section class="panel">
+   <h3>สร้างงาน / AP-ROLE ในโปรเจกต์</h3>
+   <p class="small-note">ระบบจะฝัง PROJECT_REPO, ORG_WORKSPACE_REPO, STAGING_REPO และ SHA กฎองค์กรใน Issue โดยอัตโนมัติ</p>
+   <label>บทบาท<select id="ops-role">
+     <option value="PROJECT-LEAD">PROJECT-LEAD / Lead</option>
+     <option value="CEO">CEO</option><option value="ENGINEER">ENGINEER</option>
+     <option value="CREATOR">CREATOR</option><option value="QA-REVIEWER">QA-REVIEWER</option>
+     <option value="COORDINATOR">COORDINATOR</option>
+   </select></label>
+   <label>หัวข้องาน<input id="ops-title" maxlength="120" placeholder="ปรับ UI มอบหมายให้ Engineer"/></label>
+   <label>รายงานต่อ<input id="ops-reports" maxlength="100" placeholder="PROJECT-LEAD"/></label>
+   <label>ขอบเขตงาน<textarea id="ops-scope" maxlength="1800" rows="3" placeholder="ระบุสิ่งที่ทำและข้อห้าม"/></label>
+   <label>ไฟล์ที่แก้ได้<textarea id="ops-paths" maxlength="800" rows="2" placeholder="src/ui/* หรือ HOLD เพื่อให้ Lead ระบุ"/></label>
+   <label>เงื่อนไข QA<textarea id="ops-qa" maxlength="1200" rows="2" placeholder="CI ตาม SHA, Chromium/WebKit, ขนาดมือถือ"/></label>
+   <button id="ops-create" type="button" class="primary-button">สร้าง Issue พร้อมกฎองค์กร</button>
+  </section>
+  <section class="panel">
+   <h3>Issues ในโปรเจกต์</h3>
+   <div id="ops-issue-list" class="ops-list"><p class="small-note">ยังไม่ได้โหลด</p></div>
+   <h3>สื่อสารและมอบหมายงาน</h3>
+   <label>Issue #<input id="ops-number" inputmode="numeric" placeholder="เช่น 101"/></label>
+   <label>ข้อความ / รายงาน MN / QA<textarea id="ops-comment" rows="3" maxlength="3000" placeholder="บันทึกงานที่ดำเนินการจริง พร้อมหลักฐาน SHA/Tests"/></label>
+   <button type="button" class="secondary-button" id="ops-comment-send">ส่ง Comment เข้า Issue</button>
+   <label>GitHub Assignee<input id="ops-username" maxlength="39" placeholder="ชื่อบัญชี GitHub จริง"/></label>
+   <button type="button" class="secondary-button" id="ops-assign-send">มอบหมาย GitHub Issue</button>
+   <p class="small-note">การ Assign เป็นการมอบหมายให้บัญชี GitHub ไม่ใช่การสร้างตัว AI หรือเริ่มเซสชันของ AI อัตโนมัติ</p>
+  </section>
+ </div>
+ <section class="panel">
+  <h3>GitHub Actions — Workflows และผลทดสอบ</h3>
+  <p class="small-note">ดู Workflow Runs และ Jobs พร้อม Commit SHA จริงได้ · การกดรัน Workflow ต้องมี Actions: Write และใช้ได้เฉพาะ Branch งาน acc/</p>
+  <div id="ops-run-list" class="ops-list"><p class="small-note">ยังไม่ได้โหลด</p></div>
+  <h3>รายละเอียด Jobs ที่เลือก</h3>
+  <div id="ops-job-list" class="ops-list small-note">เลือก Run เพื่อดู Jobs/Steps</div>
+  <div class="workspace-grid">
+   <label>เลือก Workflow<select id="ops-workflow"><option value="">ยังไม่ได้เลือก Workflow</option></select></label>
+   <label>Branch งาน<select id="ops-branch"><option value="">เลือก acc/ Branch</option></select></label>
+  </div>
+  <label>Workflow Inputs (JSON object)<textarea id="ops-inputs" rows="3" spellcheck="false">{}</textarea></label>
+  <label class="ops-check"><input id="ops-confirm" type="checkbox"/> ฉันตรวจชื่อ Workflow/Branch และอนุญาตให้รัน Actions รอบนี้</label>
+  <button type="button" class="primary-button" id="ops-dispatch-send">สั่งรัน Workflow ใน Branch งาน</button>
+  <p class="small-note">ไม่มีคำสั่ง Merge/Delete ในระบบนี้ · การรัน CI ไม่ใช่หลักฐาน QA อิสระ และ Actions Write ยังใช้ไม่ได้จนกว่าจะได้รับสิทธิ์ GitHub App</p>
+ </section>
+ </section>
 <section class="view hidden" id="view-settings"><div class="section-title"><div><h2>จัดการ Repository</h2><p>ปรับรายการโปรเจกต์ที่ต้องการติดตามบนอุปกรณ์นี้</p></div></div><div class="panel"><h3>โปรเจกต์ของคุณ</h3><p class="muted-copy">เลือก Repository จากรายการที่ Backend รองรับเท่านั้น ข้อมูลเลือกแสดงเก็บบนอุปกรณ์นี้ ไม่เก็บรหัสผ่าน</p><div id="repo-list" class="repo-list"></div><form id="repo-form" class="inline-form"><label class="sr-only" for="repo-add">owner/repository</label><input required id="repo-add" placeholder="owner/repository" autocomplete="off" /><button type="submit" class="primary-button">เพิ่มโปรเจกต์</button></form><p id="repo-notice" class="small-note" aria-live="polite"></p></div><div class="panel"><h3>ความปลอดภัยและสิทธิ์</h3><div class="settings-grid"><div><strong>สถานะระบบ</strong><p>อ่าน Public Repo; เจ้าของที่ Login สร้าง Issue ได้เฉพาะ Repo ที่อนุญาต</p></div><div><strong>สิทธิ์การเขียน</strong><p>ตรวจสอบ Owner ผ่าน GitHub App ก่อนเขียน</p></div><div><strong>OpenAI API</strong><p>ไม่ใช้ — ไม่มีค่าบริการ AI เพิ่ม</p></div><div><strong>GitHub Token</strong><p>ไม่ร้องขอ / ไม่จัดเก็บ</p></div></div></div></section>
       </main>
       <footer class="footer"><span>AI CONTROL CENTER · FREE FIRST</span><span>ข้อมูลจาก GitHub · ไม่มีระบบ AI ทำงานอัตโนมัติในเวอร์ชันนี้</span></footer>
