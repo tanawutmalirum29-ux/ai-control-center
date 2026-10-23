@@ -1,0 +1,31 @@
+name: Production Bridge Smoke
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  production-health:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - name: Verify live Worker bridge without browser automation
+        shell: bash
+        run: |
+          set -euo pipefail
+          origin="https://ai-control-center.tanawutmalirum29.workers.dev"
+          echo "Testing Cloudflare Worker at ${origin}"
+          for attempt in $(seq 1 12); do
+            if curl --fail --silent --show-error --max-time 10 "${origin}/api/health" -o /tmp/acc-health.json && python3 -c 'import json; x=json.load(open("/tmp/acc-health.json")); assert x.get("version",0)>=20 and x.get("github_bridge_ready") is True; print("Worker bridge ready:",x["version"])'; then
+              break
+            fi
+            if [[ "${attempt}" == "12" ]]; then
+              echo "::error::Worker production version 20 not ready"
+              exit 1
+            fi
+            sleep 10
+          done
+          curl --fail --silent --show-error --max-time 12 "${origin}/api/v1/bridge/health" -o /tmp/bridge-health.json
+          python3 -c 'import json; x=json.load(open("/tmp/bridge-health.json")); assert x.get("ready") is True and x.get("no_tinyfish") is True and x.get("public_commands") is True; print("PASS bridge endpoint:",x)'
+          echo "No organization records changed; public GET only"
