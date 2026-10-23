@@ -72,3 +72,35 @@ test('public AI work queue reads Issues with central token, not anonymous rate-l
   assert.ok(!JSON.stringify(data).includes(token));
  }finally{globalThis.fetch=prior;}
 });
+
+test('public Issue comment uses the server token without a GitHub login',async()=>{
+ const prior=globalThis.fetch,seen=[];
+ globalThis.fetch=async(url,options={})=>{
+  seen.push({path:new URL(url).pathname,method:options.method,
+   body:JSON.parse(options.body),auth:options.headers?.authorization});
+  return new Response(JSON.stringify({id:601,html_url:'https://github.com/test-comment'}),{status:201});
+ };
+ try{
+  const response=await worker.fetch(new Request(base+'/api/v1/ops/comment',{
+   method:'POST',headers:{origin:base,'content-type':'application/json'},
+   body:JSON.stringify({repo,number:100,comment:'QA-REVIEWER: MN #100 — verify PR #99 head SHA'})
+  }),env);
+  assert.equal(response.status,201,JSON.stringify(await response.clone().json()));
+  const value=await response.json();
+  assert.equal(value.created,true);assert.equal(value.issue,100);assert.equal(value.id,601);
+  assert.deepEqual(seen.map(x=>x.path),['/repos/tanawutmalirum29-ux/ARCANA-SURVIVOR/issues/100/comments']);
+  assert.equal(seen[0].auth,'Bearer '+token);
+  assert.equal(seen[0].body.body,'QA-REVIEWER: MN #100 — verify PR #99 head SHA');
+  assert.ok(!JSON.stringify(value).includes(token));
+ }finally{globalThis.fetch=prior;}
+});
+test('comment endpoint requires JSON same-origin and rejects invalid input',async()=>{
+ const other=new Request(base+'/api/v1/ops/comment',{method:'POST',
+  headers:{origin:'https://another.example','content-type':'application/json'},
+  body:JSON.stringify({repo,number:100,comment:'something'})});
+ assert.equal((await worker.fetch(other,env)).status,403);
+ const bad=new Request(base+'/api/v1/ops/comment',{method:'POST',
+  headers:{origin:base,'content-type':'application/json'},
+  body:JSON.stringify({repo,number:100,comment:''})});
+ assert.equal((await worker.fetch(bad,env)).status,400);
+});
