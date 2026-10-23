@@ -112,3 +112,56 @@ test('GitHub work API rejects out-of-scope request before hitting GitHub',async(
  }
  assert.equal(hits,0);
 });
+
+test('OWNER or CEO can grant independent guest work without organizational issue',async()=>{
+ const u='/api/agent/invite';
+ const base={repo,role:'GUEST-ENGINEER',slot:'GUEST-ENGINEER',issue:0,reason:'Continue existing Astra work',minutes:720};
+ const publicResult=await agentGateway(request(u,'POST',base),env,new URL(host+u),{fetcher:apiMock});
+ assert.equal(publicResult.status,401);
+ const owned=await agentGateway(request(u,'POST',base),env,new URL(host+u),{owner:true,fetcher:apiMock});
+ assert.equal(owned.status,200);
+ const ownerResult=await owned.json();
+ assert.equal(ownerResult.issue,0);
+ assert.equal(ownerResult.task,'Continue existing Astra work');
+ const ticket=new URL(ownerResult.url).searchParams.get('ticket');
+ const guest=await verifyInvite(env,ticket);
+ assert.equal(guest.role,'GUEST-ENGINEER');
+ assert.equal(guest.editable_paths,'PROJECT_FILES');
+ assert.equal(guest.task,'Continue existing Astra work');
+ assert.match(taskPrefix(guest),/^acc\/guest-[a-z0-9_-]{12}-$/);
+ const activated=await agentGateway(new Request(ownerResult.url),env,new URL(ownerResult.url));
+ assert.equal(activated.status,302);
+ assert.ok(activated.headers.get('location').endsWith('#workspace'));
+ const cookie=activated.headers.get('set-cookie').split(';')[0];
+ const me=await agentGateway(new Request(host+'/api/agent/me',{headers:{cookie}}),env,new URL(host+'/api/agent/me'));
+ const viewer=await me.json();
+ assert.equal(viewer.agent_authenticated,true);
+ assert.equal(viewer.agent_task,'Continue existing Astra work');
+ assert.equal(viewer.can_delegate,false);
+});
+test('guest may edit project files only on own guest branch, not Issue management or main',async()=>{
+ const url=host+'/api/agent/invite';
+ const owned=await agentGateway(request('/api/agent/invite','POST',
+ {repo,role:'GUEST-ENGINEER',slot:'GUEST-ENGINEER',reason:'Fix existing game tests'}),
+ env,new URL(url),{owner:true,fetcher:apiMock});
+ const guest=await verifyInvite(env,new URL((await owned.json()).url).searchParams.get('ticket'));
+ const branch=taskPrefix(guest)+'fix-ui-12345678';
+ assert.equal(authorizeWork(guest,'/api/v1/work/branch','POST',{title:'Fix UI',repo},new URLSearchParams()),true);
+ assert.equal(authorizeWork(guest,'/api/v1/work/file','POST',{branch,path:'src/ui.js',content:'yes'},new URLSearchParams()),true);
+ assert.equal(authorizeWork(guest,'/api/v1/work/file','POST',{branch:'acc/other-worker',path:'src/ui.js'},new URLSearchParams()),false);
+ assert.equal(authorizeWork(guest,'/api/v1/work/file','POST',{branch:'main',path:'src/ui.js'},new URLSearchParams()),false);
+ assert.equal(authorizeWork(guest,'/api/v1/work/pr','POST',{branch},new URLSearchParams()),true);
+ assert.equal(authorizeOps(guest,'/api/v1/ops/issue','POST',{repo},new URLSearchParams()),false);
+ assert.equal(authorizeOps(guest,'/api/v1/ops/comment','POST',{number:98},new URLSearchParams()),false);
+ let called=0;
+ const fakeFetch=async()=>{called++;throw Error('unexpected GitHub mutation');};
+ const result=await workApi(request('/api/v1/work/file','POST',{repo,branch:'main',path:'src/ui.js',content:'test'}),
+   {token:'mock',claim:guest,allowedRepo:repo,fetcher:fakeFetch});
+ assert.equal(result.status,403);
+ assert.equal(called,0);
+});
+test('Guest invitation requires a nonempty task and cannot create organizational CEO',async()=>{
+ const u='/api/agent/invite';
+ const noTask=await agentGateway(request(u,'POST',{repo,role:'GUEST-ENGINEER',slot:'GUEST-ENGINEER'}),env,new URL(host+u),{owner:true});
+ assert.equal(noTask.status,400);
+});
