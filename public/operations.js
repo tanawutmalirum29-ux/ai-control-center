@@ -20,7 +20,7 @@ import {FULL_REPOS,OWNER} from './repositories.js';
  async function action(btn,callback){
   if(!authorized){note('กรุณาเชื่อมต่อ GitHub ด้วยบัญชีเจ้าของก่อน');return;}
   btn.disabled=true;
-  try{await callback()}catch(error){note('ดำเนินการไม่สำเร็จ: '+error.message)}
+  try{await callback()}catch(error){note('ไม่สามารถยืนยันผล: '+error.message+' · ถ้าเป็นคำสั่งเขียน ให้ตรวจ GitHub ก่อนกดซ้ำเพื่อป้องกันงานซ้ำ')}
   finally{btn.disabled=false}
  }
  async function login(){

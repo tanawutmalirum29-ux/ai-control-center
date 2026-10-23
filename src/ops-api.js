@@ -140,6 +140,6 @@ export async function opsApi(request,{token,fetcher=globalThis.fetch}={}){
   const status=error.status||502;
   return make({error:'github_operation_failed',github_status:status,
    hint:status===403?'GitHub App lacks repository permission or installation':status===404?'Resource not found or repository not installed':status===422?'GitHub validation failed; check inputs/duplicate permission':'GitHub request failed',
-   write_performed:false},status===403?403:status===404?404:status===422?422:502);
+   write_result:'UNCONFIRMED_CHECK_GITHUB_BEFORE_RETRY'},status===403?403:status===404?404:status===422?422:502);
  }
 }
