@@ -36,3 +36,15 @@ test('server routes public mission reads separately from authenticated write ope
  assert.match(worker,/return opsApi\(request,\{token:access\?\.token,allowedRepo:access\?\.repo,claim:access\?\.claim\}\)/);
  assert.match(worker,/return workApi\(request,\{token:access\?\.token,allowedRepo:access\?\.repo,claim:access\?\.claim\}\)/);
 });
+
+test('full-file Workspace is visible by default, verified SHA and PR checks are uncached',()=>{
+ const html=read('public/index.html'),ws=read('public/workspace.js'),ceo=read('public/ceo.js'),qa=read('public/qa.js'),app=read('public/app.js');
+ assert.match(html,/<details class="ws-full-editor" open>/);
+ assert.match(html,/id="ws-loaded-file"/);
+ assert.match(ws,/data\.content/);
+ assert.match(ws,/el\('ws-load'\)\.click\(\)/);
+ assert.match(ws,/refreshEpoch/);
+ assert.match(ceo,/fresh=1/);
+ assert.match(qa,/fresh=1/);
+ assert.match(app,/api\/v1\/mission\?repo=/);
+});

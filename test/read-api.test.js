@@ -53,3 +53,31 @@ test('review requested changes invalidates prior approval',()=>{
  assert.equal(q.gate,'QA_BLOCK');
  assert.deepEqual(linkedIssueNumbers('Fixes #2, resolves #8 and text #5'),[2,8]);
 });
+
+test('PR #99 HEAD is refreshed on every PR QA request, never stale after a new commit',async()=>{
+ const repo='ARCANA-SURVIVOR',number=99,first='a'.repeat(40),second='b'.repeat(40);
+ let current=first,seen=[];
+ const fetcher=async url=>{
+  const u=new URL(url),p=u.pathname;seen.push(p);
+  let value;
+  if(p.endsWith('/pulls/99'))value={title:'Astra PR #99',head:{sha:current},labels:[],draft:true,body:''};
+  else if(p.endsWith('/reviews'))value=[];
+  else if(p.endsWith('/check-runs'))value={check_runs:[{name:'build',status:'completed',conclusion:'success',head_sha:current}]};
+  else throw Error('unexpected '+p);
+  return new Response(JSON.stringify(value),{status:200});
+ };
+ const url='https://test.example/api/v1/pr-qa?repo='+repo+'&pr='+number;
+ const firstRes=await readApi(new Request(url),{fetcher,edge:null,now:1750000000000});
+ assert.equal((await firstRes.json()).head_sha,first);
+ current=second;
+ const secondRes=await readApi(new Request(url),{fetcher,edge:null,now:1750000000100});
+ const value=await secondRes.json();
+ assert.equal(value.head_sha,second);
+ assert.equal(value.checks[0].head_sha,second);
+ assert.equal(value.stale,false);
+ assert.equal(seen.filter(x=>x.endsWith('/pulls/99')).length,2);
+ current=first;
+ const failed=await readApi(new Request(url+'unsafefresh'),{
+  fetcher:async()=>new Response('{}',{status:403}),edge:null,now:1750000000200});
+ assert.equal(failed.status,503,'failed fresh PR query must not return cached SHA');
+});

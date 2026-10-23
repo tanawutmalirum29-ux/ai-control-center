@@ -49,3 +49,24 @@ test('anonymous GET only; unknown project rejected',async()=>{
  const writing=await missionApi(new Request('https://control.example/api/v1/mission?repo=ARCANA-SURVIVOR',{method:'POST'}));
  assert.equal(writing.status,405);
 });
+
+test('fresh mission ignores cached previous PR head and rejects stale fallback',async()=>{
+ const repo='ant-project',first='1'.repeat(40),second='2'.repeat(40);
+ let live=first;
+ const fetcher=async url=>{
+  const p=new URL(url).pathname;
+  if(p.endsWith('/issues'))return new Response(JSON.stringify([]),{status:200});
+  if(p.endsWith('/pulls'))return new Response(JSON.stringify([{number:99,title:'Astra',head:{sha:live,ref:'feat/astra'},
+   base:{ref:'main'},state:'open',draft:true}]),{status:200});
+  throw Error('Unexpected '+p);
+ };
+ const url='https://control.example/api/v1/mission?repo='+repo;
+ const firstResponse=await missionApi(new Request(url),{fetcher,edge:null,now:1750000000000});
+ assert.equal((await firstResponse.json()).prs[0].head_sha,first);
+ live=second;
+ const latest=await missionApi(new Request(url+'&fresh=1'),{fetcher,edge:null,now:1750000000500});
+ assert.equal((await latest.json()).prs[0].head_sha,second);
+ const failed=await missionApi(new Request(url+'&fresh=1'),{
+  fetcher:async()=>new Response('{}',{status:403}),edge:null,now:1750000000600});
+ assert.equal(failed.status,503,'fresh HEAD must never silently return stale mission');
+});
