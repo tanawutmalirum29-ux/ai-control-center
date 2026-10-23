@@ -58,7 +58,8 @@ import {FULL_REPOS,OWNER} from './repositories.js';
  }
  async function showJobs(id,button){
   await action(button,async()=>{
-   const data=await api('jobs?'+new URLSearchParams({repo:repo(),run:String(id)}));
+   const response=await fetch('/api/v1/ops/jobs?repo='+encodeURIComponent(repo())+'&run='+encodeURIComponent(String(id)),{credentials:'same-origin',cache:'no-store'});
+   const data=await response.json();if(!response.ok)throw Error(data.error||'Jobs unavailable');
    const target=el('ops-job-list');target.replaceChildren();
    target.append(document.createTextNode('Workflow Run #'+id));
    for(const job of data.jobs){
