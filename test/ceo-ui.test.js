@@ -31,6 +31,6 @@ test('source browsing works without authenticated code writes',()=>{
 test('server routes public mission reads separately from authenticated write operations',()=>{
  const worker=read('src/worker.js');
  assert.match(worker,/if\(path==='\/api\/v1\/mission'\)return missionApi\(request\)/);
- assert.match(worker,/return opsApi\(request,\{token:access\?\.token,allowedRepo:access\?\.repo\}\)/);
- assert.match(worker,/return workApi\(request,\{token:access\?\.token,allowedRepo:access\?\.repo\}\)/);
+ assert.match(worker,/return opsApi\(request,\{token:access\?\.token,allowedRepo:access\?\.repo,claim:access\?\.claim\}\)/);
+ assert.match(worker,/return workApi\(request,\{token:access\?\.token,allowedRepo:access\?\.repo,claim:access\?\.claim\}\)/);
 });
