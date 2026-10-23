@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#0b1220" />
   <meta name="referrer" content="no-referrer" />
   <meta name="description" content="AI Control Center — พื้นที่องค์กรสำหรับ AI · ข้อความ M / งาน T / เขียนโค้ด / QA" />
-  <title>AI Control Center | GitHub Operations</title>
+  <title>AI Control Center | AI Workspaces</title>
   <link rel="stylesheet" href="./styles.css" />
   <script type="module" src="./app.js"></script>
   <script defer src="./scroll-fix.js"></script>
@@ -24,7 +24,7 @@
 <body>
   <div class="shell">
     <aside class="sidebar">
-      <a class="brand" href="./" aria-label="AI Control Center หน้าแรก"><span class="brand-mark">AI</span><span><strong>Control Center</strong><small>GitHub Operations</small></span></a>
+      <a class="brand" href="./" aria-label="AI Control Center หน้าแรก"><span class="brand-mark">AI</span><span><strong>Control Center</strong><small>AI WORKSPACES</small></span></a>
       <p class="side-label">WORKSPACE</p>
       <nav class="navigation" aria-label="พื้นที่ทำงาน AI">
  <button class="nav-item active" data-view="orgrooms" type="button"><span>▦</span> องค์กร · ข้อความ M / งาน T</button>
@@ -36,7 +36,7 @@
   <button class="nav-item" data-view="settings" type="button"><span>⚙</span> เลือกโปรเจกต์</button>
  </details>
 </nav>
-      <div class="side-bottom"><span class="live-dot"></span> GitHub Public API <span class="muted">· อ่านข้อมูล</span><small>ไม่มี Token ฝังในเว็บไซต์</small></div>
+      <div class="side-bottom"><span class="live-dot"></span> AI Workspaces <span class="muted">· M / T</span><small>งานและข้อความภายในเว็บ</small></div>
     </aside>
     <div class="main-area">
       <header class="topbar">
@@ -235,11 +235,11 @@
 
 <section class="view hidden" id="view-organization">
  <div class="section-title"><div><h2>องค์กร AI และกฎกลาง</h2><p>อ่านกฎจริงจาก ai-organization-hub/main ตาม SHA</p></div><button id="org-refresh" type="button" class="secondary-button">↻ อ่านกฎล่าสุด</button></div>
- <div class="panel"><h3>Source of Truth</h3><p id="org-status" class="small-note" aria-live="polite">เปิดเมนูเพื่อโหลดกฎ</p><p>กฎในหน้านี้ใช้เป็นเอกสารอ้างอิง ยังไม่ใช่ตัวบังคับสิทธิ์ AI รายคน</p><div id="org-documents" class="org-documents"></div></div>
+ <div class="panel"><h3>Source of Truth</h3><p id="org-status" class="small-note" aria-live="polite">เปิดเมนูเพื่อโหลดกฎ</p><p>การรับงานและส่งต่อให้ใช้ระบบห้ององค์กร M/T ในเว็บเท่านั้น หากเอกสารเก่ากล่าวถึง Issue หรือ AP-ROLE ให้ถือว่าเลิกใช้แล้ว</p><div id="org-documents" class="org-documents"></div></div>
  <div class="panel"><h3>3 พื้นที่ของภารกิจ</h3><div id="org-context" class="org-context"></div><p class="small-note">โปรเจกต์จริง / องค์กรกลาง / พื้นที่สำรอง ต้องตรวจทุกครั้งตามกฎล่าสุด</p><div class="workspace-control"><button type="button" id="org-copy" class="primary-button">คัดลอกคำสั่ง AI พร้อมกฎล่าสุด</button></div><p id="org-copy-status" class="small-note" aria-live="polite"></p></div>
  <div class="panel"><h3>README ฉบับอ้างอิง</h3><pre id="org-readme" class="org-document-text" hidden></pre><h3>คำสั่งองค์กร (COMMANDS)</h3><pre id="org-commands" class="org-document-text" hidden></pre></div>
  <div class="panel"><h3>เปิดเอกสารฉบับเต็ม</h3><p id="org-document-title" class="small-note">กดเปิดอ่านจากชื่อเอกสารด้านบน</p><pre id="org-full-document" class="org-document-text" hidden></pre></div>
- <div class="note-box"><strong>ขอบเขต V6</strong><p>AI ต้องได้รับ AP-ROLE ในเซสชันจริงก่อนเริ่มงาน ปุ่มคัดลอกไม่ได้แต่งตั้งหรือเรียก AI เอง ระบบยังไม่มี Agent Identity, การจองงาน, ล็อกไฟล์, Audit Log และสิทธิ์ตามบทบาท</p></div>
+ <div class="note-box"><strong>ระบบปัจจุบัน</strong><p>สร้างห้ององค์กรและส่งงานด้วย T00001 / M00001 ภายในเว็บ ไม่ใช้ AP-ROLE, Issues หรือ Dashboard เก่าในการแต่งตั้ง</p></div>
 </section>
 <section class="view hidden" id="view-operations">
  <div class="section-title"><div><h2>บำรุงรักษาข้อมูลเก่า</h2>
