@@ -19,7 +19,7 @@ if (requestedRepo && FULL_REPOS.includes('tanawutmalirum29-ux/'+requestedRepo)) 
  if (!repos.includes(full)) repos.push(full);
  selected = full;
 }
-let currentView = 'workspace';
+let currentView = 'orgrooms';
 let requestId = 0;
 let currentData = {info: null, issues: [], pulls: [], runs: [], errors: []};
 
