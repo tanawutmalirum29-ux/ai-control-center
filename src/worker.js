@@ -9,6 +9,7 @@ import {agentGateway,agentSession,delegatedAccess,issuerReady} from './agent-gat
 import {publicSourceApi} from './public-source.js';
 import {missionApi} from './mission-api.js';
 import {orgWorkspaceApi} from './org-workspaces.js';
+import {githubBridgeApi,syncGithubBridge} from './github-bridge.js';
 import {centralGithubAccess,centralCredentialConfigured} from './central-github.js';
 import {issueCleanupApi} from './issue-cleanup.js';
 import {branchCleanupApi} from './branch-cleanup.js';
@@ -112,6 +113,14 @@ export default {async fetch(request,env){
  const path=url.pathname;
  if(!path.startsWith('/api/'))return env.ASSETS.fetch(request);
  if(path.startsWith('/api/auth/'))return auth(request,env,url);
+ if(path.startsWith('/api/v1/bridge/')){
+  const shared=await centralGithubAccess(env,'ai-control-center');
+  return githubBridgeApi(request,{db:env.ORG_DB,token:shared.token||null});
+ }
+ // Disable browser-driven code commits and legacy control routes at HTTP boundary.
+ if(request.method==='POST'&&(path.startsWith('/api/v1/work/')||
+   path.startsWith('/api/v1/ops/')||path.startsWith('/api/agent/')))
+  return reply({error:'browser_write_retired',use:'GitHub Connector; see /api/v1/bridge/health'},410);
  // Block retired Issue/appointment endpoints at the server boundary.
  const retired=['/api/v1/issues','/api/v1/queue','/api/v1/detail',
    '/api/agent/invite','/api/v1/ops/issue','/api/v1/ops/issues',
@@ -168,12 +177,20 @@ export default {async fetch(request,env){
  }
  if(path==='/api/v1/organization'||path==='/api/v1/organization/document'||path==='/api/v1/organization/bundle'||path==='/api/v1/organization/bundle/document')return organizationApi(request);
  if(path==='/api/health')return reply({
-  service:'AI Control Center',version:18,owner:OWNER,ai_provider:'none',
+  service:'AI Control Center',version:19,owner:OWNER,ai_provider:'none',
   repositories:REPOS.map(name=>OWNER+'/'+name),
   write_repositories:WRITE_REPOS.map(name=>OWNER+'/'+name),
-  auth_ready:configured(env),delegation_ready:issuerReady(env),guest_oauth_ready:configured(env),central_credential_present:centralCredentialConfigured(env),organization_workspaces_ready:Boolean(env.ORG_DB),qa_note:'PR QA and head SHA are inspected separately from repository CI',
-  endpoints:['/api/v1/org/rooms','POST /api/v1/org/rooms (verified CEO)','POST /api/v1/org/join','GET /api/v1/org/messages','POST /api/v1/org/messages','POST /api/v1/org/members','/api/health','/api/auth/me','/api/v1/repositories','/api/v1/summary?repo=ARCANA-SURVIVOR','/api/v1/pr-qa?repo=ARCANA-SURVIVOR&pr=1','GET /api/v1/maintenance/issues/preview?repo=ARCANA-SURVIVOR (owner only)','POST /api/v1/maintenance/issues/delete (owner only, permanent)','GET /api/v1/maintenance/branches/preview?repo=ARCANA-SURVIVOR (owner only)','POST /api/v1/maintenance/branches/delete (owner only, preserves main)','/api/v1/organization','/api/v1/organization/document?name=RULES.md','/api/v1/organization/bundle','/api/v1/ops/issues','/api/v1/ops/workflows','/api/v1/ops/runs','/api/v1/ops/jobs','POST /api/v1/ops/dispatch (Actions write required)','/api/v1/source/branches','/api/v1/source/tree','/api/v1/source/file','/api/agent/me','GET /api/v1/work/branches','GET /api/v1/work/tree','GET /api/v1/work/file','POST /api/v1/work/branch','POST /api/v1/work/file','POST /api/v1/work/pr (draft only)']
+  auth_ready:configured(env),delegation_ready:issuerReady(env),guest_oauth_ready:configured(env),central_credential_present:centralCredentialConfigured(env),organization_workspaces_ready:Boolean(env.ORG_DB),github_bridge_ready:Boolean(env.ORG_DB),bridge_transport:'ai-organization-hub/main bridge/requests/YYYY-MM-DD/*.json',qa_note:'PR QA and head SHA are inspected separately from repository CI',
+  endpoints:['/api/v1/bridge/health','/api/v1/bridge/status','/api/v1/bridge/rooms','/api/v1/bridge/inbox','/api/v1/org/rooms','POST /api/v1/org/rooms (verified CEO)','POST /api/v1/org/join','GET /api/v1/org/messages','POST /api/v1/org/messages','POST /api/v1/org/members','/api/health','/api/auth/me','/api/v1/repositories','/api/v1/summary?repo=ARCANA-SURVIVOR','/api/v1/pr-qa?repo=ARCANA-SURVIVOR&pr=1','GET /api/v1/maintenance/issues/preview?repo=ARCANA-SURVIVOR (owner only)','POST /api/v1/maintenance/issues/delete (owner only, permanent)','GET /api/v1/maintenance/branches/preview?repo=ARCANA-SURVIVOR (owner only)','POST /api/v1/maintenance/branches/delete (owner only, preserves main)','/api/v1/organization','/api/v1/organization/document?name=RULES.md','/api/v1/organization/bundle','/api/v1/ops/issues','/api/v1/ops/workflows','/api/v1/ops/runs','/api/v1/ops/jobs','POST /api/v1/ops/dispatch (Actions write required)','/api/v1/source/branches','/api/v1/source/tree','/api/v1/source/file','/api/agent/me','GET /api/v1/work/branches','GET /api/v1/work/tree','GET /api/v1/work/file','POST /api/v1/work/branch','POST /api/v1/work/file','POST /api/v1/work/pr (draft only)']
  },200,true);
  const shared=await centralGithubAccess(env,url.searchParams.get('repo'));
  return readApi(request,shared.token?{fetcher:credentialedFetcher(shared.token)}:{});
-}};
+},
+ async scheduled(_event,env,ctx){
+  const run=async()=>{
+   const shared=await centralGithubAccess(env,'ai-control-center');
+   return syncGithubBridge({db:env.ORG_DB,token:shared.token||null});
+  };
+  ctx.waitUntil(run());
+ }
+};
