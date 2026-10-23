@@ -17,9 +17,9 @@ const apiMock=async(url,init)=>{
  if(path.endsWith('/installation'))data={id:8765};
  else if(path.endsWith('/access_tokens'))data={token:'ghs_test_installation',expires_at:new Date(Date.now()+3600000).toISOString()};
  else if(path.endsWith('/issues/98'))data={number:98,state:'open',
-  body:'TO_ROLE: ENGINEER\\nAGENT_SLOT: ENGINEER-VISUAL\\nPARENT_ISSUE: #79\\nEDITABLE_PATHS: src/visual/*'};
+  body:'TO_ROLE: ENGINEER\nAGENT_SLOT: ENGINEER-VISUAL\nPARENT_ISSUE: #79\nEDITABLE_PATHS: src/visual/*'};
  else if(path.endsWith('/issues/97'))data={number:97,state:'open',
-  body:'TO_ROLE: QA-REVIEWER\\nAGENT_SLOT: QA-REVIEWER\\nPARENT_ISSUE: #79\\nEDITABLE_PATHS: HOLD'};
+  body:'TO_ROLE: QA-REVIEWER\nAGENT_SLOT: QA-REVIEWER\nPARENT_ISSUE: #79\nEDITABLE_PATHS: HOLD'};
  else return new Response(JSON.stringify({message:'not found'}),{status:404});
  return new Response(JSON.stringify(data),{status:200});
 };
