@@ -46,9 +46,26 @@ import {OWNER,REPOS} from './repositories.js';
    panel.append(text('h3',null,'#'+number+' · '+data.title));
    panel.append(text('p','small-note','Repository: '+repo+' · อัปเดต: '+(data.updated_at||'ไม่ทราบ')+
     (data.labels?.length?' · Labels: '+data.labels.join(', '):'')));
-   if(data.kind==='pr')panel.append(text('p','small-note','HEAD SHA: '+(data.head_sha||'ไม่ทราบ')+
-    ' · Branch: '+(data.head_branch||'?')+' → '+(data.base_branch||'?')+
-    (data.draft?' · DRAFT':'')+' · CI/QA ต้องตรวจแยก'));
+   if(data.kind==='pr'){
+    panel.append(text('p','small-note','LIVE PR HEAD SHA: '+(data.head_sha||'ไม่ทราบ')+
+     ' · Branch: '+(data.head_branch||'?')+' → '+(data.base_branch||'?')+
+     (data.draft?' · DRAFT':'')+' · SHA ในคำอธิบาย PR อาจเป็นข้อมูลเก่า'));
+    const qaState=text('p','small-note','กำลังตรวจ CI/QA ตาม HEAD ปัจจุบัน...');
+    panel.append(qaState);
+    try{
+     const checkResp=await fetch('/api/v1/pr-qa?repo='+encodeURIComponent(repo)+
+       '&pr='+number+'&fresh=1',{cache:'no-store'});
+     const check=await checkResp.json();
+     if(id!==seq)return;
+     if(!checkResp.ok||check.stale||check.head_sha!==data.head_sha){
+      qaState.textContent='PR HEAD เปลี่ยนระหว่างตรวจหรือ GitHub ไม่พร้อม · ห้ามใช้ผล CI เก่า โปรดกด โหลดใหม่';
+     }else{
+      qaState.textContent='VERIFIED HEAD '+check.head_sha+' · CI '+check.checks_state+
+       ' · QA '+check.gate+' · Independent review '+check.review_state+
+       ' · Merge safe: NO';
+     }
+    }catch(error){if(id!==seq)return;qaState.textContent='ตรวจ CI ตาม HEAD ไม่สำเร็จ · ห้ามอนุมานว่า QA ผ่าน';}
+   }
    addParagraph(panel,'รายละเอียดงาน',data.body);
    if(data.kind==='pr'){
     const section=text('div','detail-section');section.append(text('h4',null,
