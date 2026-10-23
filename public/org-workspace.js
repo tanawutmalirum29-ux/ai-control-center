@@ -162,6 +162,15 @@ import {FULL_REPOS} from './repositories.js';
   if(d.repo!==repo())throw Error('CEO activation completed; select repository '+d.repo);
   status('CEO activation successful: create a new organization room (no GitHub login needed)');
  }
+ async function initializeDb(e){
+  e.preventDefault();
+  await busy($('orgw-setup-btn'),async()=>{
+   const result=await api('setup','POST',{});
+   if(!result.initialized)throw Error('D1 ไม่ยืนยันการสร้างตาราง');
+   status('ฐานข้อมูล D1 พร้อมแล้ว · OWNER สามารถสร้างลิงก์แต่งตั้ง CEO ได้');
+   await loadRooms();
+  });
+ }
  async function createCEOInvite(e){
   e.preventDefault();
   await busy($('orgw-owner-invite-btn'),async()=>{
@@ -193,6 +202,7 @@ import {FULL_REPOS} from './repositories.js';
  function setup(){
   $('orgw-create-form').addEventListener('submit',createRoom);
   $('orgw-owner-invite-form').addEventListener('submit',createCEOInvite);
+  $('orgw-setup-form').addEventListener('submit',initializeDb);
   $('orgw-invite-form').addEventListener('submit',invite);
   $('orgw-message-form').addEventListener('submit',message);
   $('orgw-task-form').addEventListener('submit',task);
