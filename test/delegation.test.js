@@ -165,3 +165,33 @@ test('Guest invitation requires a nonempty task and cannot create organizational
  const noTask=await agentGateway(request(u,'POST',{repo,role:'GUEST-ENGINEER',slot:'GUEST-ENGINEER'}),env,new URL(host+u),{owner:true});
  assert.equal(noTask.status,400);
 });
+
+test('owner OAuth guest fallback works without GitHub App Private Key',async()=>{
+ const noPrivate={GITHUB_CLIENT_ID:env.GITHUB_CLIENT_ID,GITHUB_CLIENT_SECRET:env.GITHUB_CLIENT_SECRET};
+ const route='/api/agent/invite',oauth='ghu_owner_access_token_test_only_123456789';
+ const ownerSession={user:'tanawutmalirum29-ux',token:oauth,exp:Date.now()+3.5*3600000};
+ const input={repo,role:'GUEST-ENGINEER',slot:'GUEST-ENGINEER',issue:0,
+  reason:'Continue game UI work',minutes:180};
+ let requestToGh=0;
+ const response=await agentGateway(request(route,'POST',input),noPrivate,new URL(host+route),
+  {owner:true,ownerSession,fetcher:async()=>{requestToGh++;throw Error('should not call GitHub to mint guest');}});
+ assert.equal(response.status,200);
+ const link=(await response.json()).url;
+ const ticket=new URL(link).searchParams.get('ticket');
+ const signed=await verifyInvite(noPrivate,ticket);
+ assert.equal(signed.role,'GUEST-ENGINEER');
+ assert.ok(signed.oauth_box);
+ assert.ok(!ticket.includes(oauth),'raw OAuth token must not appear in URL');
+ const cookie='__Host-acc_agent='+ticket;
+ const delegated=await delegatedAccess(new Request(host+'/api/v1/work/branches?repo='+repo,{headers:{cookie}}),noPrivate);
+ assert.equal(delegated.token,oauth);
+ assert.equal(delegated.repo,repo);
+ assert.equal(delegated.claim.role,'GUEST-ENGINEER');
+ assert.equal(requestToGh,0);
+ const invalid=await agentGateway(request(route,'POST',{...input,minutes:720}),noPrivate,new URL(host+route),
+  {owner:true,ownerSession});
+ assert.equal(invalid.status,400);
+ const outsider=await agentGateway(request(route,'POST',input),noPrivate,new URL(host+route),
+  {owner:false,ownerSession:null});
+ assert.equal(outsider.status,401);
+});
