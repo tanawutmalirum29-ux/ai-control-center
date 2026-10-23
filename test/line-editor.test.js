@@ -135,8 +135,26 @@ test('quick single-line editor uses ordinary text inputs and existing SHA-bound 
  assert.match(script,/async function previewQuickLine/);
  assert.match(script,/source\.text\.match\(\/\^\\s\*\/\)/);
  assert.match(script,/source\.text===replacement/);
- assert.match(script,/el\('ws-lines-replacement'\)\.value=replacement/);
- assert.match(script,/await previewPatch\(\)/);
+ assert.match(script,/function commitQuickLine/);
+ assert.match(script,/el\('ws-quick-commit'\)\.disabled=false/);
+ assert.match(script,/preview_digest:data\.preview_digest/);
+ assert.match(script,/verified\.sha!==result\.sha/);
  assert.match(script,/preview_digest/);
  assert.match(script,/el\('ws-lines-commit'\)\.disabled=false/);
+});
+
+test('quick editor has its own Diff + Commit controls without multiline textarea prerequisites',()=>{
+ const html=readFileSync(new URL('../public/index.html',import.meta.url),'utf8');
+ const client=readFileSync(new URL('../public/workspace-patch.js',import.meta.url),'utf8');
+ const workspace=readFileSync(new URL('../public/workspace.js',import.meta.url),'utf8');
+ for(const id of ['ws-quick-preview','ws-quick-commit','ws-quick-diff']){
+  assert.ok(html.includes('id="'+id+'"'));
+ }
+ assert.match(html,/id="ws-quick-commit"[^>]*disabled/);
+ assert.match(client,/function previewQuickLine/);
+ assert.match(client,/function commitQuickLine/);
+ assert.match(client,/start:number,end:number,replacement,preview:true/);
+ assert.match(client,/preview:false,preview_digest/);
+ assert.doesNotMatch(client.slice(client.indexOf('async function previewQuickLine'),client.indexOf('async function commitQuickLine')),/ws-lines-start/);
+ assert.match(workspace,/acc:workspace-file-invalidated/);
 });
