@@ -140,6 +140,17 @@
   </form>
   <p id="detail-state" class="small-note" aria-live="polite">ใส่หมายเลข Issue หรือ PR แล้วกดอ่าน</p>
   <div id="detail-content"></div>
+  <form id="detail-comment-form" class="detail-comment-form">
+   <h3>ส่งข้อความถึง Issue / QA ผ่านเว็บ</h3>
+   <p class="small-note">บันทึกความคิดเห็นลง GitHub Issue จริงโดยใช้ Token กลาง ไม่ต้องล็อกอิน GitHub · ไม่ได้เรียก AI แชทอื่นให้เริ่มงานอัตโนมัติ</p>
+   <div class="workspace-control">
+    <label>Issue ปลายทาง<input type="number" id="detail-comment-target" min="1" required placeholder="100" inputmode="numeric"/></label>
+    <button id="detail-target-qa100" type="button" class="secondary-button">เลือก QA #100</button>
+   </div>
+   <label>ข้อความส่งถึงผู้รับ<textarea id="detail-comment-body" rows="5" maxlength="3000" required placeholder="QA-REVIEWER: MN #100 — ส่ง HEAD SHA และผล CI/QA..."></textarea></label>
+   <button type="submit" class="primary-button" id="detail-comment-send">ส่งความคิดเห็นเข้า GitHub Issue</button>
+   <p id="detail-comment-status" class="small-note" aria-live="polite">เลือก Issue และกรอกข้อความก่อนส่ง</p>
+  </form>
  </section>
 </section>
 <section class="view hidden" id="view-mywork">

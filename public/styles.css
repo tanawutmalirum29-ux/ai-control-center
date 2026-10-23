@@ -128,3 +128,10 @@
 .ws-full-editor>summary{cursor:pointer;font-size:13px;font-weight:650}
 .ws-full-editor>label{display:block;margin:14px 0}
 @media(max-width:560px){.ws-line-editor{padding:10px}.ws-line-tools label{flex:1 1 105px}.ws-source-line{grid-template-columns:45px minmax(0,1fr)}}
+
+/* Inline Issue-to-QA handoff without leaving the Control Center. */
+#view-issue .detail-comment-form{padding:15px;margin-top:20px;border:1px solid var(--line);border-radius:12px;background:var(--panel2)}
+#view-issue .detail-comment-form h3{font-size:15px;margin:0 0 8px}
+#view-issue .detail-comment-form label{display:block;font-size:12px;color:var(--muted);flex:1;min-width:130px;margin:12px 0}
+#view-issue .detail-comment-form input,#view-issue .detail-comment-form textarea{display:block;width:100%;min-width:0;margin-top:6px;padding:10px;background:var(--panel);color:var(--text);border:1px solid var(--line);border-radius:9px}
+#view-issue .detail-comment-form textarea{resize:vertical;font:12px/1.65 ui-monospace,monospace}

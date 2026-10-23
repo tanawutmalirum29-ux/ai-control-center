@@ -28,12 +28,13 @@ import {OWNER,REPOS} from './repositories.js';
   document.querySelector('.navigation [data-view="issue"]')?.click();
   el('detail-number').value=number;
   el('detail-kind').value=kind;
+  el('detail-comment-target').value=String(number);
   const id=++seq;
   el('detail-state').textContent='กำลังโหลด '+kind.toUpperCase()+' #'+number+' จาก GitHub ผ่าน Control Center...';
   el('detail-content').replaceChildren();
   if(historyUpdate)history.replaceState(null,'',path(repo,kind,number));
   try{
-   const url='/api/v1/detail?repo='+encodeURIComponent(repo)+'&kind='+kind+'&number='+number;
+   const url='/api/v1/detail?repo='+encodeURIComponent(repo)+'&kind='+kind+'&number='+number+'&fresh=1';
    const response=await fetch(url,{cache:'no-store'});
    const data=await response.json();
    if(!response.ok)throw Error(data.error||'HTTP '+response.status);
@@ -88,7 +89,38 @@ import {OWNER,REPOS} from './repositories.js';
     'หาก GitHub ไม่ตอบกลับ ให้โหลดอีกครั้ง ไม่มีความจำเป็นต้องออกไปหน้า GitHub'));
   }
  }
+ async function submitComment(event){
+  event.preventDefault();
+  const number=Number(el('detail-comment-target').value);
+  const body=el('detail-comment-body').value.trim();
+  const repo=selectedRepo();
+  const status=el('detail-comment-status');
+  const button=el('detail-comment-send');
+  if(!Number.isSafeInteger(number)||number<1||!body||body.length>3000){
+   status.textContent='กรอก Issue ปลายทางและข้อความไม่เกิน 3000 ตัวอักษร';return;
+  }
+  button.disabled=true;
+  status.textContent='กำลังส่งความคิดเห็นไปยัง Issue #'+number+' ...';
+  try{
+   const response=await fetch('/api/v1/ops/comment',{method:'POST',credentials:'same-origin',
+    headers:{'content-type':'application/json'},
+    body:JSON.stringify({repo,number,comment:body})});
+   const result=await response.json();
+   if(!response.ok)throw Error([result.error,result.github_status,result.github_message||result.message].filter(Boolean).join(' · '));
+   if(!result.created||result.issue!==number||!result.id)throw Error('GitHub ยังไม่ยืนยันการสร้างความคิดเห็น');
+   status.textContent='ส่งสำเร็จ · Issue #'+number+' · GitHub Comment ID '+result.id;
+   el('detail-comment-body').value='';
+   open(repo,'issue',number,{historyUpdate:true});
+  }catch(error){
+   status.textContent='ส่งไม่สำเร็จ: '+error.message+' · ตรวจความคิดเห็นที่ Issue ก่อนส่งซ้ำ';
+  }finally{button.disabled=false;}
+ }
  function setup(){
+  el('detail-comment-form').addEventListener('submit',submitComment);
+  el('detail-target-qa100').addEventListener('click',()=>{
+   el('detail-comment-target').value='100';
+   el('detail-comment-status').textContent='เลือก Issue QA #100 แล้ว · ตรวจข้อความก่อนส่ง';
+  });
   el('detail-form').addEventListener('submit',event=>{
    event.preventDefault();
    const n=Number(el('detail-number').value),repo=selectedRepo();

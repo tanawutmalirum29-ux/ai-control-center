@@ -63,7 +63,7 @@ export async function detailApi(request,{fetcher=globalThis.fetch,now=Date.now()
   return respond({error:'invalid_repo_kind_or_number'},400);
  const number=Number(value),cacheKey=repo+':'+kind+':'+number;
  const cached=memory.get(cacheKey);
- if(cached&&now-cached.at<MAX_AGE)return respond({...cached.value,stale:false});
+ if(cached&&url.searchParams.get('fresh')!=='1'&&now-cached.at<MAX_AGE)return respond({...cached.value,stale:false});
  try{
   const detail=await getDetail(repo,kind,number,fetcher);
   if(detail.error)return respond(detail,422);
