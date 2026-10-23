@@ -26,3 +26,15 @@
 @media(max-width:850px){.main-area{padding-top:18px}.top-actions{gap:7px;justify-content:flex-start}.top-actions select{flex:1 1 175px;min-width:135px;max-width:100%}.top-actions .secondary-button{padding:9px 10px;min-height:40px}.navigation{scrollbar-width:thin}.topbar{gap:12px}}
 @media(max-width:520px){.top-actions>.auth-status{order:5;flex-basis:100%;max-width:none;font-size:11px}.top-actions select{flex-basis:100%}.pr-qa-actions{padding-left:0;display:block}.pr-qa-actions button{margin-bottom:8px}.pr-qa-output{width:100%}.agent-task{flex-wrap:wrap}.agent-task .secondary-button{width:100%}}
 @media(max-height:400px) and (orientation:landscape){.sidebar{padding:9px 12px}.navigation{margin-top:6px}.main-area{padding-top:12px}.hero{min-height:180px}.hero-inner{padding:20px}.topbar{margin-bottom:12px}}
+
+/* Project workspace: mobile and Cloud Browser accessible native forms. */
+#view-workspace label{display:block;color:var(--muted);font-size:12px;font-weight:650;margin:12px 0}
+#view-workspace label>input,#view-workspace label>select,#view-workspace label>textarea{display:block;width:100%;min-width:0;margin-top:7px;border:1px solid #314059;background:var(--panel2);color:var(--text);border-radius:10px;padding:12px}
+#ws-content{font-family:ui-monospace,SFMono-Regular,Consolas,monospace!important;font-size:13px;line-height:1.6;tab-size:2;resize:vertical;min-height:230px}
+.workspace-grid{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:14px;align-items:end}
+.workspace-control{display:flex;gap:10px;flex-wrap:wrap;align-items:end;margin:12px 0}
+.workspace-notice{border-left:3px solid var(--accent);background:#19243a;padding:12px 16px;border-radius:8px}
+.workspace-notice p{margin:5px 0 0;color:var(--muted);font-size:12px;overflow-wrap:anywhere}
+#view-workspace .small-note{overflow-wrap:anywhere;line-height:1.6}
+#view-workspace button:disabled{opacity:.55;cursor:not-allowed}
+@media(max-width:670px){.workspace-grid{grid-template-columns:1fr;gap:0}.workspace-control button{flex:1 1 140px}#ws-content{min-height:240px}}

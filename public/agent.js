@@ -30,7 +30,7 @@ import {OWNER, FULL_REPOS} from './repositories.js';
    tag.title=task.source==='label'?'จาก GitHub Label':'ไม่พบ Label ระบุสถานะ';
    const small=document.createElement('small');small.textContent=task.role+' · '+(task.source==='label'?'Label ยืนยัน':'ยังไม่ยืนยันสถานะ')+' · '+new Date(task.updated_at).toLocaleDateString('th-TH');
    const b=document.createElement('button');b.type='button';b.className='secondary-button';b.textContent=actions[task.status]||'ตรวจงาน';b.addEventListener('click',()=>copy(instruction(repo,task)));
-   info.append(title,tag,small);row.append(info,b);panel.append(row);
+   const via=document.createElement('button');via.type='button';via.className='secondary-button';via.textContent='ทำงานในเว็บ';via.addEventListener('click',()=>{document.querySelector('.navigation [data-view="workspace"]')?.click();document.getElementById('ws-title').value='Issue #'+task.number+' '+task.title;document.getElementById('ws-pr-title').value='Issue #'+task.number+' '+task.title;document.getElementById('ws-pr-body').value='Related issue: #'+task.number+'\n'+task.url+'\nStatus: '+task.status;});info.append(title,tag,small);row.append(info,b,via);panel.append(row);
   }
  }
  function remember(key,payload){try{localStorage.setItem(key,JSON.stringify({at:Date.now(),payload}));}catch{}}

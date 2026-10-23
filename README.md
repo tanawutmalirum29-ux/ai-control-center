@@ -59,3 +59,6 @@ See [docs/GITHUB_APP_SETUP.md](docs/GITHUB_APP_SETUP.md). After adding Client ID
 - PR QA is inspected on demand via `/api/v1/pr-qa?repo=...&pr=...`. Includes head SHA, check runs, latest reviewer state, and linked issue references. It **never** authorizes merge.
 - No changes to owner OAuth or to write permissions. Read `docs/QUEUE_QA.md` for contract and limitations.
 - Run `npm test` (Node 20+) for the no-dependency unit tests.
+
+## V5: GitHub-backed project workspaces
+Owner GitHub App login allows dedicated `acc/` branches, reading/editing UTF-8 files and creating Draft Pull Requests for QA via the website. No direct pushes to main, merge, delete, AI model API, or unapproved third-party bot token. See [docs/WORKSPACES.md](docs/WORKSPACES.md).

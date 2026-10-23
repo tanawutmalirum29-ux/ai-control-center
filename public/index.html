@@ -12,6 +12,7 @@
   <script type="module" src="./auth.js"></script>
 <script type="module" src="./agent.js"></script>
 <script type="module" src="./qa.js"></script>
+<script type="module" src="./workspace.js"></script>
 </head>
 <body>
   <div class="shell">
@@ -23,7 +24,8 @@
         <button class="nav-item" data-view="issues" type="button"><span>☰</span> งาน / Issues</button>
         <button class="nav-item" data-view="pulls" type="button"><span>⑂</span> Pull Requests</button>
         <button class="nav-item" data-view="qa" type="button"><span>✓</span> QA &amp; Actions</button>
-        <button class="nav-item" data-view="agents" type="button"><span>◈</span> AI Work Queue</button><button class="nav-item" data-view="settings" type="button"><span>⚙</span> โปรเจกต์</button>
+        <button class="nav-item" data-view="agents" type="button"><span>◈</span> AI Work Queue</button>
+        <button class="nav-item" data-view="workspace" type="button"><span>⌘</span> พื้นที่ทำงาน</button><button class="nav-item" data-view="settings" type="button"><span>⚙</span> โปรเจกต์</button>
       </nav>
       <div class="side-bottom"><span class="live-dot"></span> GitHub Public API <span class="muted">· อ่านข้อมูล</span><small>ไม่มี Token ฝังในเว็บไซต์</small></div>
     </aside>
@@ -47,7 +49,30 @@
 <div class="section-title"><div><h2>AI Work Queue</h2><p>อ่านงาน GitHub และเตรียมคำสั่ง MN ให้ GPT</p></div><button id="agent-refresh" class="secondary-button" type="button">↻ โหลดคิวงาน</button></div>
 <div class="panel"><div class="panel-header"><div><h3>งานของโปรเจกต์</h3><p id="agent-state" aria-live="polite">เลือกเมนูนี้เพื่อโหลดงาน</p></div><button id="agent-copy-all" class="primary-button" type="button">คัดลอกคำสั่งรวม</button></div><p id="agent-notice" class="small-note" aria-live="polite">ใช้กับ GPT ที่เชื่อม GitHub · ไม่มี OpenAI API เสียเงิน</p><div id="agent-items" class="item-list"></div></div>
 <div class="note-box"><strong>Bridge API (อ่านเท่านั้น)</strong><p>สำหรับ GPT และระบบภายนอก: <a href="/api/health" target="_blank" rel="noopener noreferrer">/api/health ↗</a> · <a href="/api/v1/queue?repo=ARCANA-SURVIVOR" target="_blank" rel="noopener noreferrer">/api/v1/queue ↗</a> — ไม่เปิดสิทธิ์เขียนหรือ Merge แบบสาธารณะ</p></div>
-</section><section class="view hidden" id="view-settings"><div class="section-title"><div><h2>จัดการ Repository</h2><p>ปรับรายการโปรเจกต์ที่ต้องการติดตามบนอุปกรณ์นี้</p></div></div><div class="panel"><h3>โปรเจกต์ของคุณ</h3><p class="muted-copy">เลือก Repository จากรายการที่ Backend รองรับเท่านั้น ข้อมูลเลือกแสดงเก็บบนอุปกรณ์นี้ ไม่เก็บรหัสผ่าน</p><div id="repo-list" class="repo-list"></div><form id="repo-form" class="inline-form"><label class="sr-only" for="repo-add">owner/repository</label><input required id="repo-add" placeholder="owner/repository" autocomplete="off" /><button type="submit" class="primary-button">เพิ่มโปรเจกต์</button></form><p id="repo-notice" class="small-note" aria-live="polite"></p></div><div class="panel"><h3>ความปลอดภัยและสิทธิ์</h3><div class="settings-grid"><div><strong>สถานะระบบ</strong><p>อ่าน Public Repo; เจ้าของที่ Login สร้าง Issue ได้เฉพาะ Repo ที่อนุญาต</p></div><div><strong>สิทธิ์การเขียน</strong><p>ตรวจสอบ Owner ผ่าน GitHub App ก่อนเขียน</p></div><div><strong>OpenAI API</strong><p>ไม่ใช้ — ไม่มีค่าบริการ AI เพิ่ม</p></div><div><strong>GitHub Token</strong><p>ไม่ร้องขอ / ไม่จัดเก็บ</p></div></div></div></section>
+</section>
+
+<section class="view hidden" id="view-workspace">
+ <div class="section-title"><div><h2>พื้นที่ทำงานโค้ด</h2><p>Branch แยกใน GitHub · แก้ไฟล์และส่ง Draft PR โดยไม่ต้องเข้าหน้า GitHub</p></div><button type="button" id="ws-refresh" class="secondary-button">↻ โหลดพื้นที่</button></div>
+ <div class="panel">
+  <div class="workspace-notice"><strong>GitHub App · Owner Login</strong><p id="ws-auth" aria-live="polite">กำลังตรวจสิทธิ์...</p></div>
+  <p class="small-note">สร้าง Branch แยกสำหรับแต่ละงาน ไม่เขียนทับ main โดยตรง · โปรเจกต์ที่ GitHub App ยังไม่ติดตั้งจะเข้าแก้ไขไม่ได้</p>
+  <div class="workspace-grid"><label>หัวข้องาน<input id="ws-title" maxlength="120" placeholder="เช่น ปรับหน้าเกมมือถือ"/></label><div class="workspace-control"><button type="button" id="ws-create-branch" class="primary-button">+ สร้าง Branch งาน</button></div></div>
+  <label>เลือกพื้นที่ทำงาน<select id="ws-branches" aria-label="Branch ที่ใช้ทำงาน"><option value="">ยังไม่มี Branch ที่เลือก</option></select></label>
+  <div class="workspace-grid"><label>พาธไฟล์ที่จะแก้<input id="ws-path" maxlength="240" spellcheck="false" placeholder="src/game.js"/></label><div class="workspace-control"><button type="button" id="ws-load" class="secondary-button">อ่านไฟล์</button><button type="button" id="ws-new" class="secondary-button">ไฟล์ใหม่</button></div></div>
+  <label>ตัวแก้ไขไฟล์ข้อความ UTF-8 (ไม่เกิน 45 KB)<textarea id="ws-content" rows="13" spellcheck="false" placeholder="เลือก Branch และอ่านไฟล์เดิมก่อนแก้ไข"></textarea></label>
+  <div class="workspace-control"><button type="button" id="ws-save" class="primary-button">บันทึก Commit ลง Branch</button></div>
+  <p id="ws-notice" class="small-note" aria-live="polite">ล็อกอิน GitHub แล้วเลือก Branch</p>
+ </div>
+ <div class="panel">
+  <h3>ส่งให้ QA ตรวจ</h3><p>Draft Pull Request เท่านั้น ยังไม่อนุญาต Merge หรือ Delete</p>
+  <label>หัวข้อ PR<input id="ws-pr-title" maxlength="120" placeholder="สรุปการแก้ไข"/></label>
+  <label>รายละเอียดและเกณฑ์ QA<textarea id="ws-pr-body" rows="4" maxlength="3000" placeholder="ขอบเขตงาน และวิธีทดสอบ"></textarea></label>
+  <div class="workspace-control"><button type="button" id="ws-pr-create" class="primary-button">สร้าง Draft PR</button><button type="button" id="ws-copy-agent" class="secondary-button">คัดลอกคำสั่งให้ AI ใช้เว็บ</button></div>
+  <p id="ws-result" class="small-note" aria-live="polite"></p>
+ </div>
+ <div class="note-box"><strong>การใช้กับ ChatGPT Work</strong><p>AI ที่ได้รับอนุญาตให้ใช้ Cloud Browser สามารถกรอกและกดปุ่มในพื้นที่ทำงานนี้ได้ แต่ระบบยังไม่มี AI ทำงานภายในเว็บโดยตัวมันเอง และไม่ได้ใช้ OpenAI API เสียเงิน</p></div>
+</section>
+<section class="view hidden" id="view-settings"><div class="section-title"><div><h2>จัดการ Repository</h2><p>ปรับรายการโปรเจกต์ที่ต้องการติดตามบนอุปกรณ์นี้</p></div></div><div class="panel"><h3>โปรเจกต์ของคุณ</h3><p class="muted-copy">เลือก Repository จากรายการที่ Backend รองรับเท่านั้น ข้อมูลเลือกแสดงเก็บบนอุปกรณ์นี้ ไม่เก็บรหัสผ่าน</p><div id="repo-list" class="repo-list"></div><form id="repo-form" class="inline-form"><label class="sr-only" for="repo-add">owner/repository</label><input required id="repo-add" placeholder="owner/repository" autocomplete="off" /><button type="submit" class="primary-button">เพิ่มโปรเจกต์</button></form><p id="repo-notice" class="small-note" aria-live="polite"></p></div><div class="panel"><h3>ความปลอดภัยและสิทธิ์</h3><div class="settings-grid"><div><strong>สถานะระบบ</strong><p>อ่าน Public Repo; เจ้าของที่ Login สร้าง Issue ได้เฉพาะ Repo ที่อนุญาต</p></div><div><strong>สิทธิ์การเขียน</strong><p>ตรวจสอบ Owner ผ่าน GitHub App ก่อนเขียน</p></div><div><strong>OpenAI API</strong><p>ไม่ใช้ — ไม่มีค่าบริการ AI เพิ่ม</p></div><div><strong>GitHub Token</strong><p>ไม่ร้องขอ / ไม่จัดเก็บ</p></div></div></div></section>
       </main>
       <footer class="footer"><span>AI CONTROL CENTER · FREE FIRST</span><span>ข้อมูลจาก GitHub · ไม่มีระบบ AI ทำงานอัตโนมัติในเวอร์ชันนี้</span></footer>
     </div>
