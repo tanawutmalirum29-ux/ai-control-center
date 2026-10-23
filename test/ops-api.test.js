@@ -27,16 +27,18 @@ test('no unauthenticated, cross origin or unsupported repository action',async()
  assert.equal((await opsApi(req('POST','issue',{role:'ENGINEER',title:'Fix game',repo:'other'}),{token,fetcher})).status,400);
 });
 test('Issue assignment body pins three repo links and no auto activation',()=>{
- const s=makeTaskBody({role:'ENGINEER',title:'Fix game',editable_paths:'src/ui/*'},repo);
+ const s=makeTaskBody({role:'ENGINEER',title:'Fix game',editable_paths:'src/ui/*',parent_issue:3,agent_slot:'ENGINEER-UI'},repo);
  assert.match(s,/PROJECT_REPO: https:\/\/github.com\/tanawutmalirum29-ux\/ai-control-center/);
  assert.match(s,/ORG_WORKSPACE_REPO: https:\/\/github.com\/tanawutmalirum29-ux\/ai-organization-hub/);
  assert.match(s,/STAGING_REPO: https:\/\/github.com\/tanawutmalirum29-ux\/Staging_area/);
  assert.match(s,/SESSION_ACTIVATION: AWAITING_OWNER_RELAY/);
  assert.match(s,/ORG_RULES_SNAPSHOT_SHA: [a-f\d]{40}/);
+ assert.match(s,/PARENT_ISSUE: #3/);
+ assert.match(s,/AGENT_SLOT: ENGINEER-UI/);
 });
 test('create issue, comment and assign actual GitHub user',async()=>{
  seen.length=0;
- let r=await opsApi(req('POST','issue',{role:'ENGINEER',title:'Fix game',scope:'Fix UI'}),{token,fetcher});
+ let r=await opsApi(req('POST','issue',{role:'ENGINEER',title:'Fix game',scope:'Fix UI',parent_issue:3,agent_slot:'ENGINEER-UI'}),{token,fetcher});
  assert.equal(r.status,201);
  assert.equal((await r.json()).activation,'AWAITING_OWNER_RELAY');
  assert.equal(seen.at(-1).method,'POST');
