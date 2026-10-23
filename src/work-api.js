@@ -2,6 +2,7 @@
 // Existing GitHub App user OAuth token stays server-side. No writes to main or deletions.
 import {OWNER, REPOS,WRITE_REPOS} from '../public/repositories.js';
 import {authorizeWork,taskPrefix,manager} from './role-policy.js';
+import {splitLines,previewLineChange,contentDigest} from './line-editor.js';
 const send=(data,status=200)=>new Response(JSON.stringify(data),{status,headers:{'content-type':'application/json; charset=utf-8','cache-control':'no-store','x-content-type-options':'nosniff'}});
 const nameOk=name=>REPOS.includes(name);
 // Work only on existing work/feature branches; never on main, backup or refs.
@@ -92,6 +93,55 @@ export async function workApi(request,{token,allowedRepo=null,claim=null,fetcher
    let decoded;
    try{decoded=decodeText(entry.content||'');}catch{return send({error:'file_is_not_utf8'},422);}
    return send({repo:OWNER+'/'+repo,branch,path,sha:entry.sha,content:decoded});
+  }
+  if(route==='/api/v1/work/file-lines'&&verb==='GET'){
+   const branch=url.searchParams.get('branch'),path=url.searchParams.get('path');
+   const start=Number(url.searchParams.get('start')||1),count=Number(url.searchParams.get('count')||40);
+   if(!branchOk(branch)||!pathOk(path,{repo})||!Number.isSafeInteger(start)||start<1||
+      !Number.isSafeInteger(count)||count<1||count>80)return send({error:'invalid_line_reader_request'},400);
+   const entry=await gh(root+'/contents/'+encPath(path)+'?ref='+encodeURIComponent(branch));
+   if(entry.type!=='file'||entry.encoding!=='base64'||entry.size>MAX_TEXT_BYTES)return send({error:'file_is_not_small_text'},422);
+   let content;try{content=decodeText(entry.content||'');}catch{return send({error:'file_is_not_utf8'},422);}
+   const {lines}=splitLines(content);
+   if(start>Math.max(1,lines.length))return send({error:'line_start_beyond_end',total_lines:lines.length},400);
+   return send({repo:OWNER+'/'+repo,branch,path,sha:entry.sha,
+    total_lines:lines.length,start,end:Math.min(start+count-1,lines.length),
+    lines:lines.slice(start-1,start+count-1).map((line,i)=>({
+     number:start+i,text:line.endsWith('\r')?line.slice(0,-1):line
+    }))});
+  }
+  if(route==='/api/v1/work/patch-lines'&&verb==='POST'){
+   const {branch,path,sha,start,end,replacement,preview,preview_digest}=data;
+   if(!branchOk(branch)||!pathOk(path,{repo})||!validSha(sha))
+    return send({error:'invalid_patch_location_or_sha',hint:'Load line view first to get file SHA'},400);
+   if(typeof preview!=='boolean'||typeof replacement!=='string'||
+      new TextEncoder().encode(replacement).length>16000)
+    return send({error:'invalid_patch_data',hint:'Supply replacement <=16KB and preview boolean'},400);
+   const entry=await gh(root+'/contents/'+encPath(path)+'?ref='+encodeURIComponent(branch));
+   if(entry.type!=='file'||entry.encoding!=='base64'||entry.size>MAX_TEXT_BYTES)return send({error:'file_is_not_small_text'},422);
+   if(sha!==entry.sha)return send({error:'stale_file_sha',hint:'Another commit changed this file. Reload line view before editing',
+    expected_sha:sha,current_sha:entry.sha},409);
+   let original;try{original=decodeText(entry.content||'');}catch{return send({error:'file_is_not_utf8'},422);}
+   let edit;
+   try{edit=previewLineChange(original,{start,end,replacement});}
+   catch(e){return send({error:e.message||'invalid_line_patch'},400);}
+   if(!editContent(edit.result))return send({error:'result_exceeds_200kb'},400);
+   const originalText=edit.oldLines.map(x=>x.endsWith('\r')?x.slice(0,-1):x).join('\n');
+   const replacementText=edit.newLines.map(x=>x.endsWith('\r')?x.slice(0,-1):x).join('\n');
+   if(originalText.length>16000)return send({error:'patch_range_too_large',hint:'Select fewer lines'},400);
+   const digest=await contentDigest(edit.result);
+   if(preview)return send({preview:true,branch,path,sha,line_start:start,line_end:end,
+    total_before:edit.totalBefore,total_after:edit.totalAfter,
+    original_text:originalText,replacement_text:replacementText,preview_digest:digest,crlf:edit.crlf,
+    note:'Preview only: no GitHub commit has occurred'});
+   if(typeof preview_digest!=='string'||preview_digest!==digest)
+    return send({error:'preview_outdated',hint:'Preview the exact patch again before committing'},409);
+   const saved=await gh(root+'/contents/'+encPath(path),'PUT',{
+    message:'fix(workspace): patch '+path+' lines '+start+'-'+end,
+    content:encodeText(edit.result),branch,sha:entry.sha
+   });
+   return send({saved:true,branch,path,previous_sha:entry.sha,sha:saved.content?.sha,
+    commit_sha:saved.commit?.sha,url:saved.content?.html_url},201);
   }
   if(route==='/api/v1/work/branch'&&verb==='POST'){
    if(!titleOk(data.title))return send({error:'invalid_title'},400);

@@ -31,7 +31,8 @@ export function authorizeWork(claim,route,verb,data,params){
  if(!Number.isSafeInteger(claim.issue)||
     (claim.role==='GUEST-ENGINEER'?claim.issue!==0:claim.issue<1)||
     !branch?.startsWith(taskPrefix(claim)))return false;
- if(route.endsWith('/tree'))return verb==='GET';
+ if(route.endsWith('/tree')||route.endsWith('/file-lines'))return verb==='GET';
+ if(route.endsWith('/patch-lines'))return verb==='POST'&&coder(claim.role)&&pathAllowed(data?.path,claim.editable_paths);
  if(route.endsWith('/file')){
   if(verb==='GET')return true;
   return coder(claim.role)&&pathAllowed(data?.path,claim.editable_paths);
