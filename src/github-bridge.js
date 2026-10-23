@@ -3,6 +3,7 @@
 // invitation URLs, personal data or confidential messages. GitHub write permission is the
 // authority to submit a command; actor names are NOT independently authenticated chat IDs.
 import {WRITE_REPOS} from '../public/repositories.js';
+import {ORG_SCHEMA} from './org-schema.js';
 const OWNER='tanawutmalirum29-ux';
 const HUB=OWNER+'/ai-organization-hub';
 const uuid=s=>typeof s==='string'&&/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(s);
@@ -15,7 +16,17 @@ const schema=[
  'CREATE TABLE IF NOT EXISTS bridge_receipts (id TEXT PRIMARY KEY, repo TEXT NOT NULL, action TEXT NOT NULL, status TEXT NOT NULL, room_id TEXT, code TEXT, detail TEXT, created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)',
  'CREATE INDEX IF NOT EXISTS idx_bridge_receipts_repo ON bridge_receipts(repo,created_at DESC)'
 ];
-async function ensure(db){for(const sql of schema)await db.prepare(sql).run();}
+async function ensure(db){
+ // Works on a fresh D1 too; no manual SQL and no OWNER browser setup step.
+ try{await db.prepare('SELECT id FROM org_rooms LIMIT 1').first();}
+ catch(e){
+  if(!/no such table/i.test(String(e)))throw e;
+  const statements=ORG_SCHEMA.split('\n').filter(line=>!line.trimStart().startsWith('--')).join('\n')
+   .split(';').map(s=>s.trim()).filter(Boolean);
+  for(const sql of statements)await db.prepare(sql).run();
+ }
+ for(const sql of schema)await db.prepare(sql).run();
+}
 async function one(db,sql,...params){return db.prepare(sql).bind(...params).first();}
 async function all(db,sql,...params){return (await db.prepare(sql).bind(...params).all()).results||[];}
 const receipt=(cmd,status,detail,room_id=null,code=null)=>({id:cmd.id,repo:cmd.repo,action:cmd.action,status,detail,room_id,code});
