@@ -1,32 +1,31 @@
-# Connect the owner GitHub App (no paid API)
+# AI Control Center: one-time GitHub App setup
 
-The GitHub App must already be **installed on ai-control-center**. This uses GitHub App **user-to-server OAuth** (not an installation private key).
+The AI Control Center uses one GitHub App to access GitHub from Cloudflare. Engineer, QA, and CEO do **not** connect their own GitHub accounts. The only initial owner action is to authorize OWNER once to issue the first CEO link.
 
-1. Open https://github.com/settings/apps and select your newly created GitHub App.
-2. Set **Callback URL** to this exact address:
-   https://ai-control-center.tanawutmalirum29.workers.dev/api/auth/callback
-3. In the GitHub App **General** screen, copy **Client ID**. Under **Client secrets**, generate one secret.
-4. Open https://dash.cloudflare.com > Workers & Pages > ai-control-center > Settings > Variables and Secrets.
-   Add **two Secret-type variables** (not plaintext):
-   - GITHUB_CLIENT_ID : your GitHub App Client ID
-   - GITHUB_CLIENT_SECRET : your GitHub App Client Secret
-   Click Deploy/Save for the secrets to take effect.
-5. Visit https://ai-control-center.tanawutmalirum29.workers.dev. Press **เชื่อมต่อ GitHub** and authorize only as tanawutmalirum29-ux.
+## One-time requirements
 
-Do not send your client secret or access tokens in ChatGPT, a GitHub Issue, or your repository.
+1. Use your existing GitHub App (the App is not the same as a personal access token). Ensure it is installed on selected repositories, including **ARCANA-SURVIVOR** and **ai-control-center**. Keep the central governance repo **ai-organization-hub** read-only.
+2. In GitHub App permissions choose **Contents: Read/Write**, **Issues: Read/Write**, **Pull requests: Read/Write**, **Actions: Read** (optional Write for explicit Workflow Dispatch), and **Metadata: Read**. Complete any prompted installation permission update.
+3. At GitHub App > General, set callback URL to **https://ai-control-center.tanawutmalirum29.workers.dev/api/auth/callback**. Obtain the App Client ID and create a Client Secret and a Private Key (.pem).
+4. In Cloudflare Workers > ai-control-center > Settings > Variables and Secrets save these **as encrypted Secrets**:
+   - `GITHUB_CLIENT_ID`: GitHub App Client ID
+   - `GITHUB_CLIENT_SECRET`: GitHub App OAuth Client Secret
+   - `GITHUB_APP_PRIVATE_KEY`: full text of the GitHub App .pem Private Key (including BEGIN/END lines)
+5. Confirm **/api/health** reports `delegation_ready: true`; this flag proves secrets are present, not that installation permissions have passed a write test.
+6. OWNER signs in at the website **once** using “เชื่อม GitHub” and chooses a Repository > CEO Dashboard > **ออกลิงก์แต่งตั้ง CEO**. Send that AP-ROLE line to the CEO chat.
 
-Security boundaries:
-- The website authorizes user identity via GitHub OAuth, restricted to the owner account.
-- Only the ai-control-center repository supports direct Issue creation. No code pushes, merges, deletes, or GitHub API token displayed client-side.
-- OAuth state and sessions are carried by Secure, HttpOnly, SameSite=Lax host-only cookies. The session encrypts the GitHub token with a key derived from the client secret; it expires within six hours.
-- Same-origin POST checks protect issue creation and logout.
-- Public queue and summary remain GET-only. No anonymous write endpoints.
-- If a Client Secret is compromised, revoke it from GitHub and rotate it in Cloudflare.
+## Normal mission cycle (no personal GitHub login for ChatGPT agents)
 
-Other GitHub App settings:
-- Request user authorization during installation: optional; not required for the login button.
-- Webhook Active: off for now.
-- Repository permissions: Issues Read & Write, Contents Read & Write, Pull requests Read & Write, Actions Read-only (only Issues used at this stage).
-- Repository access: Only selected repositories; ai-control-center first.
+- CEO opens the link and receives a signed **7-day** project management session in an HttpOnly cookie. CEO can create appointment Issues, read operations, create workspaces and PRs.
+- CEO creates a proper Engineer/QA appointment Issue with `TO_ROLE`, `AGENT_SLOT`, `PARENT_ISSUE`, and `EDITABLE_PATHS`. CEO selects that Issue under “ตั้งต้น CEO และส่งสิทธิ์ต่อให้ทีม” and creates a signed **12-hour** per-task link.
+- OWNER simply relays the one-line AP-ROLE message to the recipient's existing ChatGPT chat.
+- Engineer may commit UTF-8 text files only inside the specified `EDITABLE_PATHS`, on a new task-namespaced `acc/issue-N-...` branch, then open a Draft PR. QA may read, comment and set WAITING_QA or QA_BLOCK for its own Issue but cannot commit.
+- CEO reviews evidence and independent QA before any separate authorized merge. The website does not provide Merge/Delete endpoints.
 
-Status checking: /api/health returns auth_ready true after both secrets are configured; /api/auth/me confirms whether the owner is logged in.
+## Limits and correct expectations
+
+GitHub App must have an installation granting access to each repo; a repo's inclusion in `WRITE_REPOS` alone does **not** grant permission. No GitHub credential is sent to the browser. Link possession is the identity: anyone with a signed link can act within its scope until expiry. This is **not** an AI-versus-human detector. Links are reusable until expiry; no self-service revocation or database-backed task lease exists yet. If an invite is compromised, rotate the signing secret, which invalidates all existing sessions. Existing V1 signed links are not accepted after the v2 update.
+
+There is still **no autonomous AI runtime**; creating an Issue cannot start a new ChatGPT session. OWNER remains the relay between separately running chats, consistent with the chosen workflow.
+
+For verification, see `test/delegation.test.js`, `test/work-api.test.js` and `test/ops-api.test.js`, and GitHub Actions QA on main. Do not interpret a successful CI or Cloudflare deployment as proof that GitHub App secrets and installation permissions are configured in production.

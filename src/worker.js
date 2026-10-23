@@ -5,7 +5,7 @@ import {readApi} from './read-api.js';
 import {workApi} from './work-api.js';
 import {organizationApi} from './organization-api.js';
 import {opsApi} from './ops-api.js';
-import {agentGateway,agentSession,delegatedAccess} from './agent-gateway.js';
+import {agentGateway,agentSession,delegatedAccess,issuerReady} from './agent-gateway.js';
 import {publicSourceApi} from './public-source.js';
 import {missionApi} from './mission-api.js';
 const jsonHeaders = {'content-type':'application/json; charset=utf-8','cache-control':'no-store','x-content-type-options':'nosniff'};
@@ -149,7 +149,7 @@ export default {async fetch(request,env){
   service:'AI Control Center',version:11,owner:OWNER,ai_provider:'none',
   repositories:REPOS.map(name=>OWNER+'/'+name),
   write_repositories:WRITE_REPOS.map(name=>OWNER+'/'+name),
-  auth_ready:configured(env),qa_note:'PR QA and head SHA are inspected separately from repository CI',
+  auth_ready:configured(env),delegation_ready:issuerReady(env),qa_note:'PR QA and head SHA are inspected separately from repository CI',
   endpoints:['/api/health','/api/auth/me','/api/v1/repositories','/api/v1/queue?repo=ARCANA-SURVIVOR','/api/v1/summary?repo=ARCANA-SURVIVOR','/api/v1/pr-qa?repo=ARCANA-SURVIVOR&pr=1','POST /api/v1/issues (owner only)','/api/v1/organization','/api/v1/organization/document?name=RULES.md','/api/v1/organization/bundle','/api/v1/ops/issues','/api/v1/ops/workflows','/api/v1/ops/runs','/api/v1/ops/jobs','POST /api/v1/ops/issue','POST /api/v1/ops/comment','POST /api/v1/ops/assign','POST /api/v1/ops/status','POST /api/v1/ops/dispatch (Actions write required)','/api/v1/source/branches','/api/v1/source/tree','/api/v1/source/file','/api/agent/me','POST /api/agent/invite','GET /api/agent/activate','GET /api/v1/mission?repo=ARCANA-SURVIVOR','GET /api/v1/work/branches','GET /api/v1/work/file','POST /api/v1/work/branch','POST /api/v1/work/file','POST /api/v1/work/pr (draft only)']
  },200,true);
  return readApi(request);

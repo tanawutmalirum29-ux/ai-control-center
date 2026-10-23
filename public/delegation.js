@@ -20,8 +20,12 @@ import {OWNER,WRITE_REPOS} from './repositories.js';
    role=a.agent_authenticated&&a.agent_repo===repo()?a.agent_role||'':'';
    agentRepo=a.agent_repo||'';
    const boss=owner||role==='CEO'||role==='PROJECT-LEAD';
-   e('delegate-owner').disabled=!owner;
-   e('delegate-child').disabled=!boss||owner;
+   e('delegate-owner').disabled=!owner||!a.configured;
+   e('delegate-child').disabled=!boss||owner||!a.configured;
+   if(!a.configured){
+    state('ยังไม่พร้อมออกลิงก์: Cloudflare ต้องมี GITHUB_APP_PRIVATE_KEY Secret พร้อม GitHub App Client ID/Secret ก่อนหนึ่งครั้ง');
+    return;
+   }
    e('delegate-owner-panel').hidden=!owner;
    e('delegate-child-panel').hidden=owner;
    e('delegate-login').hidden=owner||Boolean(role);
