@@ -30,7 +30,7 @@ export async function verifyInvite(env,value){
       typeof v.slot!=='string'||v.slot.length>40||typeof v.editable_paths!=='string'||v.editable_paths.length>800||
       ((!manager(v.role)&&v.role!=='GUEST-ENGINEER')&&v.issue<1)||
       (v.role==='GUEST-ENGINEER'&&(!/^[A-Za-z0-9_-]{20,30}$/.test(v.nonce||'')||v.issue!==0||
-        v.editable_paths!=='PROJECT_FILES')))return null;
+        v.editable_paths!=='PROJECT_FILES'||typeof v.task!=='string'||!v.task.trim()||v.task.length>180)))return null;
   return v;
  }catch{return null;}
 }
@@ -93,7 +93,7 @@ export async function agentGateway(request,env,url,{owner=false,fetcher=globalTh
  if(path==='/api/agent/me'){
   return new Response(JSON.stringify({configured:issuerReady(env),agent_authenticated:Boolean(existing),
    agent_repo:existing?.repo||null,agent_role:existing?.role||null,agent_slot:existing?.slot||null,
-   agent_issue:existing?.issue||null,agent_expires_at:existing?new Date(existing.exp).toISOString():null,
+   agent_issue:existing?.issue||null,agent_task:existing?.task||null,agent_expires_at:existing?new Date(existing.exp).toISOString():null,
    can_delegate:Boolean(existing&&manager(existing.role)),can_write:Boolean(existing)}),
    {headers:{'content-type':'application/json','cache-control':'no-store'}});
  }
@@ -137,15 +137,16 @@ export async function agentGateway(request,env,url,{owner=false,fetcher=globalTh
      return err('guest_work_description_required',400);
    editable='PROJECT_FILES';
   }
+  const shortTask=role==='GUEST-ENGINEER'?String(input.reason).trim():'';
   const minutes=Number(input.minutes||(manager(role)?7*1440:720));
   const max=manager(role)?7*1440:1440;
   if(!Number.isInteger(minutes)||minutes<15||minutes>max)return err('invalid_minutes');
-  const now=Date.now(),payload={v:2,repo:input.repo,role,issue,slot,editable_paths:editable,
+  const now=Date.now(),payload={v:2,repo:input.repo,role,issue,slot,editable_paths:editable,task:shortTask,
    issued:now,exp:now+minutes*60000,nonce:to64(crypto.getRandomValues(new Uint8Array(16)))};
   const ticket=await signInvite(env,payload);
   return new Response(JSON.stringify({created:true,repo:input.repo,role,slot,issue,
    expires_at:new Date(payload.exp).toISOString(),
-   url:url.origin+'/api/agent/activate?ticket='+encodeURIComponent(ticket),
+   url:url.origin+'/api/agent/activate?ticket='+encodeURIComponent(ticket),task:shortTask,
    note:'Anyone holding this link may exercise its delegated task permissions until expiry.'}),
    {headers:{'content-type':'application/json','cache-control':'no-store','referrer-policy':'no-referrer'}});
  }
