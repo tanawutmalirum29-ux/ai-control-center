@@ -40,7 +40,7 @@ function decodeText(encoded){
  const bytes=Uint8Array.from(binary,c=>c.charCodeAt(0));
  return new TextDecoder('utf-8',{fatal:true}).decode(bytes);
 }
-export async function workApi(request,{token,fetcher=globalThis.fetch}={}){
+export async function workApi(request,{token,allowedRepo=null,fetcher=globalThis.fetch}={}){
  if(!token)return send({error:'owner_login_required'},401);
  const url=new URL(request.url),route=url.pathname,verb=request.method;
  const name=verb==='GET'?url.searchParams.get('repo'):undefined;
@@ -52,7 +52,7 @@ export async function workApi(request,{token,fetcher=globalThis.fetch}={}){
   if(!data)return send({error:'invalid_json'},400);
  }
  const repo=verb==='GET'?name:data?.repo;
- if(!nameOk(repo))return send({error:'repository_not_allowed',allowed:REPOS},403);
+ if(!nameOk(repo)||allowedRepo&&allowedRepo!==repo)return send({error:'repository_not_allowed',allowed:allowedRepo?[allowedRepo]:REPOS},403);
  const root=base(repo);
  const gh=(path,method='GET',body)=>requestGh(path,token,fetcher,method,body);
  try{

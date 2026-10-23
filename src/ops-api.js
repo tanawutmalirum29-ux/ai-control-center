@@ -47,7 +47,7 @@ async function gh(path,token,fetcher,method='GET',body){
 function mapIssue(x){return {number:x.number,title:x.title,url:x.html_url,state:x.state,
  assignees:(x.assignees||[]).map(a=>a.login),labels:(x.labels||[]).map(a=>a.name),
  updated_at:x.updated_at,body:(x.body||'').slice(0,5000)};}
-export async function opsApi(request,{token,fetcher=globalThis.fetch}={}){
+export async function opsApi(request,{token,allowedRepo=null,fetcher=globalThis.fetch}={}){
  if(!token)return make({error:'owner_login_required'},401);
  const url=new URL(request.url),verb=request.method,path=url.pathname;
  let body=null;
@@ -57,7 +57,7 @@ export async function opsApi(request,{token,fetcher=globalThis.fetch}={}){
   if(!body||typeof body!=='object'||Array.isArray(body))return make({error:'invalid_body'},400);
  }
  const name=verb==='GET'?url.searchParams.get('repo'):body?.repo;
- if(!validName(name))return make({error:'unsupported_repo'},400);
+ if(!validName(name)||allowedRepo&&allowedRepo!==name)return make({error:'unsupported_repo'},403);
  const prefix='/repos/'+OWNER+'/'+name;
  const fetchGh=(p,m='GET',b)=>gh(prefix+p,token,fetcher,m,b);
  try{
