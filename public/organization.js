@@ -67,7 +67,7 @@
    'CEO แต่งตั้ง EN1–EN5 และ QA อิสระภายในห้อง ไม่สร้าง GitHub Issue',
    'ตรวจ PR HEAD SHA และ CI ในเมนู QA ก่อน Merge',
    'OWNER ส่งต่อลิงก์เว็บให้แชทผู้รับเท่านั้น'
-  ].join('\\n');
+  ].join('\n');
   try{await navigator.clipboard.writeText(txt);el('org-copy-status').textContent='คัดลอกคำสั่งเว็บแล้ว · ไม่มีลิงก์ GitHub';}
   catch{el('org-copy-status').textContent='คัดลอกไม่สำเร็จ';}
  }
