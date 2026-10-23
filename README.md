@@ -21,7 +21,8 @@
 | Workspaces | Create `acc/` Branch, edit UTF-8 text files ≤45 KB, commit to Branch, create Draft PR |
 | Actions | Owner-only list Workflows, Runs and Jobs/Steps; dispatch on `acc/` Branch requires Actions Write permission and explicit confirmation |
 | Automated code checks | `npm run check` + `npm test` via .github/workflows/qa.yml |
-| Merge, repository deletion, branch deletion | Not exposed through the website |
+| Merge and repository deletion | Not exposed through the website |
+| Bulk Git Branch deletion | Owner-only Preview + SHA-verified batches, always retains default branch `main`, refuses protected branches and reports open PRs |
 | Permanent Issue deletion | Owner-only Preview + confirmed batched GitHub GraphQL deleteIssue, including Open/Closed, excluding PRs |
 | Autonomous agents, independent agent auth, durable claims, multi-agent execution | **Not implemented** |
 
@@ -48,7 +49,7 @@ Writes require owner authorization and same-origin JSON. Tokens are held inside 
 
 - All edits go through an isolated `acc/` Branch; direct editing of `main` is blocked by the workspace API.
 - PR creation is **Draft only**. CI pass is not independent QA, and `CHECKS_PASS_REVIEWED` is not permission to merge.
-- No browser-based Merge or repository/branch deletion buttons. Issue deletion is an OWNER-only exception requiring preview, typed repository confirmation, checkbox, and fresh GitHub node verification. Workflow dispatch is restricted to `acc/` Branches and requires explicit confirmation.
+- No browser-based Merge or repository deletion buttons. Branch deletion and Issue deletion are OWNER-only exceptions requiring preview, typed repository confirmation, checkbox, and fresh GitHub node verification. Workflow dispatch is restricted to `acc/` Branches and requires explicit confirmation.
 - Assignment of a GitHub issue to a username is not execution of a ChatGPT agent. A generated AP-ROLE is an instruction record awaiting real session activation by the OWNER.
 - The website currently has **one authorized OWNER GitHub identity**, not distinct AI agent credentials. Multiple browser sessions sharing that owner identity must not be treated as separately authorized engineers or independent QA.
 - The bundled organization rules can become older than `ai-organization-hub/main`; snapshot SHA and live SHA are displayed separately.
@@ -91,3 +92,17 @@ The **ศูนย์สั่งงาน GitHub** page includes a permanently 
 4. Verify the final recount reads 0. GitHub Actions unit tests use mocked GraphQL: they never delete real issues. In addition, manual owner-login and live GraphQL permission checks must be performed against a **disposable test repository** before relying on deletion for important data.
 
 API: `GET /api/v1/maintenance/issues/preview?repo=...` and `POST /api/v1/maintenance/issues/delete`. Both strictly require the owner OAuth session. The GitHub App must have suitable permissions for the GraphQL mutation, and GitHub itself requires the personal account owner for permanent deletion. This intentionally is not available to CEO/Engineer/QA delegated sessions or anonymous central-token users.
+
+## Cleanup Git Branches (keep `main` only)
+
+Select a repository and open **Operations / Cleanup**. The **ลบ Branch ทั้งหมด — เก็บ main เท่านั้น** panel is separate from permanent Issue deletion.
+
+1. Sign in to GitHub as the exact configured OWNER account. Central site-wide tokens, public users, and delegated AI agent sessions cannot call the deletion API.
+2. Press **ตรวจ Branch (Preview)**. The server reads the real repository's default branch and refuses to continue unless it is exactly `main`; it reads ALL branches and lists Open PRs for same-repository head branches. `main` is never considered a candidate. A branch protection flag blocks the bulk run until that branch is handled separately. Protected `main` is safe.
+3. Review the branch list, PR references and commit SHAs. Make a backup **outside this tool** if there is code that is not yet merged. Copying Preview JSON is a list of references, **not** a code backup.
+4. Enter `DELETE BRANCHES tanawutmalirum29-ux/<repository>`. Confirm **both** possible data-loss risks using the two checkboxes, then press **ลบทุก Branch ยกเว้น main**. This deletes in batches of five, and each batch re-reads the exact SHA and protected status from GitHub. It stops on mismatch or GitHub errors. The Stop button ends the process after its current batch.
+5. The browser refreshes a fresh Preview to confirm the final number of non-`main` branches remaining. If 0, only `main` remains; if nonzero, inspect the error and any remaining protected branches.
+
+**Important:** Deleting branches with open PRs can disrupt those PRs. The tool does not merge PRs, recover commits, save ZIP archives or force-remove GitHub rulesets. It cannot reset GitHub Issue numbering. GitHub's REST Delete a reference API requires repository Contents: Write permission, and responds with 204 on successful deletion. Deploying the code and passing mocked tests does not prove your GitHub OAuth installation has this permission. Validate one disposable test branch in a disposable repository before mass deleting production work.
+
+Owner-only endpoints: `GET /api/v1/maintenance/branches/preview?repo=...` and `POST /api/v1/maintenance/branches/delete`. The deletion endpoint checks explicit acknowledgement fields, the name-specific confirmation phrase, default branch, branch name, exact head SHA and protection flag on each batch. The API rejects `main` under all inputs.
