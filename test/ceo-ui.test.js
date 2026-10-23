@@ -24,8 +24,9 @@ test('source browsing works without authenticated code writes',()=>{
  assert.match(client,/\/api\/v1\/source\/branches/);
  assert.match(client,/\/api\/v1\/source\/tree/);
  assert.match(client,/\/api\/v1\/source\/file/);
- assert.match(client,/\/api\/auth\/me/);
- assert.match(client,/\/api\/agent\/me/);
+ assert.match(client,/\/api\/v1\/work\/branches/);
+ assert.match(client,/ws-preview-file/);
+ assert.match(client,/ws-file-diff/);
  assert.match(client,/workBranch\(branch\)/);
 });
 test('server routes public mission reads separately from authenticated write operations',()=>{

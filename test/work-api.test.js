@@ -12,7 +12,11 @@ function mocked(calls){
   calls.push({path,method:opts.method,body:opts.body?JSON.parse(opts.body):null});
   if(path.endsWith('/git/ref/heads/main'))return json({object:{sha:'a'.repeat(40)}});
   if(path.endsWith('/git/refs'))return json({ref:'refs/heads/acc/test-abc'},201);
-  if(path.endsWith('/contents/src/app.js'))return json({content:{sha:'b'.repeat(40)},commit:{sha:'c'.repeat(40)}},201);
+  if(path.endsWith('/contents/src/app.js')){
+   if(opts.method==='GET')return json({type:'file',encoding:'base64',size:7,sha:'d'.repeat(40),
+    content:Buffer.from('ต้นฉบับ').toString('base64')});
+   return json({content:{sha:'b'.repeat(40)},commit:{sha:'c'.repeat(40)}},201);
+  }
   if(path.endsWith('/pulls'))return json({number:3,html_url:'https://github.com/pull/3',head:{sha:'c'.repeat(40)}},201);
   if(path.endsWith('/branches'))return json([{name:'main',commit:{sha:'a'.repeat(40)}},{name:'acc/staged',commit:{sha:'b'.repeat(40)}}]);
   return json({default_branch:'main'});
@@ -114,4 +118,31 @@ test('GitHub errors retain reason without exposing the credential',async()=>{
  assert.match(data.github_message,/Blob SHA/);
  assert.equal(data.github_errors[0],'Please reload the file and retry');
  assert.ok(!JSON.stringify(data).includes('server-secret-do-not-expose'));
+});
+
+test('No-op save does not call GitHub PUT or create a phantom Commit',async()=>{
+ const calls=[];
+ const mockedFetch=async(url,opts)=>{
+  calls.push(opts.method);
+  return json({type:'file',encoding:'base64',size:5,sha:'e'.repeat(40),
+   content:Buffer.from('same\n').toString('base64')});
+ };
+ const r=await workApi(post('file',{repo,branch:'acc/staged',path:'src/app.js',sha:'e'.repeat(40),content:'same\n'}),
+  {token,fetcher:mockedFetch});
+ assert.equal(r.status,409);
+ assert.equal((await r.json()).error,'no_content_changes');
+ assert.deepEqual(calls,['GET']);
+});
+test('Stale blob SHA rejects full-file save before GitHub PUT',async()=>{
+ const calls=[];
+ const mockedFetch=async(url,opts)=>{
+  calls.push(opts.method);
+  return json({type:'file',encoding:'base64',size:5,sha:'e'.repeat(40),
+   content:Buffer.from('older').toString('base64')});
+ };
+ const r=await workApi(post('file',{repo,branch:'acc/staged',path:'src/app.js',sha:'d'.repeat(40),content:'newer'}),
+  {token,fetcher:mockedFetch});
+ assert.equal(r.status,409);
+ assert.equal((await r.json()).error,'stale_file_sha');
+ assert.deepEqual(calls,['GET']);
 });
