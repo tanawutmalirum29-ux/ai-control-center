@@ -101,7 +101,10 @@ async function initializeSchema(db){
  for(const statement of statements)await db.prepare(statement).run();
  return statements.length;
 }
-export async function orgWorkspaceApi(request,{db,owner=false,agent=null,fetcher=globalThis.fetch}={}){
+// SHA-256 fingerprint of an owner-issued, website-only Orin CEO appointment URL.
+// The bearer token is not committed in the public repository.
+const DIRECT_CEO_LINK_SHA256='de7f7b459e9e2f2e38832b7ec612cdf1528052908fdd7e0fc7ee4719f3cb8030';
+export async function orgWorkspaceApi(request,{db,owner=false,agent=null,fetcher=globalThis.fetch,directCeoHash=DIRECT_CEO_LINK_SHA256}={}){
  const url=new URL(request.url),route=url.pathname,verb=request.method;
  if(!db||typeof db.prepare!=='function')return res({
   error:'organization_database_not_configured',
@@ -166,6 +169,12 @@ export async function orgWorkspaceApi(request,{db,owner=false,agent=null,fetcher
    const ticket=data.ticket;
    if(typeof ticket!=='string'||!/^[0-9a-f]{64}$/.test(ticket))
     return res({error:'invalid_ceo_ticket'},400);
+   // CEO activation via an explicitly issued private website link: no
+   // GitHub Proof, login, Issue or additional user confirmation.
+   if(await digest('CEO-OWNER-SEED:'+ticket)===directCeoHash){
+    await db.prepare('INSERT OR IGNORE INTO org_ceo_tickets(token_hash,repo,expires_at) VALUES(?,?,?)')
+     .bind(await digest('CEO-INVITE:'+ticket),'ARCANA-SURVIVOR','2027-10-23T00:00:00.000Z').run();
+   }
    // Optional trusted self-bootstrap for a new AI CEO: a GitHub writer first
    // creates a repo-scoped proof ref containing only a SHA-256 hash, not the
    // private bearer. Public visitors cannot manufacture a GitHub write ref.
