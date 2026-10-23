@@ -20,18 +20,21 @@ async function refresh(){
  try{
   const r=await fetch('/api/auth/me',{credentials:'same-origin',cache:'no-store'});
   const me=await r.json();
-  const a=await fetch('/api/agent/me',{credentials:'same-origin',cache:'no-store'}).then(r=>r.json());
+  const [a,health]=await Promise.all([
+   fetch('/api/agent/me',{credentials:'same-origin',cache:'no-store'}).then(r=>r.json()),
+   fetch('/api/health',{cache:'no-store'}).then(r=>r.json())]);
   authenticated=Boolean(me.authenticated);
   const delegated=Boolean(a.agent_authenticated);
+  const shared=Boolean(health.central_credential_present);
   create.hidden=!authenticated;
   exit.hidden=!authenticated;
-  link.hidden=authenticated||delegated||!me.configured;
-  meNotice.textContent=authenticated?'OWNER':delegated?(a.agent_role+' · '+a.agent_slot):'โหมดอ่าน';
+  link.hidden=authenticated||delegated||shared||!me.configured;
+  meNotice.textContent=shared?'Token กลางพร้อมทำงาน':authenticated?'OWNER':delegated?(a.agent_role+' · '+a.agent_slot):'โหมดอ่าน';
   const side=document.querySelector('.side-bottom');
-  if(side)side.textContent=authenticated?'OWNER · จัดการโปรเจกต์ได้':delegated?'AI '+a.agent_role+' · งานของ '+a.agent_repo:'อ่านโปรเจกต์สาธารณะ';
+  if(side)side.textContent=shared?'อ่านโค้ดและ Commit ลง Branch acc/ ได้โดยไม่ต้องล็อกอิน':authenticated?'OWNER · จัดการโปรเจกต์ได้':delegated?'AI '+a.agent_role+' · งานของ '+a.agent_repo:'อ่านโปรเจกต์สาธารณะ';
   const settings=document.querySelectorAll('.settings-grid>div p');
   if(settings[0])settings[0].textContent=authenticated?'อ่าน GitHub และสร้าง Issue ตามสิทธิ์ Owner':'อ่าน Public Repository (ยังไม่เข้าสู่ระบบ)';
-  if(settings[1])settings[1].textContent=authenticated?'สร้าง Issue ใน Repository ที่ติดตั้ง GitHub App แล้ว':delegated?'สิทธิ์เฉพาะบทบาท/งานตามลิงก์แต่งตั้ง':'ต้องได้รับสิทธิ์ OWNER/CEO ก่อนเขียน';
+  if(settings[1])settings[1].textContent=shared?'ทุกคนที่มี URL ใช้ Token กลางแก้ไฟล์ใน Branch และเปิด Draft PR ได้':authenticated?'สร้าง Issue ใน Repository ที่ได้รับสิทธิ์แล้ว':delegated?'สิทธิ์ตามงาน':'ต้องมี Credential กลางสำหรับเขียน';
  }catch{meNotice.textContent='ตรวจสถานะ GitHub ไม่ได้';}
 }
 create.addEventListener('click',async()=>{

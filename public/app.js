@@ -13,7 +13,7 @@ let repos = uniqueRepos(readStored('acc.repos.v2', DEFAULT_REPOS));
 if (!repos.length) repos = [...DEFAULT_REPOS];
 let selected = readStored('acc.selected.v1', repos[0]);
 if (!repos.includes(selected)) selected = repos[0];
-let currentView = 'overview';
+let currentView = 'workspace';
 let requestId = 0;
 let currentData = {info: null, issues: [], pulls: [], runs: [], errors: []};
 
@@ -187,6 +187,6 @@ function setup() {
     try { await navigator.clipboard.writeText(task.title + '\n\n' + task.body); el('task-notice').textContent = 'คัดลอกคำสั่งแล้ว'; }
     catch { el('task-notice').textContent = 'คัดลอกไม่สำเร็จ กรุณาเปิดใน HTTPS และอนุญาต Clipboard'; }
   });
-  switchView('ceo'); loadProject();
+  switchView('workspace'); loadProject();
 }
 setup();

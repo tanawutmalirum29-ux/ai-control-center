@@ -24,7 +24,8 @@
       <a class="brand" href="./" aria-label="AI Control Center หน้าแรก"><span class="brand-mark">AI</span><span><strong>Control Center</strong><small>GitHub Operations</small></span></a>
       <p class="side-label">WORKSPACE</p>
       <nav class="navigation" aria-label="เมนูหลัก">
- <button class="nav-item active" data-view="ceo" type="button"><span>♛</span> CEO Dashboard</button>
+ <button class="nav-item active" data-view="workspace" type="button"><span>⌘</span> แก้โค้ด (ไม่ต้องล็อกอิน)</button>
+ <button class="nav-item" data-view="ceo" type="button"><span>♛</span> CEO Dashboard</button>
  <button class="nav-item" data-view="mywork" type="button"><span>◇</span> งานของ AI</button>
  <button class="nav-item" data-view="qa" type="button"><span>✓</span> QA Center</button>
  <button class="nav-item" data-view="relay" type="button"><span>⇄</span> Relay Inbox</button>
@@ -32,7 +33,6 @@
  <details class="nav-advanced">
   <summary>เครื่องมือเพิ่มเติม</summary>
   <div class="nav-advanced-items">
-   <button class="nav-item" data-view="workspace" type="button"><span>⌘</span> แก้โค้ด</button>
    <button class="nav-item" data-view="operations" type="button"><span>▣</span> Issues / Actions</button>
    <button class="nav-item" data-view="agents" type="button"><span>◈</span> AI Work Queue</button>
    <button class="nav-item" data-view="pulls" type="button"><span>⑂</span> Pull Requests</button>
@@ -176,14 +176,14 @@
 <section class="view hidden" id="view-workspace">
  <div class="section-title"><div><h2>พื้นที่ทำงานโค้ด</h2><p>Branch แยกใน GitHub · แก้ไฟล์และส่ง Draft PR โดยไม่ต้องเข้าหน้า GitHub</p></div><button type="button" id="ws-refresh" class="secondary-button">↻ โหลดพื้นที่</button></div>
  <div class="panel">
-  <div class="workspace-notice"><strong>GitHub App · Owner Login</strong><p id="ws-auth" aria-live="polite">กำลังตรวจสิทธิ์...</p></div>
-  <p class="small-note">สร้าง Branch แยกสำหรับแต่ละงาน ไม่เขียนทับ main โดยตรง · โปรเจกต์ที่ GitHub App ยังไม่ติดตั้งจะเข้าแก้ไขไม่ได้</p>
+  <div class="workspace-notice"><strong>GitHub Token กลาง · ไม่ต้องล็อกอิน</strong><p id="ws-auth" aria-live="polite">กำลังตรวจสิทธิ์...</p></div>
+  <p class="small-note">ทุกคนที่เปิดเว็บสามารถสร้าง Branch acc/ แก้ไฟล์ข้อความ และเปิด Draft PR ได้ผ่าน Token กลาง · ไม่เขียนทับ main</p>
   <div class="workspace-grid"><label>หัวข้องาน<input id="ws-title" maxlength="120" placeholder="เช่น ปรับหน้าเกมมือถือ"/></label><div class="workspace-control"><button type="button" id="ws-create-branch" class="primary-button">+ สร้าง Branch งาน</button></div></div>
   <label>เลือกพื้นที่ทำงาน<select id="ws-branches" aria-label="Branch ที่ใช้ทำงาน"><option value="">ยังไม่มี Branch ที่เลือก</option></select></label>
   <div class="workspace-grid"><label>พาธไฟล์ที่จะแก้<input id="ws-path" maxlength="240" spellcheck="false" placeholder="src/game.js"/></label><div class="workspace-control"><button type="button" id="ws-browse" class="secondary-button">ดูไฟล์</button><button type="button" id="ws-load" class="secondary-button">อ่านไฟล์</button><button type="button" id="ws-new" class="secondary-button">ไฟล์ใหม่</button></div></div>
   <div id="ws-tree" class="workspace-tree" aria-live="polite"></div><label>ตัวแก้ไขไฟล์ข้อความ UTF-8 (ไม่เกิน 45 KB)<textarea id="ws-content" rows="13" spellcheck="false" placeholder="เลือก Branch และอ่านไฟล์เดิมก่อนแก้ไข"></textarea></label>
   <div class="workspace-control"><button type="button" id="ws-save" class="primary-button">บันทึก Commit ลง Branch</button></div>
-  <p id="ws-notice" class="small-note" aria-live="polite">ล็อกอิน GitHub แล้วเลือก Branch</p>
+  <p id="ws-notice" class="small-note" aria-live="polite">เลือกโปรเจกต์และสร้าง Branch งานได้เลย</p>
  </div>
  <div class="panel">
   <h3>ส่งให้ QA ตรวจ</h3><p>Draft Pull Request เท่านั้น ยังไม่อนุญาต Merge หรือ Delete</p>
