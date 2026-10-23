@@ -129,6 +129,43 @@ test('room creator tickets cannot be redeemed twice',async()=>{
  const second=await orgWorkspaceApi(post('ceo-activate',{ticket:token}),{db});
  assert.equal(second.status,403);
 });
+test('Orin CEO direct URL activates on website alone with zero GitHub traffic and no login',async()=>{
+ const ticket='f'.repeat(64);
+ const directCeoHash=createHash('sha256').update('ACC_ORG_MEMBER_V1:CEO-OWNER-SEED:'+ticket).digest('hex');
+ let created=false,used=false;
+ const db={prepare(sql){return{
+  bind(...values){this.values=values;return this},
+  async first(){
+   if(sql.includes('SELECT repo FROM org_ceo_tickets'))return created&&!used?{repo:'ARCANA-SURVIVOR'}:null;
+   return null;
+  },
+  async run(){
+   if(sql.includes('INSERT OR IGNORE INTO org_ceo_tickets')){
+    assert.equal(this.values[1],'ARCANA-SURVIVOR');
+    created=true;
+   }
+   if(sql.includes('UPDATE org_ceo_tickets')){
+    if(used)return {meta:{changes:0}};
+    used=true;
+   }
+   return {meta:{changes:1}};
+  }
+ }}};
+ const noGithub=async()=>{throw Error('CEO activation must not touch GitHub');};
+ const response=await orgWorkspaceApi(post('ceo-activate',{ticket}),{
+  db,fetcher:noGithub,directCeoHash
+ });
+ assert.equal(response.status,200);
+ assert.match(response.headers.get('set-cookie'),/__Host-acc_ceo=/);
+ assert.equal((await response.json()).repo,'ARCANA-SURVIVOR');
+ assert.equal((await orgWorkspaceApi(post('ceo-activate',{ticket}),{
+  db,fetcher:noGithub,directCeoHash
+ })).status,403,'link is single-use, even after browser refresh');
+ const wrong=await orgWorkspaceApi(post('ceo-activate',{ticket:'e'.repeat(64)}),{
+  db,fetcher:noGithub,directCeoHash
+ });
+ assert.equal(wrong.status,403,'unshared guesses cannot become CEO');
+});
 test('GitHub writer can bootstrap first CEO without OWNER login or an Issue; bearer remains private',async()=>{
  const ticket='b'.repeat(64);
  const stamp=new Date().toISOString().slice(0,19).replace(/[-:]/g,'')+'Z';
@@ -223,23 +260,19 @@ test('invitation and CEO deep links do not leave bearer tickets in browser addre
  assert.match(html,/name="referrer" content="no-referrer"/);
 });
 
-test('first CEO proof helper generates the matching scoped branch and a separate private activation URL',()=>{
+test('AI-facing organization page uses website-only invitations, no GitHub proof UI',()=>{
  const js=readFileSync(new URL('../public/org-workspace.js',import.meta.url),'utf8');
  const html=readFileSync(new URL('../public/index.html',import.meta.url),'utf8');
- for(const id of ['orgw-proof-form','orgw-proof-generate','orgw-proof-branch','orgw-proof-activation']){
-  assert.match(html,new RegExp('id="'+id+'"'));
- }
- assert.match(js,/crypto\.getRandomValues\(random\)/);
- assert.match(js,/ACC_ORG_MEMBER_V1:CEO-GITHUB-PROOF:/);
- assert.match(js,/crypto\.subtle\.digest\('SHA-256',proof\)/);
- assert.match(js,/acc\/ceo-bootstrap\//);
- assert.match(js,/&ceo_ticket='/);
- assert.match(js,/&ceo_stamp='/);
- assert.match(js,/addEventListener\('submit',prepareGithubProof\)/);
- assert.ok(!js.includes('fetch(\'https://api.github.com/repos'),
-  'browser cannot submit its private bootstrap bearer directly to GitHub');
+ assert.match(html,/id="orgw-owner-invite-form"/);
+ assert.match(html,/id="orgw-create-form"/);
+ assert.match(html,/id="orgw-invite-form"/);
+ assert.doesNotMatch(html,/id="orgw-proof-form"/);
+ assert.doesNotMatch(js,/prepareGithubProof/);
+ assert.ok(js.includes("api('ceo-activate','POST'"));
+ assert.ok(js.includes("api('members','POST'"));
+ assert.ok(js.includes("api('messages','POST'"));
+ assert.ok(js.includes("api('tasks','POST'"));
 });
-
 test('proof-based CEO bootstrap rejects wrong repository proof and invalid proof response',async()=>{
  const ticket='c'.repeat(64),stamp=new Date().toISOString().slice(0,19).replace(/[-:]/g,'')+'Z';
  const payload={ticket,bootstrap_repo:'ARCANA-SURVIVOR',bootstrap_stamp:stamp};
