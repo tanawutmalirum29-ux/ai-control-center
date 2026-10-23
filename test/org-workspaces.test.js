@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import {createHash} from 'node:crypto';
 import {readFileSync} from 'node:fs';
 import {orgWorkspaceApi} from '../src/org-workspaces.js';
 
@@ -128,6 +129,56 @@ test('room creator tickets cannot be redeemed twice',async()=>{
  const second=await orgWorkspaceApi(post('ceo-activate',{ticket:token}),{db});
  assert.equal(second.status,403);
 });
+test('GitHub writer can bootstrap first CEO without OWNER login or an Issue; bearer remains private',async()=>{
+ const ticket='b'.repeat(64);
+ const stamp=new Date().toISOString().slice(0,19).replace(/[-:]/g,'')+'Z';
+ const proofHash=createHash('sha256').update('ACC_ORG_MEMBER_V1:CEO-GITHUB-PROOF:'+ticket).digest('hex');
+ const ref='refs/heads/acc/ceo-bootstrap/'+stamp+'-'+proofHash;
+ let created=false,used=false,lookups=0;
+ const db={prepare(sql){return{
+  bind(...args){this.args=args;return this},
+  async first(){
+   if(sql.includes('SELECT repo FROM org_ceo_tickets'))
+    return created&&!used?{repo:'ARCANA-SURVIVOR'}:null;
+   return null;
+  },
+  async run(){
+   if(sql.includes('INSERT OR IGNORE INTO org_ceo_tickets'))created=true;
+   if(sql.includes('UPDATE org_ceo_tickets')){
+    if(used)return {meta:{changes:0}};
+    used=true;
+   }
+   return {meta:{changes:1}};
+  }
+ }}};
+ const fetcher=async url=>{
+  lookups++;
+  assert.ok(url.includes('/repos/tanawutmalirum29-ux/ARCANA-SURVIVOR/git/ref/heads/acc/ceo-bootstrap/'));
+  assert.equal(url.includes(ticket),false,'GitHub must only see the hashed proof');
+  return {ok:true,json:async()=>({ref,object:{type:'commit',sha:'a'.repeat(40)}})};
+ };
+ const payload={ticket,bootstrap_repo:'ARCANA-SURVIVOR',bootstrap_stamp:stamp};
+ const first=await orgWorkspaceApi(post('ceo-activate',payload),{db,fetcher});
+ assert.equal(first.status,200,JSON.stringify(await first.clone().json()));
+ assert.equal((await first.json()).role,'CEO');
+ assert.match(first.headers.get('set-cookie'),/__Host-acc_ceo=/);
+ assert.equal(lookups,1);
+ const second=await orgWorkspaceApi(post('ceo-activate',payload),{db,fetcher});
+ assert.equal(second.status,403,'single-use ticket cannot be redeemed twice');
+ const wrong=await orgWorkspaceApi(post('ceo-activate',{...payload,bootstrap_repo:'not-a-project'}),{db,fetcher});
+ assert.equal(wrong.status,400,'invalid repo never receives bootstrap');
+});
+test('public visitor cannot bootstrap a CEO from a missing or malformed GitHub proof',async()=>{
+ const ticket='d'.repeat(64),stamp=new Date().toISOString().slice(0,19).replace(/[-:]/g,'')+'Z';
+ const args={ticket,bootstrap_repo:'ARCANA-SURVIVOR',bootstrap_stamp:stamp};
+ const fail=await orgWorkspaceApi(post('ceo-activate',args),{db:emptyDB,
+  fetcher:async()=>({ok:false,status:404})});
+ assert.equal(fail.status,403);
+ assert.equal((await fail.json()).error,'github_write_proof_not_found');
+ const expired=await orgWorkspaceApi(post('ceo-activate',{...args,bootstrap_stamp:'20240101T010101Z'}),{db:emptyDB,
+  fetcher:async()=>{throw Error('must not fetch expired proofs')}});
+ assert.equal(expired.status,403);
+});
 test('UI includes separate project organization rooms, M messages, T cards and owner relay',()=>{
  const html=readFileSync(new URL('../public/index.html',import.meta.url),'utf8');
  const js=readFileSync(new URL('../public/org-workspace.js',import.meta.url),'utf8');
@@ -170,4 +221,73 @@ test('invitation and CEO deep links do not leave bearer tickets in browser addre
  assert.match(script,/history\.replaceState/);
  assert.match(script,/ceo-activate/);
  assert.match(html,/name="referrer" content="no-referrer"/);
+});
+
+test('first CEO proof helper generates the matching scoped branch and a separate private activation URL',()=>{
+ const js=readFileSync(new URL('../public/org-workspace.js',import.meta.url),'utf8');
+ const html=readFileSync(new URL('../public/index.html',import.meta.url),'utf8');
+ for(const id of ['orgw-proof-form','orgw-proof-generate','orgw-proof-branch','orgw-proof-activation']){
+  assert.match(html,new RegExp('id="'+id+'"'));
+ }
+ assert.match(js,/crypto\.getRandomValues\(random\)/);
+ assert.match(js,/ACC_ORG_MEMBER_V1:CEO-GITHUB-PROOF:/);
+ assert.match(js,/crypto\.subtle\.digest\('SHA-256',proof\)/);
+ assert.match(js,/acc\/ceo-bootstrap\//);
+ assert.match(js,/&ceo_ticket='/);
+ assert.match(js,/&ceo_stamp='/);
+ assert.match(js,/addEventListener\('submit',prepareGithubProof\)/);
+ assert.ok(!js.includes('fetch(\'https://api.github.com/repos'),
+  'browser cannot submit its private bootstrap bearer directly to GitHub');
+});
+
+test('proof-based CEO bootstrap rejects wrong repository proof and invalid proof response',async()=>{
+ const ticket='c'.repeat(64),stamp=new Date().toISOString().slice(0,19).replace(/[-:]/g,'')+'Z';
+ const payload={ticket,bootstrap_repo:'ARCANA-SURVIVOR',bootstrap_stamp:stamp};
+ const wrongRepo=await orgWorkspaceApi(post('ceo-activate',payload),{db:emptyDB,
+  fetcher:async()=>({ok:true,json:async()=>({
+   ref:'refs/heads/acc/ceo-bootstrap/'+stamp+'-another-repo',
+   object:{type:'commit',sha:'a'.repeat(40)}
+  })})});
+ assert.equal(wrongRepo.status,403);
+ assert.equal((await wrongRepo.json()).error,'invalid_github_write_proof');
+ const missingSha=await orgWorkspaceApi(post('ceo-activate',payload),{db:emptyDB,
+  fetcher:async()=>({ok:true,json:async()=>({
+   ref:'refs/heads/acc/ceo-bootstrap/'+stamp+'-'+createHash('sha256').update(
+    'ACC_ORG_MEMBER_V1:CEO-GITHUB-PROOF:'+ticket).digest('hex'),
+   object:{type:'commit',sha:'not-a-sha'}
+  })})});
+ assert.equal(missingSha.status,403);
+ const unavailable=await orgWorkspaceApi(post('ceo-activate',payload),{db:emptyDB,
+  fetcher:async()=>{throw Error('GitHub temporarily unavailable')}});
+ assert.equal(unavailable.status,503);
+});
+
+test('an existing organization blocks new Github proof CEOs, while successor invites remain the authorized path',async()=>{
+ const ticket='f'.repeat(64),stamp=new Date().toISOString().slice(0,19).replace(/[-:]/g,'')+'Z';
+ const requests=[];
+ const db={prepare(sql){return{
+  bind(...values){requests.push({sql,values});return this},
+  async first(){if(sql.includes('SELECT id FROM org_rooms'))return {id:'existing-room'};return null},
+  async run(){throw Error('bootstrap must not write after finding existing CEO room')}
+ }}};
+ const response=await orgWorkspaceApi(post('ceo-activate',{
+  ticket,bootstrap_repo:'ARCANA-SURVIVOR',bootstrap_stamp:stamp
+ }),{db,fetcher:async()=>{throw Error('must not contact GitHub once room exists')}});
+ assert.equal(response.status,403);
+ assert.equal((await response.json()).error,'github_proof_first_ceo_only');
+ assert.ok(requests.some(r=>r.sql.includes('SELECT id FROM org_rooms')));
+});
+
+test('an activated CEO prevents a second first-CEO proof even before a room is created',async()=>{
+ const ticket='e'.repeat(64),stamp=new Date().toISOString().slice(0,19).replace(/[-:]/g,'')+'Z';
+ const db={prepare(sql){return{
+  bind(){return this},
+  async first(){return sql.includes('SELECT id FROM org_creator_sessions')?{id:'already-initialized-ceo'}:null},
+  async run(){throw Error('must not mint second CEO')}
+ }}};
+ const response=await orgWorkspaceApi(post('ceo-activate',{
+  ticket,bootstrap_repo:'ARCANA-SURVIVOR',bootstrap_stamp:stamp
+ }),{db,fetcher:async()=>{throw Error('must not look up second proof')}});
+ assert.equal(response.status,403);
+ assert.equal((await response.json()).error,'github_proof_first_ceo_only');
 });
