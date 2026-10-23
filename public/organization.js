@@ -1,22 +1,16 @@
 // Live organization reference: rules are read from ai-organization-hub/main.
 // Viewing rules or copying work orders never appoints or wakes an AI agent.
-import {OWNER} from './repositories.js';
 (()=>{
  'use strict';
  const el=id=>document.getElementById(id);
- const org='https://github.com/'+OWNER+'/ai-organization-hub';
- const staging='https://github.com/'+OWNER+'/Staging_area';
  const current=()=>el('repo-select')?.value||'';
  let policy=null;
- function link(label,url){
-  const a=document.createElement('a');a.textContent=label;a.href=url;a.target='_blank';a.rel='noopener noreferrer';return a;
- }
  function renderProjects(){
+  // All operator navigation remains inside AI Control Center.
   const area=el('org-context');area.replaceChildren();
-  const project='https://github.com/'+current();
-  [['PROJECT_REPO',project],['ORG_WORKSPACE_REPO',org],['STAGING_REPO',staging]].forEach(([name,url])=>{
-   const p=document.createElement('p');p.append(document.createTextNode(name+': '),link(url,url));area.append(p);
-  });
+  const p=document.createElement('p');
+  p.textContent='โปรเจกต์: '+current()+' · องค์กร: D1 Organization Workspaces · งาน M/T ภายในเว็บ';
+  area.append(p);
  }
  function showPreview(pre,content){const x=el(pre);x.textContent=content;x.hidden=false;}
  async function load(checkLive=false){
@@ -31,7 +25,7 @@ import {OWNER} from './repositories.js';
    const list=el('org-documents');list.replaceChildren();
    for(const doc of data.documents){
     const row=document.createElement('div');row.className='org-document';
-    row.append(link(doc.name,doc.url));
+    const name=document.createElement('strong');name.textContent=doc.name;row.append(name);
     const button=document.createElement('button');button.type='button';button.className='secondary-button';button.textContent='เปิดอ่านในเว็บ';
     button.addEventListener('click',()=>loadDoc(doc.name,button));
     row.append(button);list.append(row);
@@ -63,26 +57,19 @@ import {OWNER} from './repositories.js';
   finally{button.disabled=false;}
  }
  async function copy(){
-  if(!policy){el('org-copy-status').textContent='ยังไม่ได้โหลดเอกสารองค์กร';return;}
-  const project='https://github.com/'+current();
+  if(!policy){el('org-copy-status').textContent='ยังไม่พบเอกสารองค์กร';return;}
   const txt=[
-   'AI ORGANIZATION HUB / MN',
-   'PROJECT_REPO: '+project,
-   'ORG_WORKSPACE_REPO: '+org,
-   'STAGING_REPO: '+staging,
+   'AI CONTROL CENTER / MN',
+   'WEB: '+location.origin+'/?repo='+encodeURIComponent(current().split('/')[1]||''),
+   'PROJECT: '+current(),
    'ORG_RULES_SNAPSHOT_SHA: '+policy.main_sha,
-   'นี่คือ Snapshot ที่ฝังกับเว็บ ต้องตรวจ latest main SHA ก่อนใช้กับงานใหม่:',
-   'เปิดอ่าน RULES.md, COMMANDS.md และ README.md ที่ SHA นี้ก่อนทำงาน:',
-   org+'/tree/'+policy.main_sha,
-   'ตรวจ PROJECT_REPO/main SHA, Issue/PR/QA และ REPORTS_TO',
-   'ปฏิบัติตาม OWNER → PROJECT LEAD/CEO → ENGINEER/CREATOR/QA; QA อิสระ และ AI ACTIVE ไม่เกิน 10 ต่อภารกิจ',
-   'ต้องได้รับ AP-ROLE จริงก่อนทำงาน; การสร้าง Issue ไม่ปลุก AI อัตโนมัติ',
-   'กำหนด EDITABLE_PATHS, BASE_SHA และ Branch ไม่ทับกันก่อนแก้โค้ด',
-   'ห้ามแก้ main หรือ Merge โดยไม่ได้รับสิทธิ์ และห้ามกล่าวว่า QA ผ่านโดยไม่มีหลักฐาน exact SHA',
-   'รายงาน MN/MQ/TR/C หรือ ER สั้น ๆ ตามกฎปัจจุบัน'
-  ].join('\n');
-  try{await navigator.clipboard.writeText(txt);el('org-copy-status').textContent='คัดลอกกฎที่ฝังและ 3 Repo แล้ว · โปรดตรวจ main ล่าสุดก่อนแต่งตั้ง';}
-  catch{el('org-copy-status').textContent='คัดลอกไม่สำเร็จ กรุณาอนุญาต Clipboard';}
+   'ทำงานผ่านพื้นที่องค์กรในเว็บ: M00001 ข้อความ / T00001 งาน',
+   'CEO แต่งตั้ง EN1–EN5 และ QA อิสระภายในห้อง ไม่สร้าง GitHub Issue',
+   'ตรวจ PR HEAD SHA และ CI ในเมนู QA ก่อน Merge',
+   'OWNER ส่งต่อลิงก์เว็บให้แชทผู้รับเท่านั้น'
+  ].join('\\n');
+  try{await navigator.clipboard.writeText(txt);el('org-copy-status').textContent='คัดลอกคำสั่งเว็บแล้ว · ไม่มีลิงก์ GitHub';}
+  catch{el('org-copy-status').textContent='คัดลอกไม่สำเร็จ';}
  }
  function setup(){
   el('org-refresh').addEventListener('click',()=>load(true));
