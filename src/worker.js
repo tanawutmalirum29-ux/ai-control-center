@@ -133,7 +133,7 @@ export default {async fetch(request,env){
  if(path==='/api/v1/issues')return newIssue(request,env,url);
  if(path.startsWith('/api/agent/')){
   const s=path==='/api/agent/invite'?await session(request,env):null;
-  return agentGateway(request,env,url,{owner:Boolean(s)});
+  return agentGateway(request,env,url,{owner:Boolean(s),ownerSession:s});
  }
  if(path.startsWith('/api/v1/source/'))return publicSourceApi(request);
  if(path==='/api/v1/mission')return missionApi(request);
@@ -146,7 +146,7 @@ export default {async fetch(request,env){
  }
  if(path==='/api/v1/organization'||path==='/api/v1/organization/document'||path==='/api/v1/organization/bundle'||path==='/api/v1/organization/bundle/document')return organizationApi(request);
  if(path==='/api/health')return reply({
-  service:'AI Control Center',version:11,owner:OWNER,ai_provider:'none',
+  service:'AI Control Center',version:12,owner:OWNER,ai_provider:'none',
   repositories:REPOS.map(name=>OWNER+'/'+name),
   write_repositories:WRITE_REPOS.map(name=>OWNER+'/'+name),
   auth_ready:configured(env),delegation_ready:issuerReady(env),qa_note:'PR QA and head SHA are inspected separately from repository CI',
