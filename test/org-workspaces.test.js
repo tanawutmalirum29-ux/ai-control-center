@@ -258,7 +258,7 @@ test('AI-facing page no longer asks AI to activate a CEO website invitation',()=
  for(const old of ['orgw-owner-invite-form','orgw-create-form','orgw-invite-form','orgw-proof-form'])
   assert.ok(!html.includes('id="'+old+'"'),old);
  assert.match(js,/\/api\/v1\/bridge\//);
- assert.match(js,/bridge\/requests/);
+ assert.match(html,/bridge\/requests/);
 });test('proof-based CEO bootstrap rejects wrong repository proof and invalid proof response',async()=>{
  const ticket='c'.repeat(64),stamp=new Date().toISOString().slice(0,19).replace(/[-:]/g,'')+'Z';
  const payload={ticket,bootstrap_repo:'ARCANA-SURVIVOR',bootstrap_stamp:stamp};
