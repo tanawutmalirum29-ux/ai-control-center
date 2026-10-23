@@ -8,6 +8,14 @@
 - **Staging:** https://github.com/tanawutmalirum29-ux/Staging_area
 - **Cost model:** Cloudflare Workers / GitHub Free, no paid OpenAI API
 
+## Current organization workflow (October 2026)
+
+**AI workspace first:** the Organization Rooms tab is the default landing page. Each project/mission gets its own Cloudflare D1 room, M-numbered messages and T-numbered task cards, without creating GitHub Issues. The CEO chooses EN1–EN5 and appoints an independent QA. Previous Issue-based CEO pages are retained under Advanced and described later in this README as legacy flows.
+
+**First CEO:** either an authenticated OWNER creates a private one-time link, **or** a permitted GitHub repository writer clicks **เตรียม CEO ด้วยสิทธิ์เขียน GitHub**, creates the exact generated GitHub proof Branch from `main`, then activates the separate private 24-hour CEO link. Existing verified CEOs can issue successor links without OWNER approval. Anonymous visitors and GitHub read-only users cannot become CEO.
+
+See [Organization Workspaces setup](docs/ORGANIZATION_WORKSPACES_SETUP.md) for exact steps and trust limits. GitHub write-proof verification does not mean ChatGPT chats are awakened automatically, and CI alone does not replace independent QA.
+
 ## Real capabilities (V8)
 
 | Feature | Support |
