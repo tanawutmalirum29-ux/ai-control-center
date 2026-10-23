@@ -146,6 +146,14 @@ export default {async fetch(request,env){
   const shared=await centralGithubAccess(env,url.searchParams.get('repo'));
   return missionApi(request,shared.token?{fetcher:credentialedFetcher(shared.token)}:{});
  }
+ // Read-only CI views use the server's central GitHub connection. AI
+ // reviewers stay on this website and never sign in to GitHub.
+ if(request.method==='GET'&&['/api/v1/ops/runs','/api/v1/ops/jobs',
+   '/api/v1/ops/workflows'].includes(path)){
+  const shared=await centralGithubAccess(env,url.searchParams.get('repo'));
+  if(!shared.token)return reply({error:'ci_read_unavailable',reason:shared.error||'not_configured'},503);
+  return opsApi(request,{token:shared.token});
+ }
  if(path.startsWith('/api/v1/work/')){
   const repository=request.method==='POST'?(await request.clone().json().catch(()=>({}))).repo:url.searchParams.get('repo');
   const shared=await centralGithubAccess(env,repository);
