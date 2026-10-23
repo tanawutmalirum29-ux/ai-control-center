@@ -29,3 +29,14 @@ GitHub App must have an installation granting access to each repo; a repo's incl
 There is still **no autonomous AI runtime**; creating an Issue cannot start a new ChatGPT session. OWNER remains the relay between separately running chats, consistent with the chosen workflow.
 
 For verification, see `test/delegation.test.js`, `test/work-api.test.js` and `test/ops-api.test.js`, and GitHub Actions QA on main. Do not interpret a successful CI or Cloudflare deployment as proof that GitHub App secrets and installation permissions are configured in production.
+
+## Existing independent AI: minimal handoff
+
+If /api/health reports auth_ready=true and delegation_ready=false, owner may use an OAuth-backed guest link without adding a Cloudflare private key.
+
+- OWNER opens AI Control Center and logs in to GitHub once.
+- Selects ARCANA-SURVIVOR, then CEO Dashboard > AI ภายนอกที่กำลังทำงาน.
+- Enters a short instruction and clicks ออกลิงก์ AI อิสระ; send the generated one-line MN URL to the AI already working.
+- AI opens link, goes to Workspace, creates an isolated acc/guest branch, reads files, edits, commits and creates Draft PR.
+
+The encrypted delegation uses AES-GCM + HMAC tied to GITHUB_CLIENT_SECRET, limited to the original owner OAuth session expiry and four hours maximum. The URL is a bearer capability and can be used by anyone who receives it. Do not publish it. No live authenticated GitHub write test has been certified as part of CI.

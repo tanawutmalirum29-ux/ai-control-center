@@ -195,3 +195,27 @@ test('owner OAuth guest fallback works without GitHub App Private Key',async()=>
   {owner:false,ownerSession:null});
  assert.equal(outsider.status,401);
 });
+
+test('guest authenticated tree read is limited to its own branch',async()=>{
+ const response=await agentGateway(request('/api/agent/invite','POST',
+  {repo,role:'GUEST-ENGINEER',slot:'GUEST-ENGINEER',reason:'Inspect source'}),
+  env,new URL(host+'/api/agent/invite'),{owner:true});
+ assert.equal(response.status,200);
+ const claim=await verifyInvite(env,new URL((await response.json()).url).searchParams.get('ticket'));
+ const branch=taskPrefix(claim)+'tree-12345678';
+ let count=0;
+ const fake=async url=>{
+  count++;
+  assert.equal(new URL(url).pathname,'/repos/tanawutmalirum29-ux/'+repo+'/contents/src');
+  return new Response(JSON.stringify([{name:'a.js',path:'src/a.js',type:'file',sha:'a'.repeat(40)}]),{status:200});
+ };
+ const url='/api/v1/work/tree?repo='+repo+'&branch='+encodeURIComponent(branch)+'&path=src';
+ const res=await workApi(request(url),{token:'test',claim,allowedRepo:repo,fetcher:fake});
+ assert.equal(res.status,200);
+ assert.equal((await res.json()).entries[0].path,'src/a.js');
+ assert.equal(count,1);
+ const denied=await workApi(request('/api/v1/work/tree?repo='+repo+'&branch=acc/another-worker&path=src'),
+  {token:'test',claim,allowedRepo:repo,fetcher:fake});
+ assert.equal(denied.status,403);
+ assert.equal(count,1);
+});
