@@ -48,3 +48,13 @@ test('full-file Workspace is visible by default, verified SHA and PR checks are 
  assert.match(qa,/fresh=1/);
  assert.match(app,/api\/v1\/mission\?repo=/);
 });
+
+test('Read all now fills both line viewer and full-file textarea only after matching blob SHA',()=>{
+ const patch=read('public/workspace-patch.js'),ws=read('public/workspace.js');
+ assert.match(patch,/if\(all\)\{/);
+ assert.match(patch,/full\.sha!==data\.sha/);
+ assert.match(patch,/acc:workspace-file-loaded/);
+ assert.match(ws,/addEventListener\('acc:workspace-file-loaded'/);
+ assert.match(ws,/el\('ws-content'\)\.value=data\.content/);
+ assert.match(ws,/fileSha=data\.sha;lastFile=data\.path;loadedContent=data\.content/);
+});
