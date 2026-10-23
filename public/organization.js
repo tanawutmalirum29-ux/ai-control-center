@@ -19,7 +19,7 @@ import {OWNER} from './repositories.js';
   });
  }
  function showPreview(pre,content){const x=el(pre);x.textContent=content;x.hidden=false;}
- async function load(){
+ async function load(checkLive=false){
   renderProjects();el('org-status').textContent='กำลังอ่านกฎองค์กรจาก GitHub main…';
   try{
    const response=await fetch('/api/v1/organization/bundle',{cache:'no-store'});
@@ -38,6 +38,14 @@ import {OWNER} from './repositories.js';
    }
    showPreview('org-readme',data.readme_preview||'ไม่พบ README');
    showPreview('org-commands',data.commands_preview||'ไม่พบ COMMANDS');
+   if(checkLive){
+    try{
+     const liveResponse=await fetch('/api/v1/organization',{cache:'no-store'});
+     const live=await liveResponse.json();
+     if(!liveResponse.ok)throw Error(live.reason||live.error);
+     el('org-status').textContent=live.main_sha===data.main_sha?'กฎที่ฝังตรงกับ GitHub main ล่าสุด · '+data.main_sha.slice(0,12):'พบกฎ main รุ่นใหม่ '+live.main_sha.slice(0,12)+' · เว็บยังฝัง Snapshot '+data.main_sha.slice(0,12)+' · ตรวจต้นฉบับก่อนเริ่มงาน';
+    }catch(e){el('org-status').textContent+=' · ตรวจ GitHub main ล่าสุดไม่ได้: '+e.message;}
+   }
   }catch(err){
    policy=null;el('org-status').textContent='เปิด Snapshot องค์กรไม่สำเร็จ: '+err.message;
   }
@@ -77,9 +85,9 @@ import {OWNER} from './repositories.js';
   catch{el('org-copy-status').textContent='คัดลอกไม่สำเร็จ กรุณาอนุญาต Clipboard';}
  }
  function setup(){
-  el('org-refresh').addEventListener('click',load);
+  el('org-refresh').addEventListener('click',()=>load(true));
   el('org-copy').addEventListener('click',copy);
-  document.querySelector('.navigation [data-view="organization"]')?.addEventListener('click',load);
+  document.querySelector('.navigation [data-view="organization"]')?.addEventListener('click',()=>load(false));
   el('repo-select').addEventListener('change',renderProjects);
   renderProjects();
  }
