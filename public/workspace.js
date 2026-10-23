@@ -4,7 +4,7 @@ const el=id=>document.getElementById(id);
 const repo=()=>el('repo-select')?.value?.split('/')[1]||'';
 const current=()=>el('ws-branches')?.value||'';
 const workBranch=name=>/^(?:acc|feat|fix)\/[a-z0-9][a-z0-9._/-]{0,180}$/.test(name)&&!name.includes('..')&&!name.includes('//');
-let fileSha='',lastFile='',auth=false;
+let fileSha='',lastFile='',auth=false,loadedContent=null,fullPreview=null;
 const state=(msg)=>{el('ws-notice').textContent=msg};
 const status=(msg)=>{el('ws-auth').textContent=msg};
 async function api(path,method='GET',body){
@@ -16,26 +16,29 @@ async function api(path,method='GET',body){
  ].filter(Boolean).join(' · '));
  return value;
 }
+function resetFullPreview(){fullPreview=null;el('ws-save').disabled=true;el('ws-file-diff').textContent='ยังไม่ได้ตรวจ Diff';}
 async function login(){
- try{
-  const [health,me,agent]=await Promise.all([
-   fetch('/api/health',{cache:'no-store'}).then(r=>r.json()),
-   fetch('/api/auth/me',{credentials:'same-origin',cache:'no-store'}).then(r=>r.json()),
-   fetch('/api/agent/me',{credentials:'same-origin',cache:'no-store'}).then(r=>r.json())
-  ]);
-  const central=Boolean(health.central_credential_present&&health.write_repositories?.includes(el('repo-select').value));
-  auth=Boolean(central||me.authenticated||
-   (agent.agent_authenticated&&agent.agent_repo===repo()&&
-   ['CEO','PROJECT-LEAD','ENGINEER','CREATOR','GUEST-ENGINEER'].includes(agent.agent_role)));
-  status(central?'พร้อมทำงาน · ใช้ GitHub Token กลาง ไม่ต้องล็อกอิน (Branch acc/ และ Draft PR)':
-   me.authenticated?'OWNER · ใช้สิทธิ์ GitHub App':
-   auth?'AI '+agent.agent_role+' · สิทธิ์ตามงาน':
-   'ยังไม่มี Credential สำหรับเขียน · ตรวจ GITHUB_WRITE_TOKEN ใน Cloudflare');
- }catch{auth=false;status('ตรวจสถานะ API ไม่สำเร็จ · ลองรีเฟรช')}
- for(const id of ['ws-create-branch','ws-save','ws-pr-create'])el(id).disabled=!auth;
+  auth=false;
+  let probeError='';
+  try{
+   const res=await fetch('/api/v1/work/branches?repo='+encodeURIComponent(repo()),{cache:'no-store',credentials:'same-origin'});
+   if(res.ok){
+    auth=true;
+    status('GitHub Token กลางพร้อมทำงานจริง · อ่าน Branch ผ่าน GitHub API สำเร็จ · ไม่ต้องล็อกอิน');
+   }else{
+    const details=await res.json().catch(()=>({}));
+    probeError='HTTP '+res.status+' · '+(details.error||details.github_message||'การเชื่อม GitHub ยังไม่สำเร็จ');
+   }
+  }catch(e){probeError=e.message||'เชื่อมต่อ GitHub ไม่สำเร็จ';}
+  if(!auth){
+   status('ยังไม่ยืนยันสิทธิ์เขียน · '+probeError+' · ตรวจสถานะใน Workspace ก่อน Commit');
+  }
+  for(const id of ['ws-create-branch','ws-pr-create','ws-preview-file'])el(id).disabled=!auth;
+  el('ws-save').disabled=true;
+  return auth;
 }
 async function refresh(){
- fileSha='';lastFile='';el('ws-branches').replaceChildren(new Option('เลือกพื้นที่ (Branch)',''));
+ fileSha='';lastFile='';loadedContent=null;resetFullPreview();el('ws-branches').replaceChildren(new Option('เลือกพื้นที่ (Branch)',''));
  await login();
  if(!FULL_REPOS.includes(el('repo-select').value)){state('ไม่รองรับ Repository');return;}
  state('กำลังโหลด Branch ของโปรเจกต์...');
@@ -91,7 +94,7 @@ function setup(){
   }
   state('โหลดรายการไฟล์ '+data.entries.length+' รายการจาก '+branch);
  }));
- el('ws-branches').addEventListener('change',()=>{fileSha='';lastFile='';state('เลือก Branch แล้ว · อ่านไฟล์ก่อนแก้เพื่อรับ SHA ที่ตรงกัน');});
+ el('ws-branches').addEventListener('change',()=>{fileSha='';lastFile='';loadedContent=null;resetFullPreview();state('เลือก Branch แล้ว · อ่านไฟล์ก่อนแก้เพื่อรับ SHA ที่ตรงกัน');});
  el('ws-create-branch').addEventListener('click',e=>handle(e.currentTarget,async()=>{
   const title=el('ws-title').value.trim();
   if(title.length<3)throw Error('กรอกหัวข้องานอย่างน้อย 3 ตัวอักษร');
@@ -111,21 +114,58 @@ function setup(){
    const response=await fetch('/api/v1/source/file?repo='+encodeURIComponent(repo())+'&ref='+encodeURIComponent(branch)+'&path='+encodeURIComponent(path));
    data=await response.json();if(!response.ok)throw Error(data.reason||data.error);
   }
-  el('ws-content').value=data.content;fileSha=data.sha;lastFile=path;
+  el('ws-content').value=data.content;fileSha=data.sha;lastFile=path;loadedContent=data.content;resetFullPreview();
   state('อ่านไฟล์สำเร็จ · Blob SHA '+fileSha.slice(0,10)+' · พร้อมแก้ไข');
  }));
- el('ws-new').addEventListener('click',()=>{fileSha='';lastFile=el('ws-path').value.trim();el('ws-content').value='';state('โหมดไฟล์ใหม่ · ระบุพาธที่ยังไม่มีใน Branch');});
+ el('ws-new').addEventListener('click',()=>{fileSha='';lastFile=el('ws-path').value.trim();el('ws-content').value='';loadedContent='';resetFullPreview();state('โหมดไฟล์ใหม่ · ระบุพาธที่ยังไม่มีใน Branch');});
+ el('ws-content').addEventListener('input',resetFullPreview);
+ el('ws-path').addEventListener('input',resetFullPreview);
+ el('ws-preview-file').addEventListener('click',e=>handle(e.currentTarget,async()=>{
+  if(!auth)throw Error('GitHub Token กลางยังไม่พร้อม');
+  const branch=chosen(),path=el('ws-path').value.trim(),content=el('ws-content').value;
+  if(!workBranch(branch)||!path)throw Error('เลือก Branch งานและพาธไฟล์ก่อน');
+  if(loadedContent===null||lastFile!==path)throw Error('กด อ่านไฟล์ หรือ ไฟล์ใหม่ ก่อนดู Diff');
+  if(new TextEncoder().encode(content).length>200000)throw Error('ไฟล์ใหญ่กว่า 200 KB');
+  if(content===loadedContent)throw Error('ไม่มี Diff เนื้อหาเหมือนต้นฉบับ จึงไม่สร้าง Commit');
+  if(fileSha){
+   const original=await api('file?repo='+encodeURIComponent(repo())+'&branch='+encodeURIComponent(branch)+'&path='+encodeURIComponent(path));
+   if(original.sha!==fileSha||original.content!==loadedContent)throw Error('SHA หรือเนื้อหาไฟล์บน GitHub เปลี่ยนแล้ว ต้องอ่านไฟล์ใหม่');
+  }
+  const oldLines=loadedContent.split('\n'),newLines=content.split('\n');
+  let start=0;while(start<oldLines.length&&start<newLines.length&&oldLines[start]===newLines[start])start++;
+  let a=oldLines.length,b=newLines.length;
+  while(a>start&&b>start&&oldLines[a-1]===newLines[b-1]){a--;b--;}
+  const removed=oldLines.slice(start,a),added=newLines.slice(start,b);
+  const previewText='Branch: '+branch+'\nFile: '+path+'\nOriginal blob SHA: '+(fileSha||'(new file)')+
+   '\nChanged from line '+(start+1)+'\nRemoved: '+removed.length+' lines / Added: '+added.length+' lines'+
+   '\n\n--- Before\n'+removed.map(x=>'- '+x).join('\n')+
+   '\n+++ After\n'+added.map(x=>'+ '+x).join('\n');
+  el('ws-file-diff').textContent=previewText;
+  fullPreview={branch,path,sha:fileSha,content};
+  el('ws-save').disabled=false;
+  state('Diff พร้อมตรวจ · กดบันทึกเมื่อยืนยันเนื้อหาและ SHA แล้วเท่านั้น');
+ }));
  el('ws-save').addEventListener('click',e=>handle(e.currentTarget,async()=>{
   const branch=chosen(),path=el('ws-path').value.trim(),content=el('ws-content').value;
   if(!path)throw Error('กรอกพาธไฟล์ก่อน');
   if(fileSha&&lastFile!==path)throw Error('พาธเปลี่ยน กรุณาอ่านไฟล์ใหม่ก่อนบันทึก');
   if(new TextEncoder().encode(content).length>200000)throw Error('ไฟล์ใหญ่กว่า 200 KB');
   if(!auth||!workBranch(branch))throw Error('โปรดเลือก Branch acc/, feat/ หรือ fix/ ห้าม Commit เข้า main');
+  if(!fullPreview||fullPreview.branch!==branch||fullPreview.path!==path||
+     fullPreview.sha!==fileSha||fullPreview.content!==content)
+   throw Error('ต้องกด ดู Diff ก่อน Commit อีกครั้ง');
+  resetFullPreview();
   state('กำลัง Commit ไปยัง '+branch+' (ไม่แตะ main)...');
   const payload={repo:repo(),branch,path,content};
   if(fileSha)payload.sha=fileSha;
-  const saved=await api('file','POST',payload);fileSha=saved.sha||'';lastFile=path;
-  state('Commit สำเร็จ: '+(saved.commit_sha||'').slice(0,12)+' · อยู่บน '+branch+' เท่านั้น');
+  const saved=await api('file','POST',payload);
+  if(!saved.saved||!/^[a-f0-9]{40}$/.test(saved.commit_sha||'')||!/^[a-f0-9]{40}$/.test(saved.sha||''))
+   throw Error('GitHub ยังไม่ยืนยัน Commit SHA และ Blob SHA กรุณาตรวจ Branch ก่อนบันทึกซ้ำ');
+  const verify=await api('file?repo='+encodeURIComponent(repo())+'&branch='+encodeURIComponent(branch)+'&path='+encodeURIComponent(path));
+  if(verify.content!==content||verify.sha!==saved.sha)
+   throw Error('GitHub บันทึก Commit '+saved.commit_sha+' แล้ว แต่การอ่านยืนยันเนื้อหาหลังบันทึกไม่ตรง · ห้ามกดซ้ำ');
+  fileSha=saved.sha;lastFile=path;loadedContent=content;
+  state('ยืนยัน Commit SHA '+saved.commit_sha+' และ Blob SHA '+saved.sha+' · เนื้อหาหลังบันทึกตรงกับ Diff');
  }));
  el('ws-pr-create').addEventListener('click',e=>handle(e.currentTarget,async()=>{
   const branch=chosen(),title=el('ws-pr-title').value.trim(),body=el('ws-pr-body').value.trim();
