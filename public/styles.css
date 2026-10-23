@@ -135,3 +135,12 @@
 #view-issue .detail-comment-form label{display:block;font-size:12px;color:var(--muted);flex:1;min-width:130px;margin:12px 0}
 #view-issue .detail-comment-form input,#view-issue .detail-comment-form textarea{display:block;width:100%;min-width:0;margin-top:6px;padding:10px;background:var(--panel);color:var(--text);border:1px solid var(--line);border-radius:9px}
 #view-issue .detail-comment-form textarea{resize:vertical;font:12px/1.65 ui-monospace,monospace}
+
+/* Browser-agent input alternative: editable single-line field, preserve server-validated indentation. */
+.ws-quick-editor{margin:14px 0;padding:14px;border:1px solid var(--line);border-radius:10px;background:var(--panel)}
+.ws-quick-editor h4{margin:0 0 9px;font-size:14px}
+.ws-quick-editor label{display:block;font-size:12px;margin:9px 0}
+.ws-quick-editor input{display:block;width:100%;min-width:0;margin-top:5px;padding:10px;border:1px solid var(--line);border-radius:8px;background:var(--panel2);color:var(--text);font:13px/1.5 ui-monospace,monospace}
+.ws-quick-editor .ws-line-tools label{max-width:150px}
+.ws-source-line{cursor:pointer}
+.ws-source-line:hover,.ws-source-line:focus-visible{background:rgba(117,175,217,.12);outline:1px solid var(--line)}

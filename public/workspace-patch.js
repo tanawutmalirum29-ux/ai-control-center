@@ -40,7 +40,13 @@
    number.textContent=String(item.number).padStart(4,' ');
    const code=document.createElement('span');code.className='ws-source-code';
    code.textContent=item.text||' ';
-   row.append(number,code);box.append(row);
+   row.append(number,code);
+   row.tabIndex=0;row.setAttribute('role','button');
+   row.setAttribute('aria-label','เลือกบรรทัด '+item.number+' เพื่อแก้');
+   const choose=()=>{el('ws-quick-line').value=String(item.number);selectQuickLine();};
+   row.addEventListener('click',choose);
+   row.addEventListener('keydown',event=>{if(event.key==='Enter'||event.key===' '){event.preventDefault();choose();}});
+   box.append(row);
   }
   el('ws-lines-sha').textContent='SHA '+data.sha+' · '+data.total_lines+' บรรทัด · แสดง '+data.start+'–'+data.end;
  }
@@ -68,6 +74,31 @@
   set((all?'อ่านไฟล์ครบทุกบรรทัดสำเร็จ':'อ่านช่วงบรรทัดสำเร็จ')+
    ' · '+data.start+'–'+data.end+' จาก '+data.total_lines+
    ' บรรทัด · การแก้จะผูกกับ SHA ของไฟล์นี้');
+ }
+ function selectQuickLine(){
+  const v=matchView(),number=Number(el('ws-quick-line').value);
+  const source=view.lines.find(line=>line.number===number);
+  if(!source)throw Error('ไม่พบบรรทัด '+number+' ในหน้าที่โหลด · กดอ่านทั้งไฟล์ก่อน');
+  el('ws-quick-new').value=source.text.replace(/^\\s*/,'');
+  invalidate();
+  el('ws-quick-status').textContent='เลือกบรรทัด '+number+' แล้ว · แก้ในช่องสั้นด้านบนและกดตรวจ Diff';
+ }
+ async function previewQuickLine(){
+  invalidate();
+  const v=matchView(),number=Number(el('ws-quick-line').value);
+  if(!Number.isSafeInteger(number)||number<1)throw Error('กรอกเลขบรรทัดก่อน');
+  const source=view.lines.find(line=>line.number===number);
+  if(!source)throw Error('ไม่พบบรรทัดในชุดข้อมูลที่อ่าน · กดอ่านทั้งไฟล์ก่อน');
+  const newText=el('ws-quick-new').value;
+  if(newText.includes('\\n')||newText.includes('\\r'))throw Error('ช่องสั้นแก้ได้หนึ่งบรรทัดเท่านั้น');
+  const indent=source.text.match(/^\\s*/)?.[0]||'';
+  const replacement=indent+newText;
+  if(source.text===replacement)throw Error('เนื้อหาใหม่เหมือนบรรทัดเดิม ไม่มี Diff');
+  el('ws-lines-start').value=String(number);
+  el('ws-lines-end').value=String(number);
+  el('ws-lines-replacement').value=replacement;
+  await previewPatch();
+  el('ws-quick-status').textContent='Diff บรรทัด '+number+' พร้อมตรวจด้านล่าง · ยืนยัน Commit เฉพาะเมื่อถูกต้อง';
  }
  async function previewPatch(){
   invalidate();
@@ -131,11 +162,13 @@
   }
  }
  function setup(){
-  for(const id of ['ws-lines-start','ws-lines-end','ws-lines-replacement'])
+  for(const id of ['ws-lines-start','ws-lines-end','ws-lines-replacement','ws-quick-line','ws-quick-new'])
    el(id).addEventListener('input',invalidate);
   for(const id of ['repo-select','ws-branches','ws-path'])
    el(id).addEventListener(id==='ws-path'?'input':'change',()=>{view=null;invalidate();
     el('ws-lines-sha').textContent='เลือก Branch/ไฟล์แล้วกด อ่านบรรทัด ใหม่';});
+  el('ws-quick-select').addEventListener('click',e=>run(e.currentTarget,async()=>selectQuickLine()));
+  el('ws-quick-preview').addEventListener('click',e=>run(e.currentTarget,previewQuickLine));
   el('ws-lines-read').addEventListener('click',e=>run(e.currentTarget,()=>readLines(true)));
   el('ws-lines-read-page').addEventListener('click',e=>run(e.currentTarget,()=>readLines(false)));
   el('ws-lines-copy').addEventListener('click',e=>run(e.currentTarget,copySelected));

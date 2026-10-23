@@ -227,6 +227,17 @@
     <label>บรรทัดสุดท้าย<input type="number" id="ws-lines-end" min="1" placeholder="เช่น 42"/></label>
     <button id="ws-lines-copy" class="secondary-button" type="button">นำบรรทัดเดิมมาแก้</button>
    </div>
+   <section class="ws-quick-editor" aria-label="แก้บรรทัดแบบช่องกรอกสำหรับ AI">
+    <h4>แก้บรรทัดด้วยช่องกรอกสั้น (สำหรับ AI/TinyFish)</h4>
+    <p class="small-note">คลิกบรรทัดที่ต้องการจากรายการด้านบน หรือพิมพ์เลขบรรทัด แล้วใส่เนื้อหาบรรทัดใหม่ ไม่ต้องพิมพ์ช่อง textarea หรือเว้นวรรคย่อหน้า ระบบรักษา indentation จากบรรทัดเดิม</p>
+    <div class="ws-line-tools">
+     <label>เลขบรรทัด<input id="ws-quick-line" type="number" min="1" placeholder="160"/></label>
+     <button id="ws-quick-select" type="button" class="secondary-button">ดึงบรรทัดเดิมมาแก้</button>
+    </div>
+    <label>เนื้อหาบรรทัดใหม่ (ไม่รวมช่องว่างนำหน้า)<input id="ws-quick-new" type="text" spellcheck="false" autocomplete="off" placeholder="timeout-minutes: 30"/></label>
+    <button id="ws-quick-preview" type="button" class="primary-button">ตรวจ Diff ของบรรทัดนี้</button>
+    <p id="ws-quick-status" class="small-note" aria-live="polite">โหลดไฟล์และเลือกบรรทัดก่อน · ยืนยัน Commit ด้านล่างเมื่อ Diff ถูกต้อง</p>
+   </section>
    <label>ข้อความใหม่สำหรับแทนที่ช่วงที่เลือก<textarea id="ws-lines-replacement" rows="7" spellcheck="false" placeholder="ระบบจะเติมข้อความเดิมเมื่อกด นำบรรทัดเดิมมาแก้ แล้วเปลี่ยนเฉพาะส่วนที่ต้องการ"></textarea></label>
    <div class="workspace-control">
     <button id="ws-lines-preview-btn" class="secondary-button" type="button">1. ดู Diff ก่อน Commit</button>
