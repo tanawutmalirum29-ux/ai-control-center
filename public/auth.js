@@ -1,4 +1,5 @@
-// Owner-only web controls. GitHub App OAuth uses encrypted server-only session cookies.
+// Owner OAuth or task-scoped delegated AI session; credentials never enter browser JS.
+import {WRITE_REPOS} from './repositories.js';
 (()=>{
 'use strict';
 const bar=document.querySelector('.top-actions');
@@ -19,16 +20,18 @@ async function refresh(){
  try{
   const r=await fetch('/api/auth/me',{credentials:'same-origin',cache:'no-store'});
   const me=await r.json();
+  const a=await fetch('/api/agent/me',{credentials:'same-origin',cache:'no-store'}).then(r=>r.json());
   authenticated=Boolean(me.authenticated);
+  const delegated=Boolean(a.agent_authenticated);
   create.hidden=!authenticated;
   exit.hidden=!authenticated;
-  link.hidden=authenticated||!me.configured;
-  meNotice.textContent=authenticated?'Owner: '+me.login:me.configured?'ยังไม่เข้าสู่ระบบ':'รอตั้งค่า GitHub App';
+  link.hidden=authenticated||delegated||!me.configured;
+  meNotice.textContent=authenticated?'OWNER':delegated?(a.agent_role+' · '+a.agent_slot):'โหมดอ่าน';
   const side=document.querySelector('.side-bottom');
-  if(side)side.textContent=authenticated?'Owner ยืนยันตัวตน · สร้าง Issue เฉพาะ ai-control-center':'GitHub Public API · อ่านเท่านั้นจนกว่า Owner จะ Login';
+  if(side)side.textContent=authenticated?'OWNER · จัดการโปรเจกต์ได้':delegated?'AI '+a.agent_role+' · งานของ '+a.agent_repo:'อ่านโปรเจกต์สาธารณะ';
   const settings=document.querySelectorAll('.settings-grid>div p');
   if(settings[0])settings[0].textContent=authenticated?'อ่าน GitHub และสร้าง Issue ตามสิทธิ์ Owner':'อ่าน Public Repository (ยังไม่เข้าสู่ระบบ)';
-  if(settings[1])settings[1].textContent=authenticated?'สร้าง Issue ได้เฉพาะ ai-control-center':'ต้องยืนยันผ่าน GitHub App ก่อนเขียน';
+  if(settings[1])settings[1].textContent=authenticated?'สร้าง Issue ใน Repository ที่ติดตั้ง GitHub App แล้ว':delegated?'สิทธิ์เฉพาะบทบาท/งานตามลิงก์แต่งตั้ง':'ต้องได้รับสิทธิ์ OWNER/CEO ก่อนเขียน';
  }catch{meNotice.textContent='ตรวจสถานะ GitHub ไม่ได้';}
 }
 create.addEventListener('click',async()=>{
@@ -38,8 +41,8 @@ create.addEventListener('click',async()=>{
  const detail=document.getElementById('task-body').value.trim();
  const role=document.getElementById('task-role').value;
  if(!title){notice.textContent='กรอกหัวข้องานก่อน';return;}
- if(repo!=='ai-control-center'){
-  notice.textContent='ตอนนี้สร้างตรงได้เฉพาะ ai-control-center; โปรเจกต์อื่นใช้ปุ่มสร้างผ่าน GitHub';
+ if(!WRITE_REPOS.includes(repo)){
+  notice.textContent='Repository นี้อยู่ในโหมดอ่านอย่างเดียว';
   return;
  }
  create.disabled=true;notice.textContent='กำลังส่งคำสั่งไป GitHub...';

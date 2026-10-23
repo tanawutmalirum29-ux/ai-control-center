@@ -24,10 +24,14 @@ import {FULL_REPOS,OWNER} from './repositories.js';
   finally{btn.disabled=false}
  }
  async function login(){
-  const r=await fetch('/api/auth/me',{cache:'no-store'});const user=await r.json();
-  authorized=Boolean(user.authenticated);
-  el('ops-auth').textContent=authorized?'บัญชีเจ้าของ: '+user.login+' · ใช้สิทธิ์ GitHub App ตามแต่ละ Repository':'ยังไม่ล็อกอิน · กด “เชื่อมต่อ GitHub” ด้านบน';
-  for(const id of ['ops-create','ops-comment-send','ops-assign-send','ops-status-send','ops-dispatch-send'])el(id).disabled=!authorized;
+  const [user,agent]=await Promise.all([
+   fetch('/api/auth/me',{credentials:'same-origin',cache:'no-store'}).then(r=>r.json()),
+   fetch('/api/agent/me',{credentials:'same-origin',cache:'no-store'}).then(r=>r.json())]);
+  authorized=Boolean(user.authenticated||(agent.agent_authenticated&&agent.agent_repo===repo()));
+  const manager=Boolean(user.authenticated||(authorized&&['CEO','PROJECT-LEAD'].includes(agent.agent_role)));
+  el('ops-auth').textContent=user.authenticated?'OWNER · ใช้ GitHub App ตาม Repo':authorized?'AI '+agent.agent_role+' · '+agent.agent_slot+' · สิทธิ์ตามงาน':'ไม่มีสิทธิ์เขียน โปรดรับลิงก์ AP-ROLE จาก CEO';
+  for(const id of ['ops-create','ops-assign-send','ops-dispatch-send'])el(id).disabled=!manager;
+  for(const id of ['ops-comment-send','ops-status-send'])el(id).disabled=!authorized;
   return authorized;
  }
  function showIssues(issues){
