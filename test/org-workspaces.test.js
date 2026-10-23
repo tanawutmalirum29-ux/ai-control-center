@@ -244,14 +244,11 @@ test('packaged D1 schema matches the SQL migration file byte for byte',async()=>
  const sql=readFileSync(new URL('../migrations/0001_org_workspaces.sql',import.meta.url),'utf8');
  assert.equal(ORG_SCHEMA,sql);
 });
-test('invitation and CEO deep links do not leave bearer tickets in browser address bar',()=>{
- const script=readFileSync(new URL('../public/org-workspace.js',import.meta.url),'utf8');
+test('Bridge frontend has no browser bearer ticket activation inputs',()=>{
  const html=readFileSync(new URL('../public/index.html',import.meta.url),'utf8');
- assert.match(script,/history\.replaceState/);
- assert.match(script,/ceo-activate/);
  assert.match(html,/name="referrer" content="no-referrer"/);
+ assert.doesNotMatch(html,/name="ceo_ticket"|id="orgw-invite-url"|id="orgw-owner-invite-url"/);
 });
-
 test('AI-facing page no longer asks AI to activate a CEO website invitation',()=>{
  const html=readFileSync(new URL('../public/index.html',import.meta.url),'utf8');
  const js=readFileSync(new URL('../public/app.js',import.meta.url),'utf8');
