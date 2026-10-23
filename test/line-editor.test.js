@@ -123,3 +123,20 @@ test('full-file UI available by default, 40-line paging remains optional',()=>{
  assert.match(client,/readLines\(false\)/);
  assert.match(client,/all:'true'/);
 });
+
+test('quick single-line editor uses ordinary text inputs and existing SHA-bound patch gates',()=>{
+ const html=readFileSync(new URL('../public/index.html',import.meta.url),'utf8');
+ const script=readFileSync(new URL('../public/workspace-patch.js',import.meta.url),'utf8');
+ for(const id of ['ws-quick-line','ws-quick-new','ws-quick-select','ws-quick-preview','ws-quick-status']){
+  assert.ok(html.includes('id="'+id+'"'),id);
+ }
+ assert.match(html,/id="ws-quick-new" type="text"/);
+ assert.match(script,/function selectQuickLine/);
+ assert.match(script,/async function previewQuickLine/);
+ assert.match(script,/source\.text\.match\(\/\^\\s\*\/\)/);
+ assert.match(script,/source\.text===replacement/);
+ assert.match(script,/el\('ws-lines-replacement'\)\.value=replacement/);
+ assert.match(script,/await previewPatch\(\)/);
+ assert.match(script,/preview_digest/);
+ assert.match(script,/el\('ws-lines-commit'\)\.disabled=false/);
+});
