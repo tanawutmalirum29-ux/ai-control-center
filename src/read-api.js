@@ -119,7 +119,8 @@ async function queue(repo,fetcher){
  const tasks=issues.filter(x=>!x.pull_request).map(issue=>({
   number:issue.number,title:issue.title,role:role(issue.title),...taskStatus(issue),
   labels:(issue.labels||[]).map(x=>typeof x==='string'?x:x.name).filter(Boolean),
-  url:'https://github.com/'+OWNER+'/'+repo+'/issues/'+issue.number,
+  url:'https://ai-control-center.tanawutmalirum29.workers.dev/?repo='+encodeURIComponent(repo)+'&issue='+issue.number,
+  github_source_url:'https://github.com/'+OWNER+'/'+repo+'/issues/'+issue.number,
   updated_at:issue.updated_at
  }));
  const priority={READY:0,WAITING_QA:1,IN_PROGRESS:2,UNCLASSIFIED:3,APPOINTED:4,QA_BLOCK:5,PAUSED:6};

@@ -24,14 +24,16 @@ function roleFrom(issue,meta){
 export function asTask(issue,repo){
  const fields=issueFields(issue.body),role=roleFrom(issue,fields),status=taskStatus(issue);
  const isAppointment=Boolean(fields.to_role||/^(\[?(?:CEO|PROJECT-LEAD|ENGINEER|QA-REVIEWER|CREATOR|COORDINATOR))/.test(issue.title));
- return {number:issue.number,title:issue.title,url:issue.html_url||
-  'https://github.com/'+OWNER+'/'+repo+'/issues/'+issue.number,role,
+ return {number:issue.number,title:issue.title,
+  url:'https://ai-control-center.tanawutmalirum29.workers.dev/?repo='+encodeURIComponent(repo)+'&issue='+issue.number,
+  github_source_url:issue.html_url||'https://github.com/'+OWNER+'/'+repo+'/issues/'+issue.number,
+  role,
   agent_slot:fields.agent_slot||role,parent_issue:fields.parent_issue,
   reports_to:fields.reports_to,editable_paths:fields.editable_paths,base_sha:fields.base_sha,
   acceptance:fields.acceptance,session_activation:fields.session_activation,
   status:status.status,status_source:status.source,
   relay:isAppointment?(fields.agent_slot||role)+': '+(status.status==='APPOINTED'?'AP-ROLE':'MN')+' #'+issue.number+' '+
-    (issue.html_url||'https://github.com/'+OWNER+'/'+repo+'/issues/'+issue.number):null,
+    'https://ai-control-center.tanawutmalirum29.workers.dev/?repo='+encodeURIComponent(repo)+'&issue='+issue.number:null,
   labels:(issue.labels||[]).map(l=>typeof l==='string'?l:l.name),
   updated_at:issue.updated_at,github_assignees:(issue.assignees||[]).map(a=>a.login)};
 }
@@ -55,7 +57,9 @@ async function load(repo,fetcher){
  const priority={APPOINTED:0,READY:1,IN_PROGRESS:2,WAITING_QA:3,QA_BLOCK:4,PAUSED:5,UNCLASSIFIED:6};
  tasks.sort((a,b)=>(priority[a.status]??7)-(priority[b.status]??7)||Date.parse(b.updated_at)-Date.parse(a.updated_at));
  return {repo:OWNER+'/'+repo,source:'PUBLIC_GITHUB',
-  tasks,prs:prs.map(p=>({number:p.number,title:p.title,url:p.html_url,draft:p.draft,
+  tasks,prs:prs.map(p=>({number:p.number,title:p.title,
+   url:'https://ai-control-center.tanawutmalirum29.workers.dev/?repo='+encodeURIComponent(repo)+'&pr='+p.number,
+   github_source_url:p.html_url,draft:p.draft,
    head_sha:p.head?.sha,base:p.base?.ref,updated_at:p.updated_at,
    qa:'UNVERIFIED_USE_PR_QA_ENDPOINT'})),
   counts:{open_tasks:tasks.length,appointments:tasks.filter(t=>t.relay).length,

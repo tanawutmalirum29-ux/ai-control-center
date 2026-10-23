@@ -16,7 +16,7 @@ test('read appointment metadata and one-line relay',()=>{
  const item=asTask(issues[1],'ARCANA-SURVIVOR');
  assert.equal(item.role,'ENGINEER');
  assert.equal(item.status,'APPOINTED');
- assert.equal(item.relay,'ENGINEER-UI: AP-ROLE #81 '+issues[1].html_url);
+ assert.equal(item.relay,'ENGINEER-UI: AP-ROLE #81 https://ai-control-center.tanawutmalirum29.workers.dev/?repo=ARCANA-SURVIVOR&issue=81');
  const todo=asTask({...issues[1],labels:[{name:'IN_PROGRESS'}]},'ARCANA-SURVIVOR');
  assert.match(todo.relay,/ENGINEER-UI: MN #81/);
  assert.equal(todo.status,'IN_PROGRESS');
