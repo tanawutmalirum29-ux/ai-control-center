@@ -60,7 +60,7 @@ function switchView(view) {
   const titles = {overview:['ภาพรวมการพัฒนา','OVERVIEW'],issues:['งาน / Issues','ISSUES'],pulls:['Pull Requests','PULL REQUESTS'],qa:['QA & Actions','QUALITY GATE'],agents:['AI Work Queue','AI OPERATIONS'],settings:['โปรเจกต์และการตั้งค่า','SETTINGS']};
   el('page-heading').textContent = titles[view][0];
   el('section-kicker').textContent = titles[view][1];
-  window.scrollTo({top:0,behavior:'smooth'});
+  window.scrollTo(0, 0);
 }
 function renderPicker() {
   el('repo-select').replaceChildren();
