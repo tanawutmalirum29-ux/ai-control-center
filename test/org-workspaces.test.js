@@ -260,23 +260,19 @@ test('invitation and CEO deep links do not leave bearer tickets in browser addre
  assert.match(html,/name="referrer" content="no-referrer"/);
 });
 
-test('first CEO proof helper generates the matching scoped branch and a separate private activation URL',()=>{
+test('AI-facing organization page uses website-only invitations, no GitHub proof UI',()=>{
  const js=readFileSync(new URL('../public/org-workspace.js',import.meta.url),'utf8');
  const html=readFileSync(new URL('../public/index.html',import.meta.url),'utf8');
- for(const id of ['orgw-proof-form','orgw-proof-generate','orgw-proof-branch','orgw-proof-activation']){
-  assert.match(html,new RegExp('id="'+id+'"'));
- }
- assert.match(js,/crypto\.getRandomValues\(random\)/);
- assert.match(js,/ACC_ORG_MEMBER_V1:CEO-GITHUB-PROOF:/);
- assert.match(js,/crypto\.subtle\.digest\('SHA-256',proof\)/);
- assert.match(js,/acc\/ceo-bootstrap\//);
- assert.match(js,/&ceo_ticket='/);
- assert.match(js,/&ceo_stamp='/);
- assert.match(js,/addEventListener\('submit',prepareGithubProof\)/);
- assert.ok(!js.includes('fetch(\'https://api.github.com/repos'),
-  'browser cannot submit its private bootstrap bearer directly to GitHub');
+ assert.match(html,/id="orgw-owner-invite-form"/);
+ assert.match(html,/id="orgw-create-form"/);
+ assert.match(html,/id="orgw-invite-form"/);
+ assert.doesNotMatch(html,/id="orgw-proof-form"/);
+ assert.doesNotMatch(js,/prepareGithubProof/);
+ assert.match(js,/api\\('ceo-activate','POST'/);
+ assert.match(js,/api\\('members','POST'/);
+ assert.match(js,/api\\('messages','POST'/);
+ assert.match(js,/api\\('tasks','POST'/);
 });
-
 test('proof-based CEO bootstrap rejects wrong repository proof and invalid proof response',async()=>{
  const ticket='c'.repeat(64),stamp=new Date().toISOString().slice(0,19).replace(/[-:]/g,'')+'Z';
  const payload={ticket,bootstrap_repo:'ARCANA-SURVIVOR',bootstrap_stamp:stamp};
