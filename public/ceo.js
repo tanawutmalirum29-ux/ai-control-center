@@ -1,6 +1,7 @@
 // CEO-first Mission Console: GitHub issues are the work records; OWNER relays one line.
 // This page does not claim to instantiate or identify independent AI sessions.
 import {OWNER,FULL_REPOS} from './repositories.js';
+import {relayLine} from './agent-automation.js';
 (()=>{
 'use strict';
 const e=id=>document.getElementById(id);
@@ -15,12 +16,29 @@ function link(label,url){
 }
 function setView(name){document.querySelector('.navigation [data-view="'+name+'"]')?.click();}
 function taskUrl(task){return '/?repo='+encodeURIComponent(currentRepo())+'&issue='+task.number;}
-function copyRelay(task){
- const code=(task.agent_slot||task.role)+': '+(task.status==='APPOINTED'?'AP-ROLE':'MN')+' #'+task.number+' '+new URL(taskUrl(task),location.origin).href;
- message('relay-copy',code);
+// Mint short-lived role tickets on the authorized client; never publish them in GitHub Issues.
+async function scopedRelay(task){
+ const fallback=new URL(taskUrl(task),location.origin).href;
+ if(!rights)return {url:fallback,secure:false,reason:'อ่านงานได้ แต่ยังไม่มีสิทธิ์เขียน'};
+ try{
+  const response=await fetch('/api/agent/invite',{method:'POST',credentials:'same-origin',
+   headers:{'content-type':'application/json'},
+   body:JSON.stringify({repo:currentRepo(),role:task.role,slot:task.agent_slot||task.role,
+    issue:task.number,minutes:['CEO','PROJECT-LEAD'].includes(task.role)?10080:720})});
+  const data=await response.json();
+  if(!response.ok||!data.url)throw Error(data.error||'invite_unavailable');
+  return {url:data.url,secure:true};
+ }catch(err){return {url:fallback,secure:false,reason:err.message};}
+}
+async function copyRelay(task){
+ const granted=await scopedRelay(task);
+ const code=relayLine(task.agent_slot||task.role,task.number,granted.url,
+  task.status==='APPOINTED'?'AP-ROLE':'MN');
+ message('relay-copy',granted.secure?'MN พร้อมสิทธิ์เฉพาะงาน (ลิงก์เป็นความลับ)':'MN อ่านข้อมูลเท่านั้น');
  e('relay-text').value=code;
- try{navigator.clipboard.writeText(code).then(()=>message('relay-state','คัดลอก 1 บรรทัดแล้ว · ส่งเข้าแชทผู้รับโดยตรง')).catch(()=>{e('relay-text').focus();e('relay-text').select();message('relay-state','เลือกข้อความแล้ว · คัดลอกได้จากช่องข้อความ');});}
- catch{e('relay-text').focus();e('relay-text').select();}
+ const status=granted.secure?'คัดลอกแล้ว ส่งให้แชทผู้รับเท่านั้น':'ไม่มีลิงก์สิทธิ์เขียน: '+(granted.reason||'ต้องออกลิงก์จาก CEO');
+ try{await navigator.clipboard.writeText(code);message('relay-state',status);}
+ catch{e('relay-text').focus();e('relay-text').select();message('relay-state',status+' · คัดลอกข้อความในช่อง');}
 }
 function workOn(task){
  selectedTask=task;
@@ -28,7 +46,7 @@ function workOn(task){
  e('work-metadata').textContent=(task.agent_slot||task.role)+' · '+task.status+
    ' · รายงานต่อ '+(task.reports_to||'ไม่ระบุ')+' · ขอบเขตไฟล์ '+(task.editable_paths||'ยังไม่กำหนด');
  e('work-source').replaceChildren(link('อ่าน Issue #'+task.number+' ภายในเว็บ',taskUrl(task)));
- e('relay-text').value=(task.agent_slot||task.role)+': MN #'+task.number+' '+new URL(taskUrl(task),location.origin).href;
+ e('relay-text').value=relayLine(task.agent_slot||task.role,task.number,new URL(taskUrl(task),location.origin).href);
 }
 function renderCounts(counts,stale){
  e('ceo-total').textContent=counts.open_tasks;
@@ -159,10 +177,12 @@ async function createIssue(event){
   const r=await fetch('/api/v1/ops/issue',{method:'POST',credentials:'same-origin',
    headers:{'content-type':'application/json'},body:JSON.stringify(payload)});
   const data=await r.json();if(!r.ok)throw Error(data.hint||data.error);
-  const relay=(slot||role)+': AP-ROLE #'+data.issue.number+' '+location.origin+'/?repo='+encodeURIComponent(currentRepo())+'&issue='+data.issue.number;
-  e('relay-text').value=relay;message('ceo-create-state','สร้าง Issue #'+data.issue.number+' แล้ว · ส่งข้อความนี้ให้ AI ผู้รับ: '+relay);
+  const invite=await scopedRelay({role,agent_slot:slot,number:data.issue.number,status:'APPOINTED'});
+  const relay=relayLine(slot||role,data.issue.number,invite.url,'AP-ROLE');
+  selectedTask=null;e('relay-text').value=relay;
+  message('ceo-create-state','สร้าง Issue #'+data.issue.number+' แล้ว · '+(invite.secure?'เตรียมลิงก์สิทธิ์เฉพาะงานแล้ว':'ต้องออกลิงก์สิทธิ์เพิ่ม: '+(invite.reason||'ไม่พร้อม')));
   e('ceo-title').value='';await load();setView('relay');
-  message('relay-copy',relay);
+  message('relay-copy',invite.secure?'พร้อมส่ง MN (ลิงก์สิทธิ์เป็นความลับ)':'MN อ่านข้อมูลอย่างเดียว ไม่ใช่สิทธิ์แก้โค้ด');
  }catch(err){message('ceo-create-state','สร้างไม่สำเร็จ: '+err.message+' · ตรวจ GitHub ว่าเกิด Issue แล้วหรือยังก่อนลองซ้ำ')}
  finally{btn.disabled=!rights;}
 }
@@ -179,6 +199,7 @@ function init(){
  });
  e('ceo-appointment-form').addEventListener('submit',createIssue);
  e('relay-copy-current').addEventListener('click',async()=>{
+   if(selectedTask){await copyRelay(selectedTask);return;}
   const value=e('relay-text').value.trim();if(!value){message('relay-state','เลือกงานในรายการก่อน');return;}
   try{await navigator.clipboard.writeText(value);message('relay-state','คัดลอก 1 บรรทัดแล้ว ส่งไปยัง ChatGPT ของผู้รับ')}
   catch{e('relay-text').select();message('relay-state','เลือกข้อความแล้ว ใช้คำสั่ง Copy บนอุปกรณ์นี้');}
