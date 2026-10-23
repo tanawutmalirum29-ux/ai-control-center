@@ -129,6 +129,43 @@ test('room creator tickets cannot be redeemed twice',async()=>{
  const second=await orgWorkspaceApi(post('ceo-activate',{ticket:token}),{db});
  assert.equal(second.status,403);
 });
+test('Orin CEO direct URL activates on website alone with zero GitHub traffic and no login',async()=>{
+ const ticket='f'.repeat(64);
+ const directCeoHash=createHash('sha256').update('ACC_ORG_MEMBER_V1:CEO-OWNER-SEED:'+ticket).digest('hex');
+ let created=false,used=false;
+ const db={prepare(sql){return{
+  bind(...values){this.values=values;return this},
+  async first(){
+   if(sql.includes('SELECT repo FROM org_ceo_tickets'))return created&&!used?{repo:'ARCANA-SURVIVOR'}:null;
+   return null;
+  },
+  async run(){
+   if(sql.includes('INSERT OR IGNORE INTO org_ceo_tickets')){
+    assert.equal(this.values[1],'ARCANA-SURVIVOR');
+    created=true;
+   }
+   if(sql.includes('UPDATE org_ceo_tickets')){
+    if(used)return {meta:{changes:0}};
+    used=true;
+   }
+   return {meta:{changes:1}};
+  }
+ }}};
+ const noGithub=async()=>{throw Error('CEO activation must not touch GitHub');};
+ const response=await orgWorkspaceApi(post('ceo-activate',{ticket}),{
+  db,fetcher:noGithub,directCeoHash
+ });
+ assert.equal(response.status,200);
+ assert.match(response.headers.get('set-cookie'),/__Host-acc_ceo=/);
+ assert.equal((await response.json()).repo,'ARCANA-SURVIVOR');
+ assert.equal((await orgWorkspaceApi(post('ceo-activate',{ticket}),{
+  db,fetcher:noGithub,directCeoHash
+ })).status,403,'link is single-use, even after browser refresh');
+ const wrong=await orgWorkspaceApi(post('ceo-activate',{ticket:'e'.repeat(64)}),{
+  db,fetcher:noGithub,directCeoHash
+ });
+ assert.equal(wrong.status,403,'unshared guesses cannot become CEO');
+});
 test('GitHub writer can bootstrap first CEO without OWNER login or an Issue; bearer remains private',async()=>{
  const ticket='b'.repeat(64);
  const stamp=new Date().toISOString().slice(0,19).replace(/[-:]/g,'')+'Z';
