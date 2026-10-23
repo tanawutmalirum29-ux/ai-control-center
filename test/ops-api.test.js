@@ -12,7 +12,7 @@ const fetcher=async(url,opts)=>{
  const body=opts.body?JSON.parse(opts.body):null;
  seen.push({path:pathname,method:opts.method,body});
  let data={};
- if(pathname.endsWith('/issues'))data={number:3,title:'[ENGINEER] Task',state:'open',html_url:'https://github.com/a/issues/3',labels:[],assignees:[]};
+ if(pathname.endsWith('/issues'))data=opts.method==='GET'?[]:{number:3,title:'[ENGINEER] Task',state:'open',html_url:'https://github.com/a/issues/3',labels:[],assignees:[]};
  if(pathname.endsWith('/issues/3/comments'))data={id:5,html_url:'https://github.com/a/issues/3#issuecomment-5'};
  if(pathname.endsWith('/issues/3/assignees'))data={assignees:[{login:'test-user'}]};
  if(pathname.endsWith('/actions/workflows'))data={workflows:[{id:42,name:'Test',state:'active',path:'.github/workflows/test.yml'}],total_count:1};
