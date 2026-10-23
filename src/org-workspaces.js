@@ -179,6 +179,13 @@ export async function orgWorkspaceApi(request,{db,owner=false,agent=null,fetcher
     const issued=Date.parse(iso),elapsed=Date.now()-issued;
     if(!Number.isFinite(issued)||elapsed< -300000||elapsed>86400000)
      return res({error:'github_ceo_proof_expired_or_future'},403);
+    // GitHub write proof is a first-CEO recovery-free bootstrap only.
+    // Once the repository has an organization, subsequent CEOs must be
+    // appointed by its verified CEO (or by authenticated OWNER).
+    const existingRoom=await db.prepare('SELECT id FROM org_rooms WHERE repo=? LIMIT 1')
+     .bind(repo).first();
+    if(existingRoom)return res({error:'github_proof_first_ceo_only',
+     hint:'Ask the active CEO for a successor invite, or sign in as OWNER'},403);
     const proofHash=await digest('CEO-GITHUB-PROOF:'+ticket);
     const ref='refs/heads/acc/ceo-bootstrap/'+stamp+'-'+proofHash;
     let evidence;
