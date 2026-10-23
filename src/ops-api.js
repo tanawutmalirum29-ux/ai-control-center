@@ -89,8 +89,14 @@ export async function opsApi(request,{token,allowedRepo=null,fetcher=globalThis.
    if(!titleOK(body.title)||!validRole(body.role)||!compact(body.scope||'',1800)||!compact(body.acceptance||'',1200)||!compact(body.editable_paths||'',800)||!compact(body.reports_to||'',100))return make({error:'invalid_issue_fields'},400);
    const isWorker=!isLead;
    if(isWorker){
-    const existing=await fetchGh('/issues?state=open&per_page=100');
-    if(existing.length===100)return make({error:'too_many_open_issues_to_verify_team_limit'},409);
+    const existing=[];
+    let page=1,more=true;
+    while(more&&page<=5){
+     const rows=await fetchGh('/issues?state=open&per_page=100&page='+page);
+     if(!Array.isArray(rows))return make({error:'invalid_github_issue_list'},502);
+     existing.push(...rows);more=rows.length===100;page++;
+    }
+    if(more)return make({error:'too_many_open_issues_to_verify_team_limit'},409);
     const members=existing.filter(i=>!i.pull_request&&
       (i.body||'').split('\n').some(line=>line.trim()==='PARENT_ISSUE: #'+body.parent_issue)&&
       !(i.labels||[]).some(label=>['RETIRED','SUPERSEDED'].includes(String(label.name).toUpperCase())));
