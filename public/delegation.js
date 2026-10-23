@@ -1,6 +1,7 @@
 // First owner bootstrap, then CEO-only task-scoped delegation.
 // Role/issue authorization is enforced by the Worker; UI never holds GitHub tokens.
 import {OWNER,WRITE_REPOS} from './repositories.js';
+import {cadenceNote} from './agent-automation.js';
 (()=>{
  const e=id=>document.getElementById(id);
  let owner=false,role='',agentRepo='',tasks=[],guestMinutes=720;
@@ -59,9 +60,9 @@ import {OWNER,WRITE_REPOS} from './repositories.js';
   const line=result.role==='GUEST-ENGINEER'?
     'GUEST-ENGINEER: MN '+result.url+' | '+result.task:
     result.slot+': AP-ROLE'+(result.issue?' #'+result.issue:'')+' '+result.url;
-  e('delegate-relay').value=line;
+  e('delegate-relay').value=line+' | '+cadenceNote;
   state('สร้างลิงก์ '+result.role+' สำหรับ '+result.repo+' แล้ว · คัดลอกหนึ่งบรรทัดไปส่งในแชท AI');
-  try{await navigator.clipboard.writeText(line);state('คัดลอกข้อความแต่งตั้งหนึ่งบรรทัดแล้ว · ส่งให้แชทผู้รับได้ทันที');}
+  try{await navigator.clipboard.writeText(e('delegate-relay').value);state('คัดลอกข้อความแต่งตั้งหนึ่งบรรทัดแล้ว · ส่งให้แชทผู้รับได้ทันที');}
   catch{e('delegate-relay').focus();e('delegate-relay').select();}
  }
  async function activateButton(button,fn){
