@@ -37,18 +37,22 @@ async function refresh(){
  state('กำลังโหลด Branch ของโปรเจกต์...');
  try{
   let data,via='GitHub สาธารณะ';
-  try{
+  if(auth){
+   try{
+    data=await api('branches?repo='+encodeURIComponent(repo()));
+    via='GitHub Token กลาง';
+   }catch(err){
+    const response=await fetch('/api/v1/source/branches?repo='+encodeURIComponent(repo()),{cache:'no-store'});
+    data=await response.json();if(!response.ok)throw Error(data.reason||data.error);
+   }
+  }else{
    const response=await fetch('/api/v1/source/branches?repo='+encodeURIComponent(repo()),{cache:'no-store'});
    data=await response.json();if(!response.ok)throw Error(data.reason||data.error);
-  }catch(err){
-   if(!auth)throw err;
-   data=await api('branches?repo='+encodeURIComponent(repo()));
-   via='สิทธิ์ AI ที่ได้รับ';
   }
   const choices=['main',...data.branches.filter(b=>b.name.startsWith('acc/')).map(b=>b.name)];
   for(const name of new Set(choices))el('ws-branches').add(new Option(name,name));
   el('ws-branches').value='main';
-  state('โหลด Branch ผ่าน '+via+' · AI ที่ได้รับสิทธิ์ควรสร้าง Branch acc/ ของงานก่อนแก้โค้ด');
+  state('โหลด Branch ผ่าน '+via+' · สร้าง Branch acc/ ก่อนแก้ไฟล์และส่ง Draft PR');
  }catch(e){state('โหลด Branch ไม่สำเร็จ: '+e.message+' · หากเป็น 403 ให้ตรวจการติดตั้ง GitHub App ในโปรเจกต์');}
 }
 function chosen(){if(!current())throw Error('กรุณาเลือก Branch ก่อน');return current();}
@@ -136,5 +140,6 @@ function setup(){
   try{await navigator.clipboard.writeText(msg);state('คัดลอกคำสั่งสำหรับ ChatGPT Work แล้ว');}
   catch{state('คัดลอกไม่สำเร็จ ให้ใช้ HTTPS และอนุญาต Clipboard');}
  });
+ if(!el('view-workspace').classList.contains('hidden'))refresh();
 }
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',setup);else setup();
