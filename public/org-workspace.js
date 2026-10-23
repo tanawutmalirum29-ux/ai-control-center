@@ -173,6 +173,22 @@ import {FULL_REPOS} from './repositories.js';
    await loadTasks();status('สร้างงาน '+d.code+' สำเร็จ · ผู้รับ '+d.assignee_slot);
   });
  }
+ async function prepareGithubProof(event){
+  event.preventDefault();
+  await busy($('orgw-proof-generate'),async()=>{
+   if(!crypto?.subtle||!crypto?.getRandomValues)throw Error('ต้องเปิดเว็บไซต์ด้วย HTTPS');
+   const random=new Uint8Array(32);crypto.getRandomValues(random);
+   const ticket=Array.from(random,b=>b.toString(16).padStart(2,'0')).join('');
+   const stamp=new Date().toISOString().slice(0,19).replace(/[-:]/g,'')+'Z';
+   const proof=new TextEncoder().encode('ACC_ORG_MEMBER_V1:CEO-GITHUB-PROOF:'+ticket);
+   const hash=Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',proof)),
+    b=>b.toString(16).padStart(2,'0')).join('');
+   $('orgw-proof-branch').value='acc/ceo-bootstrap/'+stamp+'-'+hash;
+   $('orgw-proof-activation').value=location.origin+'/?repo='+encodeURIComponent(repo())+
+    '&ceo_ticket='+ticket+'&ceo_stamp='+stamp;
+   status('เตรียม Proof แล้ว: ให้ AI ที่มีสิทธิ์เขียน GitHub สร้าง Branch ตามชื่อนี้จาก main ก่อนเปิดลิงก์ CEO ส่วนตัว · ห้ามโพสต์ลิงก์ลง GitHub');
+  });
+ }
  async function activateCEO(){
   const params=new URLSearchParams(location.search),ticket=params.get('ceo_ticket');
   if(!ticket)return;
@@ -229,6 +245,7 @@ import {FULL_REPOS} from './repositories.js';
  function setup(){
   $('orgw-create-form').addEventListener('submit',createRoom);
   $('orgw-owner-invite-form').addEventListener('submit',createCEOInvite);
+  $('orgw-proof-form').addEventListener('submit',prepareGithubProof);
   $('orgw-setup-form').addEventListener('submit',initializeDb);
   $('orgw-invite-form').addEventListener('submit',invite);
   $('orgw-message-form').addEventListener('submit',message);
