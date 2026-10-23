@@ -64,6 +64,14 @@ export async function workApi(request,{token,allowedRepo=null,claim=null,fetcher
    const branches=await gh(root+'/branches?per_page=100');
    return send({repo:OWNER+'/'+repo,branches:branches.filter(b=>branchOk(b.name)&&(!claim||manager(claim.role)||b.name.startsWith(taskPrefix(claim)))).map(b=>({name:b.name,head_sha:b.commit?.sha})),truncated:branches.length===100});
   }
+  if(route==='/api/v1/work/tree'&&verb==='GET'){
+   const branch=url.searchParams.get('branch'),path=url.searchParams.get('path')||'';
+   if(!branchOk(branch)||(path&&!pathOk(path)))return send({error:'invalid_branch_or_path'},400);
+   const entries=await gh(root+'/contents'+(path?'/'+encPath(path):'')+'?ref='+encodeURIComponent(branch));
+   if(!Array.isArray(entries))return send({error:'path_not_directory'},422);
+   return send({repo:OWNER+'/'+repo,branch,path,entries:entries.slice(0,1000).map(i=>
+    ({name:i.name,path:i.path,type:i.type,size:i.size,sha:i.sha,url:i.html_url})),truncated:entries.length>1000});
+  }
   if(route==='/api/v1/work/file'&&verb==='GET'){
    const branch=url.searchParams.get('branch'),path=url.searchParams.get('path');
    if(!branchOk(branch)||!pathOk(path))return send({error:'invalid_branch_or_path'},400);

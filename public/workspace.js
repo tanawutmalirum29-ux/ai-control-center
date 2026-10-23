@@ -29,13 +29,19 @@ async function refresh(){
  if(!FULL_REPOS.includes(el('repo-select').value)){state('ไม่รองรับ Repository');return;}
  state('กำลังโหลด Branch ของโปรเจกต์...');
  try{
-  const publicResponse=await fetch('/api/v1/source/branches?repo='+encodeURIComponent(repo()),{cache:'no-store'});
-  const data=await publicResponse.json();
-  if(!publicResponse.ok)throw Error(data.reason||data.error);
+  let data,via='GitHub สาธารณะ';
+  try{
+   const response=await fetch('/api/v1/source/branches?repo='+encodeURIComponent(repo()),{cache:'no-store'});
+   data=await response.json();if(!response.ok)throw Error(data.reason||data.error);
+  }catch(err){
+   if(!auth)throw err;
+   data=await api('branches?repo='+encodeURIComponent(repo()));
+   via='สิทธิ์ AI ที่ได้รับ';
+  }
   const choices=['main',...data.branches.filter(b=>b.name.startsWith('acc/')).map(b=>b.name)];
   for(const name of new Set(choices))el('ws-branches').add(new Option(name,name));
   el('ws-branches').value='main';
-  state('เลือก Branch อ่านไฟล์และโค้ดได้โดยไม่ต้อง Login · การ Commit ต้องมีสิทธิ์เว็บ');
+  state('โหลด Branch ผ่าน '+via+' · AI ที่ได้รับสิทธิ์ควรสร้าง Branch acc/ ของงานก่อนแก้โค้ด');
  }catch(e){state('โหลด Branch ไม่สำเร็จ: '+e.message+' · หากเป็น 403 ให้ตรวจการติดตั้ง GitHub App ในโปรเจกต์');}
 }
 function chosen(){if(!current())throw Error('กรุณาเลือก Branch ก่อน');return current();}
@@ -52,9 +58,13 @@ function setup(){
  el('ws-browse').addEventListener('click',ev=>handle(ev.currentTarget,async()=>{
   const branch=chosen(),path=el('ws-path').value.trim();
   const folder=path.endsWith('/')?path.slice(0,-1):path.includes('/')?path.slice(0,path.lastIndexOf('/')):'';
-  const url='/api/v1/source/tree?repo='+encodeURIComponent(repo())+'&ref='+encodeURIComponent(branch)+'&path='+encodeURIComponent(folder);
-  const result=await fetch(url,{cache:'no-store'}),data=await result.json();
-  if(!result.ok)throw Error(data.reason||data.error);
+  const query='repo='+encodeURIComponent(repo())+'&path='+encodeURIComponent(folder);
+  let data;
+  if(auth&&branch.startsWith('acc/'))data=await api('tree?'+query+'&branch='+encodeURIComponent(branch));
+  else{
+   const result=await fetch('/api/v1/source/tree?'+query+'&ref='+encodeURIComponent(branch),{cache:'no-store'});
+   data=await result.json();if(!result.ok)throw Error(data.reason||data.error);
+  }
   const list=el('ws-tree');list.replaceChildren();
   for(const item of data.entries){
    const b=document.createElement('button');b.type='button';b.className='secondary-button';
