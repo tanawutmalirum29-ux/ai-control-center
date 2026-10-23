@@ -4,6 +4,7 @@ import {OWNER, REPOS, WRITE_REPOS} from '../public/repositories.js';
 import {readApi} from './read-api.js';
 import {workApi} from './work-api.js';
 import {organizationApi} from './organization-api.js';
+import {opsApi} from './ops-api.js';
 const jsonHeaders = {'content-type':'application/json; charset=utf-8','cache-control':'no-store','x-content-type-options':'nosniff'};
 const publicHeaders = {...jsonHeaders,'access-control-allow-origin':'*','access-control-allow-methods':'GET, HEAD, OPTIONS'};
 const reply=(data,status=200,isPublic=false)=>new Response(JSON.stringify(data),{status,headers:isPublic?publicHeaders:jsonHeaders});
@@ -127,17 +128,21 @@ export default {async fetch(request,env){
  if(!path.startsWith('/api/'))return env.ASSETS.fetch(request);
  if(path.startsWith('/api/auth/'))return auth(request,env,url);
  if(path==='/api/v1/issues')return newIssue(request,env,url);
+ if(path.startsWith('/api/v1/ops/')){
+  const s=await session(request,env);
+  return opsApi(request,{token:s?.token});
+ }
  if(path.startsWith('/api/v1/work/')){
   const s=await session(request,env);
   return workApi(request,{token:s?.token});
  }
  if(path==='/api/v1/organization'||path==='/api/v1/organization/document')return organizationApi(request);
  if(path==='/api/health')return reply({
-  service:'AI Control Center',version:6,owner:OWNER,ai_provider:'none',
+  service:'AI Control Center',version:7,owner:OWNER,ai_provider:'none',
   repositories:REPOS.map(name=>OWNER+'/'+name),
   write_repositories:WRITE_REPOS.map(name=>OWNER+'/'+name),
   auth_ready:configured(env),qa_note:'PR QA and head SHA are inspected separately from repository CI',
-  endpoints:['/api/health','/api/auth/me','/api/v1/repositories','/api/v1/queue?repo=ARCANA-SURVIVOR','/api/v1/summary?repo=ARCANA-SURVIVOR','/api/v1/pr-qa?repo=ARCANA-SURVIVOR&pr=1','POST /api/v1/issues (owner only)','/api/v1/organization','/api/v1/organization/document?name=RULES.md','GET /api/v1/work/branches','GET /api/v1/work/file','POST /api/v1/work/branch','POST /api/v1/work/file','POST /api/v1/work/pr (draft only)']
+  endpoints:['/api/health','/api/auth/me','/api/v1/repositories','/api/v1/queue?repo=ARCANA-SURVIVOR','/api/v1/summary?repo=ARCANA-SURVIVOR','/api/v1/pr-qa?repo=ARCANA-SURVIVOR&pr=1','POST /api/v1/issues (owner only)','/api/v1/organization','/api/v1/organization/document?name=RULES.md','/api/v1/organization/bundle','/api/v1/ops/issues','/api/v1/ops/workflows','/api/v1/ops/runs','/api/v1/ops/jobs','POST /api/v1/ops/issue','POST /api/v1/ops/comment','POST /api/v1/ops/assign','POST /api/v1/ops/dispatch (Actions write required)','GET /api/v1/work/branches','GET /api/v1/work/file','POST /api/v1/work/branch','POST /api/v1/work/file','POST /api/v1/work/pr (draft only)']
  },200,true);
  return readApi(request);
 }};
