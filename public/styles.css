@@ -184,3 +184,12 @@
 .ai-quickbar button{border:1px solid var(--line);background:var(--panel2);color:var(--text);padding:8px 10px;border-radius:8px;font:600 12px/1.35 ui-monospace,monospace}
 .ai-quickbar button:hover{border-color:var(--accent);color:var(--accent)}
 @media(max-width:560px){.ai-quickbar{gap:6px;padding:8px}.ai-quickbar button{flex:1 1 125px}.ai-quickbar strong{flex:1 1 100%}}
+
+/* OWNER-only Git branch cleanup, compact enough for desktop agents and mobile. */
+.cleanup-stats{display:flex;align-items:stretch;gap:10px;flex-wrap:wrap;margin:12px 0}
+.cleanup-stats>.cleanup-metric{flex:1 1 160px;min-width:125px;border:1px solid var(--line);border-radius:10px;background:var(--panel2);padding:10px;margin:0}
+.cleanup-stats .cleanup-metric strong{font-size:30px}
+#branch-status{white-space:pre-wrap;overflow-wrap:anywhere;font-family:ui-monospace,monospace}
+#branch-login[hidden],#branch-stop[hidden]{display:none!important}
+#branch-login{margin:8px 0 12px;max-width:max-content}
+@media(max-width:560px){.cleanup-stats>.cleanup-metric{min-width:100px;flex-basis:100px}.cleanup-stats .cleanup-metric strong{font-size:23px}}
