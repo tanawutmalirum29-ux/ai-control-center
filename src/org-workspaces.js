@@ -95,8 +95,9 @@ async function nextTask(db,room,actor,to,title,description){
 // D1 only supports one SQL statement per prepared query. Do not rely on multiline exec()
  // when first initializing an empty production database.
 async function initializeSchema(db){
- const statements=ORG_SCHEMA.split(';').map(chunk=>chunk.split('\n')
-  .filter(line=>!line.trimStart().startsWith('--')).join('\n').trim()).filter(Boolean);
+ // Remove comment lines *before* semicolon splitting: a comment can contain ';'.
+ const uncommented=ORG_SCHEMA.split('\n').filter(line=>!line.trimStart().startsWith('--')).join('\n');
+ const statements=uncommented.split(';').map(chunk=>chunk.trim()).filter(Boolean);
  for(const statement of statements)await db.prepare(statement).run();
  return statements.length;
 }
