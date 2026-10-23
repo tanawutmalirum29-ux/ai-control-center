@@ -30,6 +30,7 @@
       <p class="side-label">WORKSPACE</p>
       <nav class="navigation" aria-label="เมนูหลัก">
  <button class="nav-item active" data-view="workspace" type="button"><span>⌘</span> แก้โค้ด (ไม่ต้องล็อกอิน)</button>
+ <button class="nav-item" data-view="operations" type="button"><span>▣</span> Operations / ลบ Issues</button>
  <button class="nav-item" data-view="issue" type="button"><span>☷</span> อ่าน Issue / PR ในเว็บ</button>
  <button class="nav-item" data-view="ceo" type="button"><span>♛</span> CEO Dashboard</button>
  <button class="nav-item" data-view="orgrooms" type="button"><span>▦</span> พื้นที่องค์กร / ข้อความ M</button>
@@ -40,7 +41,7 @@
  <details class="nav-advanced">
   <summary>เครื่องมือเพิ่มเติม</summary>
   <div class="nav-advanced-items">
-   <button class="nav-item" data-view="operations" type="button"><span>▣</span> Issues / Actions</button>
+   
    <button class="nav-item" data-view="agents" type="button"><span>◈</span> AI Work Queue</button>
    <button class="nav-item" data-view="pulls" type="button"><span>⑂</span> Pull Requests</button>
    <button class="nav-item" data-view="issues" type="button"><span>☰</span> Issues ทั้งหมด</button>
@@ -58,6 +59,14 @@
       </header>
       <main id="main-content">
         <div class="status-line"><span class="pill"><span class="live-dot"></span> LIVE GITHUB DATA</span><span id="load-state" aria-live="polite">กำลังเตรียมข้อมูล...</span></div>
+<nav class="ai-quickbar" aria-label="AI Operator flow">
+ <strong>AI FLOW</strong>
+ <button type="button" data-view="issue">1 · อ่าน Issue / PR</button>
+ <button type="button" data-view="workspace">2 · แก้โค้ด</button>
+ <button type="button" data-view="orgrooms">3 · ข้อความองค์กร M</button>
+ <button type="button" data-view="qa">4 · ตรวจ QA</button>
+ <button type="button" data-view="operations">Issues · ลบถาวร</button>
+</nav>
         
 <section class="view" id="view-ceo">
  <div class="section-title"><div><h2>CEO Dashboard</h2><p>AI CEO ตรวจงาน แต่งตั้งคน แจกงาน และส่งให้ QA · OWNER ส่งต่อแค่ข้อความสั้น</p></div><button type="button" id="ceo-refresh" class="secondary-button">↻ โหลดงานจริง</button></div>
@@ -389,7 +398,25 @@
   <p>GitHub App จะต้องติดตั้งใน Repository ที่เลือก · ใช้สิทธิ์บัญชีเจ้าของเท่านั้น (ยังไม่มีบัญชี AI แยกแต่ละตัว) · การแต่งตั้งใน Issue ยังต้องส่งคำสั่งไปยัง AI จริง</p>
   <p id="ops-notice" class="small-note" aria-live="polite">เปิดเมนูนี้เพื่ออ่านข้อมูลงาน</p>
  </div>
- <div class="two-col">
+ <section class="panel cleanup-panel" id="cleanup-panel" aria-label="Permanent Issue cleanup">
+ <div class="section-title"><div><h3>ลบ GitHub Issues ถาวร — OWNER ONLY</h3>
+ <p>สำหรับ Repository ที่เลือกด้านบน · ลบทั้ง Open และ Closed จริง · ไม่ใช่ Close และไม่รวม Pull Requests</p></div>
+ <button id="cleanup-preview" type="button" class="secondary-button">1. ตรวจรายการ (Preview)</button></div>
+ <p class="small-note" id="cleanup-owner" aria-live="polite">ตรวจสิทธิ์ OWNER…</p>
+ <a id="cleanup-login" class="primary-button" href="/api/auth/login">เชื่อมต่อ GitHub ในฐานะ OWNER เพื่อเปิดสิทธิ์ลบ</a>
+ <div class="cleanup-metric"><strong id="cleanup-count" aria-live="polite">—</strong><span>Issues (Open + Closed)</span></div>
+ <div class="cleanup-scroll" id="cleanup-sample" aria-label="รายการที่จะลบ"></div>
+ <button id="cleanup-copy" type="button" class="secondary-button" disabled>คัดลอก Preview JSON สำหรับ AI</button>
+ <p class="small-note">ลบ Issue และบทสนทนาอย่างถาวร แต่ไม่ลบ Pull Requests · หมายเลข Issue ของ GitHub ไม่รีเซ็ตกลับเป็น #1</p>
+ <div class="cleanup-verify">
+ <label for="cleanup-confirm">2. พิมพ์ <code>DELETE owner/repo</code> โดยใช้ชื่อ Repository เต็ม
+ <input id="cleanup-confirm" autocomplete="off" spellcheck="false" placeholder="DELETE tanawutmalirum29-ux/ชื่อ-repo"/></label>
+ <label class="ops-check"><input type="checkbox" id="cleanup-agree"/> ฉันต้องการลบ Issues ทั้งหมดอย่างถาวร และยอมรับว่าเรียกคืนจาก GitHub ไม่ได้</label>
+ <div class="cleanup-actions"><button type="button" class="danger-button" id="cleanup-delete" disabled>3. ลบทั้งหมดแบบถาวร</button>
+ <button type="button" class="secondary-button" id="cleanup-stop" hidden>หยุดหลัง Batch นี้</button></div></div>
+ <p id="cleanup-status" class="small-note" role="status" aria-live="polite">กด Preview เพื่อตรวจสอบก่อนลบ</p>
+</section>
+<div class="two-col">
   <section class="panel">
    <h3>สร้างงาน / AP-ROLE ในโปรเจกต์</h3>
    <p class="small-note">ระบบจะฝัง PROJECT_REPO, ORG_WORKSPACE_REPO, STAGING_REPO และ SHA กฎองค์กรใน Issue โดยอัตโนมัติ</p>
@@ -428,23 +455,7 @@
    <p class="small-note">การ Assign เป็นการมอบหมายให้บัญชี GitHub ไม่ใช่การสร้างตัว AI หรือเริ่มเซสชันของ AI อัตโนมัติ</p>
   </section>
  </div>
- <section class="panel cleanup-panel" id="cleanup-panel" aria-label="Permanent Issue cleanup">
- <div class="section-title"><div><h3>ลบ GitHub Issues ถาวร — OWNER ONLY</h3>
- <p>สำหรับ Repository ที่เลือกด้านบน · ลบทั้ง Open และ Closed จริง · ไม่ใช่ Close และไม่รวม Pull Requests</p></div>
- <button id="cleanup-preview" type="button" class="secondary-button">1. ตรวจรายการ (Preview)</button></div>
- <p class="small-note" id="cleanup-owner" aria-live="polite">ตรวจสิทธิ์ OWNER…</p>
- <div class="cleanup-metric"><strong id="cleanup-count" aria-live="polite">—</strong><span>Issues (Open + Closed)</span></div>
- <div class="cleanup-scroll" id="cleanup-sample" aria-label="รายการที่จะลบ"></div>
- <button id="cleanup-copy" type="button" class="secondary-button" disabled>คัดลอก Preview JSON สำหรับ AI</button>
- <p class="small-note">ลบ Issue และบทสนทนาอย่างถาวร แต่ไม่ลบ Pull Requests · หมายเลข Issue ของ GitHub ไม่รีเซ็ตกลับเป็น #1</p>
- <div class="cleanup-verify">
- <label for="cleanup-confirm">2. พิมพ์ <code>DELETE owner/repo</code> โดยใช้ชื่อ Repository เต็ม
- <input id="cleanup-confirm" autocomplete="off" spellcheck="false" placeholder="DELETE tanawutmalirum29-ux/ชื่อ-repo"/></label>
- <label class="ops-check"><input type="checkbox" id="cleanup-agree"/> ฉันต้องการลบ Issues ทั้งหมดอย่างถาวร และยอมรับว่าเรียกคืนจาก GitHub ไม่ได้</label>
- <div class="cleanup-actions"><button type="button" class="danger-button" id="cleanup-delete" disabled>3. ลบทั้งหมดแบบถาวร</button>
- <button type="button" class="secondary-button" id="cleanup-stop" hidden>หยุดหลัง Batch นี้</button></div></div>
- <p id="cleanup-status" class="small-note" role="status" aria-live="polite">กด Preview เพื่อตรวจสอบก่อนลบ</p>
-</section>
+ 
 <section class="panel">
   <h3>GitHub Actions — Workflows และผลทดสอบ</h3>
   <p class="small-note">ดู Workflow Runs และ Jobs พร้อม Commit SHA จริงได้ · การกดรัน Workflow ต้องมี Actions: Write และใช้ได้เฉพาะ Branch งาน acc/</p>
