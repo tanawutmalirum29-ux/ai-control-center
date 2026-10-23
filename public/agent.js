@@ -9,12 +9,12 @@ import {OWNER, FULL_REPOS} from './repositories.js';
  const actions={READY:'เริ่มงาน',IN_PROGRESS:'ติดตามงานเดิม',WAITING_QA:'ส่งตรวจ QA',QA_BLOCK:'รายงานสิ่งที่บล็อก',PAUSED:'ตรวจเหตุผลที่พัก',APPOINTED:'เปิดงานในเว็บ',UNCLASSIFIED:'ตรวจสถานะก่อน'};
  const colors={READY:'good',IN_PROGRESS:'wait',WAITING_QA:'wait',QA_BLOCK:'bad',PAUSED:'bad',APPOINTED:'wait',UNCLASSIFIED:'wait'};
  function instruction(repo,task){
-  const target=task?`Issue #${task.number}: ${task.title}\n${task.url}\nสถานะ: ${task.status} (${task.source})`:'ตรวจสถานะงานล่าสุด เลือกเฉพาะงาน READY ที่ยังไม่มีผู้รับผิดชอบและไม่ซ้ำ';
+  const target=task?`Issue #${task.number}: ${task.title}\nรายละเอียดเต็มอ่านใน Control Center ตามลิงก์ด้านล่าง\nสถานะ: ${task.status} (${task.source})`:'ตรวจสถานะงานล่าสุด เลือกเฉพาะงาน READY ที่ยังไม่มีผู้รับผิดชอบและไม่ซ้ำ';
   const rule=task?.status==='READY'?'ตรวจว่ามีผู้รับงานแล้วหรือไม่ก่อนลงมือ':task?.status==='IN_PROGRESS'?'ติดตามผู้รับงานเดิม ห้ามเริ่มซ้ำ':task?.status==='WAITING_QA'?'ตรวจหลักฐาน QA ห้าม Merge หากยังไม่ผ่าน':task?.status==='QA_BLOCK'?'รายงานจุด Block ห้าม Merge':task?.status==='PAUSED'?'ห้ามเริ่มงานจนกว่าจะปลดพัก':task?.status==='APPOINTED'?'งานนี้สามารถตรวจโค้ดและทำต่อผ่าน Workspace ได้โดยไม่ต้องมี AP-ROLE หากผู้สั่งมอบหมายแล้ว':'ไม่ทราบสถานะที่ยืนยันได้ ต้องตรวจ Issue ก่อนเริ่ม';
-  return ['AI CONTROL CENTER / MN','Repository: https://github.com/'+repo,target,rule,
+  return ['AI CONTROL CENTER / MN','Control Center: https://ai-control-center.tanawutmalirum29.workers.dev/?repo='+encodeURIComponent(repo.split('/')[1])+(task?'&issue='+task.number:''),target,rule,
    'หากเป็นงานในองค์กรให้อ่าน RULES.md ของ ai-organization-hub; งานอิสระไม่ต้องมีตำแหน่งองค์กร',
-   'ORG_WORKSPACE_REPO: https://github.com/'+OWNER+'/ai-organization-hub',
-   'STAGING_REPO: https://github.com/'+OWNER+'/Staging_area',
+   'กฎองค์กรและเอกสารอ่านจากเมนู กฎองค์กร บน AI Control Center',
+   'โปรเจกต์และแหล่งสำรองให้เข้าผ่านเมนูของ Control Center ก่อน ไม่ต้องเปิด GitHub เพื่ออ่าน Issue',
    'ตรวจ Repository, main SHA และขอบเขตงานที่ผู้สั่งระบุ ไม่ต้องลงทะเบียน AI หรือเชื่อม GitHub',
    'เปิด Control Center > แก้โค้ด สร้าง Branch acc/ แล้วอ่านไฟล์ แก้ Commit และส่ง Draft PR',
    'รายงานผลสั้นพร้อม Branch, Commit SHA และ PR','ต้องมี QA ตรงกับ PR และ head SHA ก่อน Merge','ห้ามลบ Repository หรือข้าม QA โดยไม่ได้รับอนุมัติ'].join('\n');
@@ -29,7 +29,7 @@ import {OWNER, FULL_REPOS} from './repositories.js';
   for(const task of tasks){
    const row=document.createElement('div');row.className='agent-task';
    const info=document.createElement('div');info.className='agent-task-info';
-   const title=document.createElement('a');title.textContent='#'+task.number+' · '+task.title;title.href=task.url;title.target='_blank';title.rel='noopener noreferrer';
+   const title=document.createElement('a');title.textContent='#'+task.number+' · '+task.title;title.href='/?repo='+encodeURIComponent(repo.split('/')[1])+'&issue='+task.number;
    const tag=document.createElement('span');tag.className='status-tag '+(colors[task.status]||'wait');tag.textContent=task.status;
    tag.title=task.source==='label'?'จาก GitHub Label':'ไม่พบ Label ระบุสถานะ';
    const small=document.createElement('small');small.textContent=task.role+' · '+(task.source==='label'?'Label ยืนยัน':'ยังไม่ยืนยันสถานะ')+' · '+new Date(task.updated_at).toLocaleDateString('th-TH');
