@@ -237,7 +237,11 @@
   </section>
   <details class="ws-full-editor"><summary>ตัวแก้ไขทั้งไฟล์ (ทางเลือกสำหรับไฟล์ที่อ่านได้ครบ)</summary>
   <label>ตัวแก้ไขไฟล์ข้อความ UTF-8 (ไม่เกิน 200 KB)<textarea id="ws-content" rows="13" spellcheck="false" placeholder="เลือก Branch และอ่านไฟล์เดิมก่อนแก้ไข"></textarea></label>
-  <div class="workspace-control"><button type="button" id="ws-save" class="primary-button">บันทึก Commit ลง Branch</button></div>
+  <div class="workspace-control">
+   <button type="button" id="ws-preview-file" class="secondary-button">1. ตรวจ Diff และ SHA ก่อนบันทึก</button>
+   <button type="button" id="ws-save" class="primary-button" disabled>2. ยืนยัน Commit ตาม Diff</button>
+  </div>
+  <pre id="ws-file-diff" class="detail-plaintext" aria-live="polite" style="white-space:pre-wrap;overflow-wrap:anywhere;max-height:500px;overflow:auto">ยังไม่ได้ตรวจ Diff</pre>
   </details>
   <p id="ws-notice" class="small-note" aria-live="polite">เลือกโปรเจกต์และสร้าง Branch งานได้เลย</p>
  </div>
