@@ -193,3 +193,23 @@
 #branch-login[hidden],#branch-stop[hidden]{display:none!important}
 #branch-login{margin:8px 0 12px;max-width:max-content}
 @media(max-width:560px){.cleanup-stats>.cleanup-metric{min-width:100px;flex-basis:100px}.cleanup-stats .cleanup-metric strong{font-size:23px}}
+
+/* Click-select maintenance: buttons instead of typed confirmations. */
+.cleanup-pickbar{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:14px 0 10px}
+.cleanup-pickbar strong{font-variant-numeric:tabular-nums;font-size:12px;color:var(--accent);margin-left:auto}
+.cleanup-select-list{max-height:340px;margin:0 0 12px;overscroll-behavior:contain}
+.cleanup-option{display:flex;gap:12px;align-items:center;min-height:48px;padding:10px 12px;border-bottom:1px solid var(--line);cursor:pointer;user-select:none}
+.cleanup-option:hover{background:#1b2b3d}
+.cleanup-option:has(input:checked){background:rgba(109,224,191,.10)}
+.cleanup-option input[type=checkbox]{width:19px;height:19px;flex:0 0 19px;accent-color:var(--accent);cursor:pointer}
+.cleanup-option-info{display:block;min-width:0;overflow-wrap:anywhere}
+.cleanup-option-info strong{display:block;font-size:12px;line-height:1.5;color:var(--text);font-weight:700}
+.cleanup-option-info small{display:block;font-size:11px;line-height:1.5;color:var(--muted);margin-top:3px}
+.cleanup-locked{cursor:not-allowed;opacity:.52}
+.cleanup-locked input{cursor:not-allowed!important}
+.cleanup-final{border:1px solid #ce6171;background:#301921;padding:16px;border-radius:12px;margin:12px 0}
+.cleanup-final[hidden]{display:none!important}
+.cleanup-final strong{font-size:15px;line-height:1.4}
+.cleanup-final p{margin:9px 0 14px;line-height:1.6;color:#f3c9cf;overflow-wrap:anywhere}
+.cleanup-pickbar button{min-height:40px}
+@media(max-width:560px){.cleanup-pickbar button{flex:1 1 auto}.cleanup-pickbar strong{flex:1 1 100%;margin-left:0}.cleanup-select-list{max-height:290px}.cleanup-option{padding:11px 9px}}
