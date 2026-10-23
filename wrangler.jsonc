@@ -3,6 +3,11 @@
   "main": "./src/worker.js",
   "compatibility_date": "2026-10-23",
   "workers_dev": true,
+  // After creating D1 in Cloudflare and running migrations/0001_org_workspaces.sql,
+  // add the real database ID using the Cloudflare dashboard or uncomment this binding:
+  // "d1_databases": [
+  //   { "binding": "ORG_DB", "database_name": "ai-control-center-orgs", "database_id": "REPLACE_WITH_REAL_D1_UUID" }
+  // ],
   "assets": {
     "directory": "./public",
     "binding": "ASSETS"

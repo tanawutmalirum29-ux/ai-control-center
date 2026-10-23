@@ -144,3 +144,13 @@
 .ws-quick-editor .ws-line-tools label{max-width:150px}
 .ws-source-line{cursor:pointer}
 .ws-source-line:hover,.ws-source-line:focus-visible{background:rgba(117,175,217,.12);outline:1px solid var(--line)}
+
+/* D1-backed, issue-free organization rooms; keep visual hierarchy with existing panels */
+.orgw-form{margin-top:16px;display:grid;gap:10px}
+.orgw-scroll{display:grid;gap:9px;max-height:560px;overflow:auto;overflow-wrap:anywhere}
+.orgw-item{padding:12px;border:1px solid var(--line);border-radius:10px;background:var(--panel2);white-space:pre-wrap}
+.orgw-item p{margin:6px 0;white-space:pre-wrap;overflow-wrap:anywhere}
+#view-orgrooms label{display:block;margin:10px 0;font-size:13px}
+#view-orgrooms input,#view-orgrooms textarea,#view-orgrooms select{display:block;width:100%;margin-top:6px;padding:10px;min-width:0;background:var(--panel2);color:var(--text);border:1px solid var(--line);border-radius:9px}
+#view-orgrooms .panel{margin-bottom:15px}
+#orgw-room-list{display:grid;gap:10px}

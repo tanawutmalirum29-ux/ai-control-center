@@ -19,6 +19,7 @@
 <script type="module" src="./ceo.js"></script>
 <script type="module" src="./delegation.js"></script>
 <script type="module" src="./issue-reader.js"></script>
+<script type="module" src="./org-workspace.js"></script>
 </head>
 <body>
   <div class="shell">
@@ -29,6 +30,7 @@
  <button class="nav-item active" data-view="workspace" type="button"><span>⌘</span> แก้โค้ด (ไม่ต้องล็อกอิน)</button>
  <button class="nav-item" data-view="issue" type="button"><span>☷</span> อ่าน Issue / PR ในเว็บ</button>
  <button class="nav-item" data-view="ceo" type="button"><span>♛</span> CEO Dashboard</button>
+ <button class="nav-item" data-view="orgrooms" type="button"><span>▦</span> พื้นที่องค์กร / ข้อความ M</button>
  <button class="nav-item" data-view="mywork" type="button"><span>◇</span> งานของ AI</button>
  <button class="nav-item" data-view="qa" type="button"><span>✓</span> QA Center</button>
  <button class="nav-item" data-view="relay" type="button"><span>⇄</span> Relay Inbox</button>
@@ -271,6 +273,81 @@
  </div>
  <div class="note-box"><strong>การใช้กับ ChatGPT Work</strong><p>AI ที่ได้รับอนุญาตให้ใช้ Cloud Browser สามารถกรอกและกดปุ่มในพื้นที่ทำงานนี้ได้ แต่ระบบยังไม่มี AI ทำงานภายในเว็บโดยตัวมันเอง และไม่ได้ใช้ OpenAI API เสียเงิน</p></div>
 </section>
+
+<section class="view hidden" id="view-orgrooms">
+ <div class="section-title">
+  <div><h2>พื้นที่ทำงานองค์กร</h2><p>ห้องแยกรอบ CEO · ข้อความ M00001 · งาน T00001 · ไม่ใช้ GitHub Issues สำหรับคุยกัน</p></div>
+  <button id="orgw-refresh" type="button" class="secondary-button">↻ โหลดพื้นที่</button>
+ </div>
+ <p id="orgw-status" class="small-note" aria-live="polite">กำลังตรวจสิทธิ์ห้ององค์กร...</p>
+ <div class="panel" id="orgw-create">
+  <h3>เปิดพื้นที่องค์กรใหม่ — CEO</h3>
+  <p class="small-note">เฉพาะ OWNER ที่ล็อกอินหรือ CEO ที่เปิดเซสชันแต่งตั้งแบบลงลายเซ็นแล้ว · ข้อมูลอยู่ใน Cloudflare D1</p>
+  <form id="orgw-create-form">
+   <label>ชื่อรอบองค์กร<input id="orgw-title" maxlength="120" required placeholder="ARCANA — Astra polishing / CEO รอบใหม่"/></label>
+   <label>เป้าหมายภารกิจ<textarea id="orgw-mission" rows="3" maxlength="4000" required placeholder="อธิบายเป้าหมายและเกณฑ์ตรวจรับ"/></label>
+   <button id="orgw-create-btn" type="submit" class="primary-button">สร้างพื้นที่องค์กรใหม่</button>
+  </form>
+ </div>
+ <div class="panel">
+  <h3>พื้นที่องค์กรที่เข้าถึงได้ในโปรเจกต์นี้</h3>
+  <div id="orgw-room-list"><p class="small-note">กำลังโหลดห้อง...</p></div>
+ </div>
+ <div class="panel">
+  <h3>ห้องที่เลือก</h3>
+  <p id="orgw-summary" class="small-note">ยังไม่เลือกพื้นที่องค์กร</p>
+  <div id="orgw-access" hidden>
+   <label>ลิงก์เปิดห้องนี้ (ไม่ใช่ลิงก์รับสิทธิ์)<input id="orgw-link" readonly spellcheck="false"/></label>
+   <p id="orgw-share-repo" class="small-note"></p>
+   <button id="orgw-close" type="button" class="secondary-button">ปิดรอบองค์กร (อ่านอย่างเดียว)</button>
+  </div>
+ </div>
+ <div id="orgw-current" hidden>
+  <div class="panel">
+   <h3>สมาชิกและตำแหน่ง</h3>
+   <div id="orgw-members" class="orgw-scroll"></div>
+   <form id="orgw-invite-form" class="orgw-form">
+    <div class="workspace-grid">
+     <label>ชื่อช่องตำแหน่ง<input id="orgw-slot" maxlength="40" required placeholder="ENGINEER-A1"/></label>
+     <label>บทบาท<select id="orgw-role">
+      <option value="DIR">DIR</option><option value="TL">TL</option><option value="ENGINEER">ENGINEER</option>
+      <option value="QA-REVIEWER">QA-REVIEWER</option><option value="PROJECT-LEAD">PROJECT-LEAD</option>
+     </select></label>
+    </div>
+    <button id="orgw-invite" type="submit" class="secondary-button">สร้างลิงก์เชิญ AI</button>
+    <label>ลิงก์รับตำแหน่ง (เป็นความลับ ส่งให้เฉพาะแชทที่ได้รับแต่งตั้ง)
+     <textarea id="orgw-invite-url" rows="3" readonly spellcheck="false"></textarea>
+    </label>
+   </form>
+  </div>
+  <div class="panel">
+   <h3>ข้อความภายในองค์กร — M00001, M00002, ...</h3>
+   <div id="orgw-messages" class="orgw-scroll" aria-live="polite"></div>
+   <button id="orgw-more" type="button" class="secondary-button" disabled>อ่านข้อความถัดไป</button>
+   <form id="orgw-message-form" class="orgw-form">
+    <div class="workspace-grid">
+     <label>ส่งถึง<input id="orgw-to" required placeholder="DIR-A หรือ ALL" maxlength="40"/></label>
+     <label>ข้อความองค์กร<input id="orgw-message" required maxlength="4000" placeholder="MN: ตรวจงานตาม SHA ล่าสุด" spellcheck="false"/></label>
+    </div>
+    <button id="orgw-send" type="submit" class="primary-button">ส่งข้อความเข้าห้อง (ออกเลข M อัตโนมัติ)</button>
+   </form>
+  </div>
+  <div class="panel">
+   <h3>บัตรงานภายในองค์กร — T00001, T00002, ...</h3>
+   <div id="orgw-tasks" class="orgw-scroll"></div>
+   <form id="orgw-task-form" class="orgw-form">
+    <div class="workspace-grid">
+     <label>หัวข้องาน<input id="orgw-task-title" required maxlength="200" placeholder="ปรับอนิเมชัน Astra"/></label>
+     <label>มอบหมายให้<input id="orgw-task-to" required maxlength="40" placeholder="ENGINEER-A1"/></label>
+    </div>
+    <label>รายละเอียดงาน<input id="orgw-task-body" maxlength="3000" spellcheck="false" placeholder="ขอบเขตงาน / QA / SHA"/></label>
+    <button id="orgw-task-send" type="submit" class="secondary-button">เพิ่มงานในห้ององค์กร</button>
+   </form>
+  </div>
+ </div>
+ <p class="small-note">OWNER ส่ง MN หาแต่ละแชทเองตามเดิม · เว็บเก็บข้อความและงานแยกตามรอบ CEO · GitHub ยังใช้เฉพาะ Source, PR และ CI</p>
+</section>
+
 <section class="view hidden" id="view-organization">
  <div class="section-title"><div><h2>องค์กร AI และกฎกลาง</h2><p>อ่านกฎจริงจาก ai-organization-hub/main ตาม SHA</p></div><button id="org-refresh" type="button" class="secondary-button">↻ อ่านกฎล่าสุด</button></div>
  <div class="panel"><h3>Source of Truth</h3><p id="org-status" class="small-note" aria-live="polite">เปิดเมนูเพื่อโหลดกฎ</p><p>กฎในหน้านี้ใช้เป็นเอกสารอ้างอิง ยังไม่ใช่ตัวบังคับสิทธิ์ AI รายคน</p><div id="org-documents" class="org-documents"></div></div>
