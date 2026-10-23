@@ -4,6 +4,21 @@ const ORG='tanawutmalirum29-ux/ai-organization-hub';
 const FILES=['README.md','COMMANDS.md','RULES.md'];
 const TTL=120000,STALE=900000;
 const cache=new Map(),inflight=new Map();
+const edgeKey=new Request('https://ai-control-center.tanawutmalirum29.workers.dev/__internal_org_policy_cache_v6');
+async function loadEdge(edge){
+ if(!edge)return null;
+ try{
+  const response=await edge.match(edgeKey);
+  if(!response)return null;
+  const entry=await response.json();
+  return entry&&Number.isFinite(entry.at)&&entry.value?.main_sha?entry:null;
+ }catch{return null;}
+}
+async function saveEdge(edge,entry){
+ if(!edge)return;
+ try{await edge.put(edgeKey,new Response(JSON.stringify(entry),{headers:{'cache-control':'public, max-age=900'}}));}catch{}
+}
+
 const headers={'content-type':'application/json; charset=utf-8','cache-control':'no-store','x-content-type-options':'nosniff','access-control-allow-origin':'*'};
 const json=(v,status=200)=>new Response(JSON.stringify(v),{status,headers});
 async function github(path,fetcher){
@@ -36,14 +51,16 @@ export async function loadOrg(fetcher=globalThis.fetch){
   notes:'Documents are information for external AI sessions; this endpoint does not activate or authenticate agents.'};
 }
 const k='org-v1';
-async function getOrg(fetcher,now){
- const time=now??Date.now(),found=cache.get(k);
- if(found&&time-found.at<TTL)return {...found.value,stale:false,cached_at:new Date(found.at).toISOString()};
+async function getOrg(fetcher,now,edge){
+ const time=now??Date.now(),found=cache.get(k)||await loadEdge(edge);
+ if(found&&time-found.at<TTL){cache.set(k,found);return {...found.value,stale:false,cached_at:new Date(found.at).toISOString()};}
  if(inflight.has(k))return inflight.get(k);
  const req=(async()=>{
   try{
    const value=await loadOrg(fetcher);
-   cache.set(k,{at:time,value});
+   const entry={at:time,value};
+   cache.set(k,entry);
+   await saveEdge(edge,entry);
    return {...value,stale:false,cached_at:new Date(time).toISOString()};
   }catch(err){
    if(found&&time-found.at<STALE)return {...found.value,stale:true,warning:String(err.message||'github_unavailable'),cached_at:new Date(found.at).toISOString()};
@@ -53,14 +70,14 @@ async function getOrg(fetcher,now){
  inflight.set(k,req);
  try{return await req;}finally{inflight.delete(k);}
 }
-export async function organizationApi(request,{fetcher=globalThis.fetch,now}={}){
+export async function organizationApi(request,{fetcher=globalThis.fetch,now,edge=globalThis.caches?.default}={}){
  const url=new URL(request.url);
  if(request.method!=='GET'&&request.method!=='HEAD')return json({error:'read_only'},405);
  if(!['/api/v1/organization','/api/v1/organization/document'].includes(url.pathname))return json({error:'not_found'},404);
  const file=url.pathname.endsWith('/document')?url.searchParams.get('name'):null;
  if(file&&!FILES.includes(file))return json({error:'document_not_allowed'},400);
  try{
-  const data=await getOrg(fetcher,now);
+  const data=await getOrg(fetcher,now,edge);
   if(file){const d=data.docs[file];return json({repository:data.repository,main_sha:data.main_sha,stale:data.stale,warning:data.warning||null,...d});}
   return json({repository:data.repository,main_sha:data.main_sha,source:data.source,
    fetched_at:data.fetched_at,cached_at:data.cached_at,stale:data.stale,warning:data.warning||null,
