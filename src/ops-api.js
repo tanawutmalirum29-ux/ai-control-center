@@ -47,7 +47,11 @@ async function gh(path,token,fetcher,method='GET',body){
     ...(body?{'content-type':'application/json'}:{})},
    signal:ctrl.signal,body:body?JSON.stringify(body):undefined});
   const payload=response.status===204?{}:await response.json().catch(()=>({}));
-  if(!response.ok){const err=new Error('github_'+response.status);err.status=response.status;throw err;}
+  if(!response.ok){
+   const err=new Error('github_'+response.status);err.status=response.status;
+   err.githubMessage=typeof payload.message==='string'?payload.message.slice(0,300):null;
+   throw err;
+  }
   return payload;
  }finally{clearTimeout(time);}
 }
@@ -171,7 +175,7 @@ export async function opsApi(request,{token,allowedRepo=null,claim=null,fetcher=
   return make({error:'not_found_or_method_not_allowed'},405);
  }catch(error){
   const status=error.status||502;
-  return make({error:'github_operation_failed',github_status:status,
+  return make({error:'github_operation_failed',github_status:status,github_message:error.githubMessage||null,
    hint:status===403?'GitHub App lacks repository permission or installation':status===404?'Resource not found or repository not installed':status===422?'GitHub validation failed; check inputs/duplicate permission':'GitHub request failed',
    write_result:'UNCONFIRMED_CHECK_GITHUB_BEFORE_RETRY'},status===403?403:status===404?404:status===422?422:502);
  }
