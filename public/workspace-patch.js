@@ -52,6 +52,19 @@
   const data=await fetchWork('file-lines?'+query);
   view={...s,sha:data.sha,total_lines:data.total_lines,lines:data.lines,start:data.start,end:data.end};
   listLines(data);
+  if(all){
+   // A single "Read all" click must prepare BOTH the line reader and the editable textarea.
+   // Compare blob SHAs so an intervening GitHub commit cannot silently mix versions.
+   const full=await fetchWork('file?'+new URLSearchParams(s));
+   if(full.sha!==data.sha||full.path!==s.path||full.branch!==s.branch||
+     typeof full.content!=='string'){
+    view=null;invalidate();
+    throw Error('SHA ไม่ตรงกันระหว่างตัวอ่านและตัวแก้ไข · กรุณาอ่านไฟล์อีกครั้ง');
+   }
+   window.dispatchEvent(new CustomEvent('acc:workspace-file-loaded',{detail:{
+    ...s,sha:full.sha,content:full.content
+   }}));
+  }
   set((all?'อ่านไฟล์ครบทุกบรรทัดสำเร็จ':'อ่านช่วงบรรทัดสำเร็จ')+
    ' · '+data.start+'–'+data.end+' จาก '+data.total_lines+
    ' บรรทัด · การแก้จะผูกกับ SHA ของไฟล์นี้');

@@ -78,6 +78,20 @@ async function handle(button,fn){
  }
 }
 function setup(){
+ window.addEventListener('acc:workspace-file-loaded',event=>{
+  const data=event.detail||{},branch=current(),path=el('ws-path').value.trim();
+  if(!data.repo||data.repo!==repo()||data.branch!==branch||data.path!==path||
+    typeof data.content!=='string'||!/^[a-f0-9]{40}$/.test(data.sha||'')){
+   state('ไฟล์เปลี่ยนระหว่างอ่าน · กรุณาโหลดใหม่');return;
+  }
+  fileSha=data.sha;lastFile=data.path;loadedContent=data.content;
+  el('ws-content').value=data.content;
+  resetFullPreview();
+  el('view-workspace').querySelector('.ws-full-editor').open=true;
+  el('ws-loaded-file').textContent='ซิงก์จาก อ่านทั้งไฟล์ · '+data.content.split('\n').length+
+   ' บรรทัด · '+data.content.length+' ตัวอักษร · '+data.branch+' · Blob SHA '+data.sha;
+  state('อ่านทั้งไฟล์สำเร็จ · เติมเนื้อหาใน Editor พร้อม SHA '+data.sha+' แล้ว · แก้ไขและดู Diff ได้');
+ });
  const nav=document.querySelector('.navigation [data-view="workspace"]');if(!nav)return;
  nav.addEventListener('click',refresh);
  el('repo-select').addEventListener('change',()=>{if(!el('view-workspace').classList.contains('hidden'))refresh();});
