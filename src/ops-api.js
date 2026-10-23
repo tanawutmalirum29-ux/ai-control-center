@@ -36,7 +36,7 @@ export function makeTaskBody(input,repo){
   'SCHEDULE_REQUEST: EVERY_1_HOUR',
   'SCHEDULE_TARGET: RECEIVING_CHAT_ONLY',
   'SCHEDULE_CHECK: https://ai-control-center.tanawutmalirum29.workers.dev/api/v1/mission?repo='+encodeURIComponent(repo)+'&fresh=1'];
- return required.join('\\n')+'\\n\\nเมื่อได้รับ AP-ROLE/MN ในแชท ChatGPT นี้: ตรวจ Scheduled Tasks ของตัวเองก่อน ถ้ายังไม่มีให้ตั้งงานประจำทุก 1 ชั่วโมงหนึ่งงานสำหรับโปรเจกต์และตำแหน่งนี้ โดยอ่านข้อความใหม่จาก Control Center ตรวจ Issue และสิทธิ์ก่อนเริ่มงาน ไม่ทำงานซ้ำ ไม่รวม main ก่อน QA ผ่าน; ไม่มีงานใหม่ไม่ต้องแจ้งเตือน ถ้าตั้ง Task ไม่ได้ให้รายงาน BLOCKED เท่านั้น การสร้าง Issue ไม่ได้สร้าง Scheduled Task หรือเริ่มต้นแชทเอง';
+ return required.join('\n')+'\n\nเมื่อได้รับ AP-ROLE/MN ในแชท ChatGPT นี้: ตรวจ Scheduled Tasks ของตัวเองก่อน ถ้ายังไม่มีให้ตั้งงานประจำทุก 1 ชั่วโมงหนึ่งงานสำหรับโปรเจกต์และตำแหน่งนี้ โดยอ่านข้อความใหม่จาก Control Center ตรวจ Issue และสิทธิ์ก่อนเริ่มงาน ไม่ทำงานซ้ำ ไม่รวม main ก่อน QA ผ่าน; ไม่มีงานใหม่ไม่ต้องแจ้งเตือน ถ้าตั้ง Task ไม่ได้ให้รายงาน BLOCKED เท่านั้น การสร้าง Issue ไม่ได้สร้าง Scheduled Task หรือเริ่มต้นแชทเอง';
 }
 export function validAction(request,origin){
  return request.headers.get('origin')===origin&&request.headers.get('content-type')?.toLowerCase().startsWith('application/json');
