@@ -48,3 +48,6 @@ Production URL: https://ai-control-center.tanawutmalirum29.workers.dev/
 - API is public **read only**. Write methods blocked (405); GitHub repositories allowlisted; no OpenAI API, GitHub tokens, or Cloudflare secrets.
 - This is not an autonomous background GPT agent. ChatGPT writes to GitHub only through separately authorized GitHub connector. Do not put tokens in public frontend.
 - Worker deployment: npx wrangler deploy (static assets in public, Worker entrypoint in src).
+
+## GitHub App owner login (V3)
+See [docs/GITHUB_APP_SETUP.md](docs/GITHUB_APP_SETUP.md). After adding Client ID and Client Secret as Cloudflare Secrets, owner login and direct Issue creation are available **only for ai-control-center**. No paid OpenAI API used.
