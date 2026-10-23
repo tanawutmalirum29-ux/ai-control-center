@@ -59,3 +59,22 @@
 #view-operations .agent-task-info{max-width:100%;overflow-wrap:anywhere}
 #view-operations .agent-task-info a{color:var(--accent);overflow-wrap:anywhere}
 @media(max-width:620px){#view-operations .org-document{flex-direction:column;align-items:stretch}}
+
+/* CEO-first compact work board. All content is textContent, not untrusted HTML. */
+#view-ceo .ceo-form label,#view-mywork .ceo-filter{display:block;margin:12px 0 10px;color:var(--muted);font-size:12px;font-weight:650}
+#view-ceo .ceo-form input,#view-ceo .ceo-form select,#view-ceo .ceo-form textarea,
+#view-mywork .ceo-filter select,#relay-text{display:block;width:100%;min-width:0;margin-top:7px;padding:12px;border:1px solid #314059;border-radius:10px;color:var(--text);background:var(--panel2)}
+#view-ceo .ceo-form textarea,#relay-text{resize:vertical}
+#view-ceo .ceo-form button{margin-top:10px}
+.ceo-stats{margin:14px 0 20px}
+.ceo-list{display:grid;gap:9px;max-height:610px;overflow:auto;overscroll-behavior:contain;margin-top:14px}
+.ceo-task{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:13px 15px;border:1px solid var(--line);border-radius:12px;background:var(--panel2);min-width:0}
+.ceo-task-main{min-width:0;flex:1}
+.ceo-task-title{display:flex;align-items:center;flex-wrap:wrap;gap:8px;line-height:1.5;font-size:13px;font-weight:650}
+.ceo-link{color:var(--accent);overflow-wrap:anywhere;text-decoration:underline;text-underline-offset:2px}
+.ceo-meta{display:block;font-size:11px;color:var(--muted);line-height:1.65;margin-top:5px;overflow-wrap:anywhere}
+.ceo-state{font:600 10px/1.5 ui-monospace,monospace;border:1px solid var(--line);border-radius:20px;padding:2px 8px;color:var(--muted)}
+.ceo-actions{display:flex;flex-wrap:wrap;gap:8px;flex-shrink:0}
+.ceo-actions button{font-size:11px;padding:9px 10px}
+#view-ceo .small-note,#view-mywork .small-note,#view-relay .small-note{overflow-wrap:anywhere;line-height:1.7}
+@media(max-width:680px){.ceo-task{align-items:stretch;flex-direction:column}.ceo-actions{width:100%}.ceo-actions button{flex:1 1 110px}.ceo-stats{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}}

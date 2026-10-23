@@ -15,6 +15,7 @@
 <script type="module" src="./workspace.js"></script>
 <script type="module" src="./organization.js"></script>
 <script type="module" src="./operations.js"></script>
+<script type="module" src="./ceo.js"></script>
 </head>
 <body>
   <div class="shell">
@@ -22,7 +23,11 @@
       <a class="brand" href="./" aria-label="AI Control Center หน้าแรก"><span class="brand-mark">AI</span><span><strong>Control Center</strong><small>GitHub Operations</small></span></a>
       <p class="side-label">WORKSPACE</p>
       <nav class="navigation" aria-label="เมนูหลัก">
-        <button class="nav-item active" data-view="overview" type="button"><span>◫</span> ภาพรวม</button>
+        <button class="nav-item active" data-view="ceo" type="button"><span>♛</span> CEO Dashboard</button>
+        <button class="nav-item" data-view="mywork" type="button"><span>◇</span> งานของ AI</button>
+        <button class="nav-item" data-view="relay" type="button"><span>⇄</span> ส่งต่อ MN / AP-ROLE</button>
+        <p class="side-label">เครื่องมือเพิ่มเติม</p>
+        <button class="nav-item" data-view="overview" type="button"><span>◫</span> ภาพรวม</button>
         <button class="nav-item" data-view="issues" type="button"><span>☰</span> งาน / Issues</button>
         <button class="nav-item" data-view="pulls" type="button"><span>⑂</span> Pull Requests</button>
         <button class="nav-item" data-view="qa" type="button"><span>✓</span> QA &amp; Actions</button>
@@ -40,7 +45,86 @@
       </header>
       <main id="main-content">
         <div class="status-line"><span class="pill"><span class="live-dot"></span> LIVE GITHUB DATA</span><span id="load-state" aria-live="polite">กำลังเตรียมข้อมูล...</span></div>
-        <section class="view" id="view-overview">
+        
+<section class="view" id="view-ceo">
+ <div class="section-title"><div><h2>CEO Dashboard</h2><p>AI CEO ตรวจงาน แต่งตั้งคน แจกงาน และส่งให้ QA · OWNER ส่งต่อแค่ข้อความสั้น</p></div><button type="button" id="ceo-refresh" class="secondary-button">↻ โหลดงานจริง</button></div>
+ <p id="ceo-source" class="small-note" aria-live="polite">กำลังโหลดข้อมูล...</p>
+ <div class="stats ceo-stats">
+  <article class="stat"><span>OPEN TASKS</span><strong id="ceo-total">—</strong><small>Issues ในโปรเจกต์</small></article>
+  <article class="stat"><span>AWAITING RELAY</span><strong id="ceo-relay-count">—</strong><small>รอ OWNER ส่ง AP-ROLE</small></article>
+  <article class="stat"><span>QA BLOCK</span><strong id="ceo-qa-count">—</strong><small>งานติดขัด</small></article>
+  <article class="stat"><span>OPEN PRs</span><strong id="ceo-pr-count">—</strong><small>ยังไม่ใช่อนุมัติ Merge</small></article>
+ </div>
+ <p id="ceo-board-warning" class="small-note" aria-live="polite"></p>
+ <div class="two-col">
+  <section class="panel">
+   <h3>แต่งตั้งและแจกงานให้ AI</h3>
+   <p class="small-note">CEO สร้าง AP-ROLE ใน GitHub Issue จริง เว็บแนบกฎองค์กร/3 Repository ให้ · การออก Issue ไม่เรียก ChatGPT แชทใหม่เอง</p>
+   <p id="ceo-write-state" class="small-note" aria-live="polite">ตรวจสิทธิ์เขียน...</p>
+   <form id="ceo-appointment-form" class="ceo-form">
+    <label>ตำแหน่ง<select id="ceo-role">
+      <option value="CEO">CEO</option><option value="PROJECT-LEAD">PROJECT-LEAD</option>
+      <option value="ENGINEER" selected>ENGINEER</option><option value="CREATOR">CREATOR</option>
+      <option value="QA-REVIEWER">QA-REVIEWER</option><option value="COORDINATOR">COORDINATOR</option>
+    </select></label>
+    <label>รหัส AI / ชื่อผู้รับงาน<input id="ceo-slot" maxlength="40" placeholder="ENGINEER-VISUAL"/></label>
+    <label>ภารกิจหลักที่ CEO รับผิดชอบ<select id="ceo-parent"><option value="">เลือก CEO / Project Lead ภารกิจหลัก</option></select></label>
+    <p id="ceo-parent-note" class="small-note"></p>
+    <label>ชื่อภารกิจ<input id="ceo-title" maxlength="120" required placeholder="ปรับ Astra animation"/></label>
+    <label>รายละเอียดที่ต้องทำ<textarea id="ceo-scope" rows="3" maxlength="1800" placeholder="เป้าหมายและข้อห้ามของงาน"></textarea></label>
+    <label>ไฟล์ที่อนุญาตให้แก้<textarea id="ceo-paths" rows="2" maxlength="800" placeholder="src/visuals/*"></textarea></label>
+    <label>เกณฑ์ QA<textarea id="ceo-acceptance" rows="2" maxlength="1200" placeholder="Tests, Chromium/WebKit, PR head SHA"></textarea></label>
+    <button id="ceo-submit" type="submit" class="primary-button">สร้าง AP-ROLE ให้ AI</button>
+    <p id="ceo-create-state" class="small-note" aria-live="polite"></p>
+   </form>
+  </section>
+  <section class="panel">
+   <h3>ภาพรวมสมาชิกและงานค้าง</h3>
+   <p class="small-note">ข้อมูลบทบาทจาก Issue จริง ไม่ใช่ AI ที่ออนไลน์อยู่ (ตามกฎ Active ไม่เกิน 10 ต่อภารกิจ)</p>
+   <div id="ceo-task-list" class="ceo-list" aria-live="polite"></div>
+   <div class="workspace-control"><button id="ceo-to-organization" type="button" class="secondary-button">อ่านกฎองค์กรที่ฝังในเว็บ</button></div>
+  </section>
+ </div>
+ <section class="panel">
+  <h3>งานที่รอตรวจ PR / QA</h3><p class="small-note">เช็ก HEAD SHA ของ PR แต่ละรายการแยกจาก CI ล่าสุดของ Repository · ต้องมี QA อิสระก่อน Merge</p>
+  <p id="ceo-qa-status" class="small-note" aria-live="polite">เลือก PR เพื่อตรวจ QA</p>
+  <div id="ceo-pr-list" class="ceo-list"></div>
+ </section>
+</section>
+<section class="view hidden" id="view-mywork">
+ <div class="section-title"><div><h2>พื้นที่งานของ AI แต่ละตัว</h2><p>เลือกบทบาท ตรวจขอบเขต และเข้า Workspace แก้โค้ดจริง</p></div><button type="button" class="secondary-button" id="mywork-to-queue">ดู AI Work Queue</button></div>
+ <div class="panel">
+  <label class="ceo-filter">กรองบทบาท / งาน<select id="mywork-role">
+   <option value="ALL">ทุกบทบาท</option><option value="CEO">CEO</option><option value="PROJECT-LEAD">PROJECT LEAD</option>
+   <option value="ENGINEER">ENGINEER</option><option value="CREATOR">CREATOR</option>
+   <option value="QA-REVIEWER">QA</option><option value="COORDINATOR">COORDINATOR</option>
+  </select></label>
+  <p class="small-note">การเลือกบทบาทเป็นเพียงตัวกรองข้อมูล ยังไม่ใช่ระบบล็อกอินแยกแต่ละ AI</p>
+  <div id="mywork-list" class="ceo-list"></div>
+ </div>
+ <section class="panel">
+  <h3>งานที่เลือก</h3>
+  <p id="work-current" class="small-note">เลือกงานจากรายการด้านบน</p>
+  <p id="work-metadata" class="small-note"></p>
+  <div id="work-source"></div>
+  <p class="small-note">เปิดเมนูพื้นที่ทำงานเพื่อสร้าง Branch, อ่าน/แก้ไฟล์ และสร้าง Draft PR ตามสิทธิ์ที่ได้รับ</p>
+ </section>
+</section>
+<section class="view hidden" id="view-relay">
+ <div class="section-title"><div><h2>Relay Inbox — สำหรับ OWNER</h2><p>คุณทำเพียงคัดลอกหนึ่งบรรทัดไปส่งในแชท AI ที่รับงาน</p></div></div>
+ <div class="panel">
+  <h3>ข้อความ AP-ROLE ที่รอส่ง</h3>
+  <p class="small-note">เลือกงานแล้วกดคัดลอก ส่งข้อความให้แชท AI ผู้รับตามชื่อบน Issue · หลัง AI ได้รับ MN ให้ AI อ่านกฎและลงมือทำ</p>
+  <div id="relay-list" class="ceo-list"></div>
+ </div>
+ <div class="panel">
+  <h3>ข้อความที่ต้องส่งต่อ</h3>
+  <textarea id="relay-text" readonly rows="3" aria-label="ข้อความคำสั่งหนึ่งบรรทัด" placeholder="เลือกงานจากรายการก่อน"></textarea>
+  <div class="workspace-control"><button type="button" class="primary-button" id="relay-copy-current">คัดลอกหนึ่งบรรทัด</button></div>
+  <p id="relay-copy" class="small-note"></p><p id="relay-state" class="small-note" aria-live="polite"></p>
+ </div>
+</section>
+<section class="view hidden" id="view-overview">
           <div class="hero"><div class="hero-inner"><p class="eyebrow accent">MISSION CONTROL</p><h2>ติดตามทุกงาน<br><span>จากจุดเดียว</span></h2><p>สถานะงานจาก GitHub Labels และ QA ของ PR ตาม Head SHA — ไม่ใช้ OpenAI API และไม่เริ่ม AI ทำงานอัตโนมัติ</p><div class="hero-actions"><a id="hero-repo" class="primary-button" href="https://github.com" target="_blank" rel="noopener noreferrer">เปิด Repository ↗</a><button class="ghost-button" data-view="issues" type="button">ดูงานที่ค้าง →</button></div></div><div class="hero-art" aria-hidden="true"><span class="orbit orbit-1"></span><span class="orbit orbit-2"></span><span class="hero-core">&lt;/&gt;</span></div></div>
           <div class="stats"><article class="stat"><span>OPEN ISSUES*</span><strong id="metric-issues">—</strong><small>งานล่าสุดที่ยังเปิด</small></article><article class="stat"><span>OPEN PRs</span><strong id="metric-prs">—</strong><small>รายการที่รอรวม</small></article><article class="stat"><span>REPO LAST CI</span><strong id="metric-ci">—</strong><small id="metric-ci-note">GitHub Actions</small></article><article class="stat"><span>DEFAULT BRANCH</span><strong id="metric-branch">—</strong><small>Branch หลัก</small></article></div>
           <div class="two-col"><section class="panel"><div class="panel-header"><div><h3>Issues ที่ต้องติดตาม</h3><p>อัปเดตจาก Repository ที่เลือก</p></div><button class="text-button" data-view="issues" type="button">ดูทั้งหมด →</button></div><div id="overview-issues" class="item-list"><p class="empty">กำลังโหลด...</p></div></section><section class="panel"><div class="panel-header"><div><h3>Pull Requests</h3><p>ตรวจ CI และ Reviewer ของ PR เป้าหมาย ไม่อ้างอิง CI ของทั้ง Repo</p></div><button class="text-button" data-view="pulls" type="button">ดูทั้งหมด →</button></div><div id="overview-pulls" class="item-list"><p class="empty">กำลังโหลด...</p></div></section></div>
