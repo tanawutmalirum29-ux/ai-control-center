@@ -184,7 +184,9 @@ export async function orgWorkspaceApi(request,{db,owner=false,agent=null,fetcher
     // appointed by its verified CEO (or by authenticated OWNER).
     const existingRoom=await db.prepare('SELECT id FROM org_rooms WHERE repo=? LIMIT 1')
      .bind(repo).first();
-    if(existingRoom)return res({error:'github_proof_first_ceo_only',
+    const existingCEO=await db.prepare('SELECT id FROM org_creator_sessions WHERE repo=? LIMIT 1')
+     .bind(repo).first();
+    if(existingRoom||existingCEO)return res({error:'github_proof_first_ceo_only',
      hint:'Ask the active CEO for a successor invite, or sign in as OWNER'},403);
     const proofHash=await digest('CEO-GITHUB-PROOF:'+ticket);
     const ref='refs/heads/acc/ceo-bootstrap/'+stamp+'-'+proofHash;
