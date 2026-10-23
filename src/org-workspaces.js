@@ -112,6 +112,13 @@ export async function orgWorkspaceApi(request,{db,owner=false,agent=null}={}){
     tables:['org_rooms','org_members','org_messages','org_tasks','org_ceo_tickets','org_creator_sessions'],
     note:'Idempotent schema, GitHub Issues unaffected'});
   }
+  // D1 first-run initialization is idempotent; the OWNER does not have to create tables manually.
+  // The configured ORG_DB is pre-authorized via Cloudflare deployment, not public GitHub access.
+  try{await db.prepare('SELECT 1 FROM org_creator_sessions LIMIT 1').first();}
+  catch(error){
+   if(!/no such table/i.test(String(error))||typeof db.exec!=='function')throw error;
+   await db.exec(ORG_SCHEMA);
+  }
   const creator=await creatorSession(db,request);
   if(route==='/api/v1/org/ceo-invite'&&verb==='POST'){
    if(!owner)return res({error:'owner_session_required_to_appoint_ceo'},403);

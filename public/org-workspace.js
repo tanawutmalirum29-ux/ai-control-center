@@ -109,17 +109,25 @@ import {FULL_REPOS} from './repositories.js';
     for(const state of selectable){
      const option=make('option',state);option.value=state;option.selected=state===t.status;choices.append(option);
     }
+    const actions=make('div',undefined,'workspace-control');
+    let evidenceField=null;
+    if(identity?.role==='QA-REVIEWER'){
+     const label=make('label','QA evidence (SHA, CI, browser/visual regression)');
+     evidenceField=make('textarea');evidenceField.rows=3;evidenceField.maxLength=1000;
+     evidenceField.placeholder='ตัวอย่าง PR #99 HEAD 41a3... CI PASS Chromium + WebKit 5 ขนาด';
+     label.append(evidenceField);card.append(label);
+    }
     const save=make('button','บันทึกสถานะ','secondary-button');save.type='button';
     save.addEventListener('click',()=>busy(save,async()=>{
-     const evidence=identity?.role==='QA-REVIEWER'?prompt('QA อิสระ: ใส่หลักฐานการตรวจ CI, SHA และผลทดสอบก่อนอนุมัติ/ปฏิเสธ'):'';
-     if(identity?.role==='QA-REVIEWER'&&(!evidence||evidence.trim().length<12)){
+     const evidence=evidenceField?.value.trim()||'';
+     if(identity?.role==='QA-REVIEWER'&&evidence.length<12){
       status('QA ต้องระบุหลักฐานอย่างน้อย 12 ตัวอักษรก่อนตัดสิน');return;
      }
      await api('task-status','POST',{room_id:roomId,seq:t.seq,status:choices.value,evidence});
      await loadTasks();
      status(t.code+' เปลี่ยนเป็น '+choices.value);
     }));
-    const actions=make('div',undefined,'workspace-control');actions.append(choices,save);card.append(actions);
+    actions.append(choices,save);card.append(actions);
    }
    root.append(card);
   }

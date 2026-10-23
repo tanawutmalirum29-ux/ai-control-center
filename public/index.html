@@ -282,8 +282,10 @@
  </div>
  <p id="orgw-status" class="small-note" aria-live="polite">กำลังตรวจสิทธิ์ห้ององค์กร...</p>
  <div class="panel">
-  <h3>OWNER — แต่งตั้ง CEO เพื่อเริ่มองค์กรใหม่</h3>
-  <p class="small-note">OWNER เข้าสู่ระบบ GitHub ของตนครั้งเดียวเพื่อยืนยันสิทธิ์ แล้วสร้างลิงก์แต่งตั้ง CEO ใช้ได้ครั้งเดียวใน 24 ชั่วโมง · CEO ใช้ลิงก์เปิดเว็บและสร้างห้องเองโดยไม่ต้องล็อกอิน GitHub · <a href="/api/auth/login">OWNER เข้าสู่ระบบ</a></p>
+  <h3>ระบบแต่งตั้ง CEO (เฉพาะเริ่มต้นภารกิจ)</h3>
+  <p class="small-note">การสร้างตาราง D1 เป็นอัตโนมัติแล้ว · ลิงก์ CEO ต้องได้รับอนุญาตจาก OWNER ผ่านเซสชันที่ยืนยันตัวตนหรือสิทธิ์แต่งตั้งที่ตรวจสอบได้ เพื่อป้องกันผู้เยี่ยมชมสวมรอย CEO · <a href="/api/auth/login">เข้าระบบ OWNER เฉพาะเมื่อจำเป็นต้องออกลิงก์ CEO</a></p>
+  <details class="nav-advanced">
+   <summary>เครื่องมือตั้งค่าพิเศษ (ไม่จำเป็นสำหรับการทำงานประจำ)</summary>
   <form id="orgw-setup-form">
    <button id="orgw-setup-btn" type="submit" class="secondary-button">1. เริ่มต้นตาราง D1 (OWNER เท่านั้น · กดครั้งเดียว)</button>
   </form>
@@ -293,6 +295,7 @@
     <textarea id="orgw-owner-invite-url" rows="3" readonly spellcheck="false"></textarea>
    </label>
   </form>
+  </details>
  </div>
  <div class="panel" id="orgw-create">
   <h3>เปิดพื้นที่องค์กรใหม่ — CEO</h3>
