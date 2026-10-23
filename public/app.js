@@ -199,6 +199,6 @@ function setup() {
     try { await navigator.clipboard.writeText(task.title + '\n\n' + task.body); el('task-notice').textContent = 'คัดลอกคำสั่งแล้ว'; }
     catch { el('task-notice').textContent = 'คัดลอกไม่สำเร็จ กรุณาเปิดใน HTTPS และอนุญาต Clipboard'; }
   });
-  switchView('workspace'); loadProject();
+  switchView('orgrooms'); loadProject();
 }
 setup();
