@@ -88,7 +88,7 @@ import {OWNER,WRITE_REPOS} from './repositories.js';
    if(selected!==repo())throw Error('repository_changed_during_preview');
    render(data);
   }catch(e){snapshot=null;el('branch-count').textContent='—';show('ตรวจรายการไม่สำเร็จ: '+e.message);}
-  finally{el('branch-preview').disabled=!owner;}
+  finally{el('branch-preview').disabled=!owner||!WRITE_REPOS.includes(repo());}
  }
  async function erase(){
   if(el('branch-delete').disabled||!snapshot||busy)return;
@@ -125,7 +125,7 @@ import {OWNER,WRITE_REPOS} from './repositories.js';
      (data.total===0?' · คงเหลือ main เท่านั้น':' · '+(failure||'โปรดตรวจรายการที่เหลือ')));
    }
   }catch(e){show('ลบแล้ว '+n+' Branch แต่ยืนยันยอดคงเหลือไม่ได้: '+e.message);}
-  el('branch-preview').disabled=!owner;
+  el('branch-preview').disabled=!owner||!WRITE_REPOS.includes(repo());
  }
  function setup(){
   if(!el('branch-panel'))return;
