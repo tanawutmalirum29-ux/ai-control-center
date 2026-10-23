@@ -79,7 +79,7 @@
   const v=matchView(),number=Number(el('ws-quick-line').value);
   const source=view.lines.find(line=>line.number===number);
   if(!source)throw Error('ไม่พบบรรทัด '+number+' ในหน้าที่โหลด · กดอ่านทั้งไฟล์ก่อน');
-  el('ws-quick-new').value=source.text.replace(/^\\s*/,'');
+  el('ws-quick-new').value=source.text.replace(/^\s*/,'');
   invalidate();
   el('ws-quick-status').textContent='เลือกบรรทัด '+number+' แล้ว · แก้ในช่องสั้นด้านบนและกดตรวจ Diff';
  }
@@ -90,8 +90,8 @@
   const source=view.lines.find(line=>line.number===number);
   if(!source)throw Error('ไม่พบบรรทัดในชุดข้อมูลที่อ่าน · กดอ่านทั้งไฟล์ก่อน');
   const newText=el('ws-quick-new').value;
-  if(newText.includes('\\n')||newText.includes('\\r'))throw Error('ช่องสั้นแก้ได้หนึ่งบรรทัดเท่านั้น');
-  const indent=source.text.match(/^\\s*/)?.[0]||'';
+  if(newText.includes('\n')||newText.includes('\r'))throw Error('ช่องสั้นแก้ได้หนึ่งบรรทัดเท่านั้น');
+  const indent=source.text.match(/^\s*/)?.[0]||'';
   const replacement=indent+newText;
   if(source.text===replacement)throw Error('เนื้อหาใหม่เหมือนบรรทัดเดิม ไม่มี Diff');
   el('ws-lines-start').value=String(number);
