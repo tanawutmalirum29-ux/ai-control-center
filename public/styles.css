@@ -108,3 +108,23 @@
 #view-issue .detail-file{border:1px solid var(--line);padding:10px;border-radius:10px;margin:8px 0}
 #view-issue .detail-file summary{cursor:pointer;overflow-wrap:anywhere}
 #detail-form input,#detail-form select{width:100%;padding:11px;border-radius:8px;background:var(--panel2);color:var(--text);border:1px solid var(--line)}
+
+/* Stable, line-numbered browser-agent editor: small DOM chunks and explicit SHA-bound diff. */
+.ws-line-editor{margin:17px 0 19px;padding:16px;border:1px solid var(--line);border-radius:14px;background:var(--panel2)}
+.ws-line-editor h3{font-size:15px;margin:0 0 9px}
+.ws-line-tools{display:flex;gap:9px;align-items:end;flex-wrap:wrap;margin:13px 0}
+.ws-line-tools label{min-width:100px;flex:0 1 145px;font-size:12px}
+.ws-line-tools input,.ws-line-editor textarea{display:block;width:100%;min-width:0;margin-top:5px;border:1px solid var(--line);background:var(--panel);color:var(--text);padding:10px;border-radius:8px}
+.ws-line-editor textarea{resize:vertical;font:12px/1.6 ui-monospace,monospace;tab-size:2}
+.ws-source-list{margin:12px 0;max-height:530px;overflow:auto;border:1px solid var(--line);border-radius:9px;background:var(--panel)}
+.ws-source-line{display:grid;grid-template-columns:54px minmax(0,1fr);align-items:start;min-height:24px;font:12px/1.6 ui-monospace,SFMono-Regular,monospace;border-bottom:1px solid var(--line)}
+.ws-source-number{display:block;text-align:right;padding:3px 9px;color:var(--muted);user-select:none;border-right:1px solid var(--line)}
+.ws-source-code{display:block;min-width:0;padding:3px 10px;white-space:pre-wrap;overflow-wrap:anywhere}
+.ws-line-diff pre{white-space:pre-wrap;overflow-wrap:anywhere;max-height:300px;overflow:auto;padding:12px;border:1px solid var(--line);border-radius:8px;font:12px/1.6 ui-monospace,monospace}
+.ws-line-diff strong{display:block;margin:10px 0 5px}
+.ws-diff-before{background:rgba(220,90,90,.09)}
+.ws-diff-after{background:rgba(80,180,110,.10)}
+.ws-full-editor{border:1px solid var(--line);padding:12px;border-radius:10px;margin:13px 0}
+.ws-full-editor>summary{cursor:pointer;font-size:13px;font-weight:650}
+.ws-full-editor>label{display:block;margin:14px 0}
+@media(max-width:560px){.ws-line-editor{padding:10px}.ws-line-tools label{flex:1 1 105px}.ws-source-line{grid-template-columns:45px minmax(0,1fr)}}

@@ -13,6 +13,7 @@
 <script type="module" src="./agent.js"></script>
 <script type="module" src="./qa.js"></script>
 <script type="module" src="./workspace.js"></script>
+<script type="module" src="./workspace-patch.js"></script>
 <script type="module" src="./organization.js"></script>
 <script type="module" src="./operations.js"></script>
 <script type="module" src="./ceo.js"></script>
@@ -197,8 +198,35 @@
   <div class="workspace-grid"><label>หัวข้องาน<input id="ws-title" maxlength="120" placeholder="เช่น ปรับหน้าเกมมือถือ"/></label><div class="workspace-control"><button type="button" id="ws-create-branch" class="primary-button">+ สร้าง Branch งาน</button></div></div>
   <label>เลือกพื้นที่ทำงาน<select id="ws-branches" aria-label="Branch ที่ใช้ทำงาน"><option value="">ยังไม่มี Branch ที่เลือก</option></select></label>
   <div class="workspace-grid"><label>พาธไฟล์ที่จะแก้<input id="ws-path" maxlength="240" spellcheck="false" placeholder="src/game.js"/></label><div class="workspace-control"><button type="button" id="ws-browse" class="secondary-button">ดูไฟล์</button><button type="button" id="ws-load" class="secondary-button">อ่านไฟล์</button><button type="button" id="ws-new" class="secondary-button">ไฟล์ใหม่</button></div></div>
-  <div id="ws-tree" class="workspace-tree" aria-live="polite"></div><label>ตัวแก้ไขไฟล์ข้อความ UTF-8 (ไม่เกิน 200 KB)<textarea id="ws-content" rows="13" spellcheck="false" placeholder="เลือก Branch และอ่านไฟล์เดิมก่อนแก้ไข"></textarea></label>
+  <div id="ws-tree" class="workspace-tree" aria-live="polite"></div>
+  <section class="ws-line-editor" aria-label="อ่านและแก้ไขไฟล์เฉพาะช่วงบรรทัด">
+   <h3>แก้เฉพาะช่วงบรรทัด — สำหรับ AI/TinyFish</h3>
+   <p class="small-note">ไม่ต้องอ่านหรือส่ง YAML ทั้งไฟล์ในช่องข้อความ · เลือกไฟล์ แล้วดูทีละ 40 บรรทัด · แก้เฉพาะช่วงที่เลือก · ดู Diff ก่อนบันทึก · ตรวจ Blob SHA ล่าสุดอีกครั้งอัตโนมัติ</p>
+   <div class="ws-line-tools">
+    <label>เริ่มดูที่บรรทัด<input type="number" id="ws-lines-page" min="1" value="1"/></label>
+    <button id="ws-lines-read" class="secondary-button" type="button">อ่านบรรทัด</button>
+    <button id="ws-lines-prev" class="secondary-button" type="button">◀ ก่อนหน้า</button>
+    <button id="ws-lines-next" class="secondary-button" type="button">ถัดไป ▶</button>
+   </div>
+   <p class="small-note" id="ws-lines-sha">ยังไม่ได้โหลดไฟล์</p>
+   <div id="ws-lines-view" role="region" aria-label="รายการบรรทัดต้นฉบับพร้อมเลขบรรทัด" class="ws-source-list"></div>
+   <div class="ws-line-tools">
+    <label>บรรทัดเริ่ม<input type="number" id="ws-lines-start" min="1" placeholder="เช่น 40"/></label>
+    <label>บรรทัดสุดท้าย<input type="number" id="ws-lines-end" min="1" placeholder="เช่น 42"/></label>
+    <button id="ws-lines-copy" class="secondary-button" type="button">นำบรรทัดเดิมมาแก้</button>
+   </div>
+   <label>ข้อความใหม่สำหรับแทนที่ช่วงที่เลือก<textarea id="ws-lines-replacement" rows="7" spellcheck="false" placeholder="ระบบจะเติมข้อความเดิมเมื่อกด นำบรรทัดเดิมมาแก้ แล้วเปลี่ยนเฉพาะส่วนที่ต้องการ"></textarea></label>
+   <div class="workspace-control">
+    <button id="ws-lines-preview-btn" class="secondary-button" type="button">1. ดู Diff ก่อน Commit</button>
+    <button id="ws-lines-commit" class="primary-button" type="button" disabled>2. ยืนยัน Commit ตาม Diff</button>
+   </div>
+   <p id="ws-lines-status" class="small-note" aria-live="polite">เลือก Branch และไฟล์ แล้วกด อ่านบรรทัด ก่อน</p>
+   <div id="ws-lines-preview" class="ws-line-diff" aria-live="polite"></div>
+  </section>
+  <details class="ws-full-editor"><summary>ตัวแก้ไขทั้งไฟล์ (ทางเลือกสำหรับไฟล์ที่อ่านได้ครบ)</summary>
+  <label>ตัวแก้ไขไฟล์ข้อความ UTF-8 (ไม่เกิน 200 KB)<textarea id="ws-content" rows="13" spellcheck="false" placeholder="เลือก Branch และอ่านไฟล์เดิมก่อนแก้ไข"></textarea></label>
   <div class="workspace-control"><button type="button" id="ws-save" class="primary-button">บันทึก Commit ลง Branch</button></div>
+  </details>
   <p id="ws-notice" class="small-note" aria-live="polite">เลือกโปรเจกต์และสร้าง Branch งานได้เลย</p>
  </div>
  <div class="panel">
