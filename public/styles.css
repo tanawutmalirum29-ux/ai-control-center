@@ -78,3 +78,12 @@
 .ceo-actions button{font-size:11px;padding:9px 10px}
 #view-ceo .small-note,#view-mywork .small-note,#view-relay .small-note{overflow-wrap:anywhere;line-height:1.7}
 @media(max-width:680px){.ceo-task{align-items:stretch;flex-direction:column}.ceo-actions{width:100%}.ceo-actions button{flex:1 1 110px}.ceo-stats{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}}
+
+/* CEO-first navigation: five everyday screens, advanced GitHub tools collapsed. */
+.nav-advanced{margin-top:10px;border-top:1px solid var(--line);padding-top:9px}
+.nav-advanced summary{list-style:none;cursor:pointer;display:block;color:var(--muted);font-size:12px;font-weight:650;padding:12px 16px;border-radius:10px;user-select:none}
+.nav-advanced summary::-webkit-details-marker{display:none}
+.nav-advanced summary::after{content:'⌄';float:right}
+.nav-advanced[open] summary::after{content:'⌃'}
+.nav-advanced summary:hover,.nav-advanced summary:focus-visible{background:var(--panel2)}
+.nav-advanced-items{display:grid;gap:6px;padding-top:6px}
