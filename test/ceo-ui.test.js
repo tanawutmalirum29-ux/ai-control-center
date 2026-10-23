@@ -4,6 +4,7 @@ import {readFileSync} from 'node:fs';
 const read=path=>readFileSync(new URL('../'+path,import.meta.url),'utf8');
 test('CEO navigation is the default homepage with all handoff controls',()=>{
  const html=read('public/index.html'),app=read('public/app.js'),client=read('public/ceo.js');
+ const notes=read('public/agent-automation.js'),delegate=read('public/delegation.js'),agent=read('public/agent.js');
  assert.match(app,/switchView\('workspace'\); loadProject\(\)/);
  for(const tab of ['ceo','mywork','relay'])
   assert.ok(html.includes('data-view="'+tab+'"')&&html.includes('id="view-'+tab+'"'),tab);
@@ -15,6 +16,11 @@ test('CEO navigation is the default homepage with all handoff controls',()=>{
  assert.match(client,/\/api\/v1\/mission/);
  assert.match(client,/\/api\/v1\/ops\/issue/);
  assert.match(client,/AP-ROLE/);
+ assert.match(client,/\/api\/agent\/invite/);
+ assert.match(client,/relayLine\(/);
+ assert.match(notes,/Scheduled Task ทุก 1 ชั่วโมง/);
+ assert.match(delegate,/cadenceNote/);
+ assert.match(agent,/cadenceNote/);
  assert.match(html,/src="\.\/ceo\.js"/);
 });
 test('source browsing works without authenticated code writes',()=>{
