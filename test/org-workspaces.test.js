@@ -277,3 +277,17 @@ test('an existing organization blocks new Github proof CEOs, while successor inv
  assert.equal((await response.json()).error,'github_proof_first_ceo_only');
  assert.ok(requests.some(r=>r.sql.includes('SELECT id FROM org_rooms')));
 });
+
+test('an activated CEO prevents a second first-CEO proof even before a room is created',async()=>{
+ const ticket='e'.repeat(64),stamp=new Date().toISOString().slice(0,19).replace(/[-:]/g,'')+'Z';
+ const db={prepare(sql){return{
+  bind(){return this},
+  async first(){return sql.includes('SELECT id FROM org_creator_sessions')?{id:'already-initialized-ceo'}:null},
+  async run(){throw Error('must not mint second CEO')}
+ }}};
+ const response=await orgWorkspaceApi(post('ceo-activate',{
+  ticket,bootstrap_repo:'ARCANA-SURVIVOR',bootstrap_stamp:stamp
+ }),{db,fetcher:async()=>{throw Error('must not look up second proof')}});
+ assert.equal(response.status,403);
+ assert.equal((await response.json()).error,'github_proof_first_ceo_only');
+});
