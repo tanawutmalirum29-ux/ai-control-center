@@ -146,8 +146,8 @@
   <p class="small-note">สร้าง Branch แยกสำหรับแต่ละงาน ไม่เขียนทับ main โดยตรง · โปรเจกต์ที่ GitHub App ยังไม่ติดตั้งจะเข้าแก้ไขไม่ได้</p>
   <div class="workspace-grid"><label>หัวข้องาน<input id="ws-title" maxlength="120" placeholder="เช่น ปรับหน้าเกมมือถือ"/></label><div class="workspace-control"><button type="button" id="ws-create-branch" class="primary-button">+ สร้าง Branch งาน</button></div></div>
   <label>เลือกพื้นที่ทำงาน<select id="ws-branches" aria-label="Branch ที่ใช้ทำงาน"><option value="">ยังไม่มี Branch ที่เลือก</option></select></label>
-  <div class="workspace-grid"><label>พาธไฟล์ที่จะแก้<input id="ws-path" maxlength="240" spellcheck="false" placeholder="src/game.js"/></label><div class="workspace-control"><button type="button" id="ws-load" class="secondary-button">อ่านไฟล์</button><button type="button" id="ws-new" class="secondary-button">ไฟล์ใหม่</button></div></div>
-  <label>ตัวแก้ไขไฟล์ข้อความ UTF-8 (ไม่เกิน 45 KB)<textarea id="ws-content" rows="13" spellcheck="false" placeholder="เลือก Branch และอ่านไฟล์เดิมก่อนแก้ไข"></textarea></label>
+  <div class="workspace-grid"><label>พาธไฟล์ที่จะแก้<input id="ws-path" maxlength="240" spellcheck="false" placeholder="src/game.js"/></label><div class="workspace-control"><button type="button" id="ws-browse" class="secondary-button">ดูไฟล์</button><button type="button" id="ws-load" class="secondary-button">อ่านไฟล์</button><button type="button" id="ws-new" class="secondary-button">ไฟล์ใหม่</button></div></div>
+  <div id="ws-tree" class="workspace-tree" aria-live="polite"></div><label>ตัวแก้ไขไฟล์ข้อความ UTF-8 (ไม่เกิน 45 KB)<textarea id="ws-content" rows="13" spellcheck="false" placeholder="เลือก Branch และอ่านไฟล์เดิมก่อนแก้ไข"></textarea></label>
   <div class="workspace-control"><button type="button" id="ws-save" class="primary-button">บันทึก Commit ลง Branch</button></div>
   <p id="ws-notice" class="small-note" aria-live="polite">ล็อกอิน GitHub แล้วเลือก Branch</p>
  </div>

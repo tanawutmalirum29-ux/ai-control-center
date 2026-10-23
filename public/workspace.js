@@ -14,20 +14,28 @@ async function api(path,method='GET',body){
 }
 async function login(){
  try{const response=await fetch('/api/auth/me',{cache:'no-store'});const me=await response.json();
- auth=Boolean(me.authenticated);status(auth?'ล็อกอินแล้ว: '+me.login+' · ใช้ GitHub App ตามสิทธิ์ Repository':'กรุณากด “เชื่อมต่อ GitHub” ที่ด้านบนก่อน');
+ const agentResponse=await fetch('/api/agent/me',{credentials:'same-origin',cache:'no-store'});
+ const agent=await agentResponse.json();
+ auth=Boolean(me.authenticated||(agent.agent_authenticated&&agent.agent_repo===repo()));
+ status(me.authenticated?'OWNER · ใช้ GitHub App ทำงาน':
+  auth?'AI · เซสชันโปรเจกต์นี้พร้อมทำงาน':
+  'โหมดอ่านโค้ด GitHub สาธารณะ · ยังไม่มีสิทธิ์ Commit/สร้าง PR');
  }catch{auth=false;status('ไม่สามารถตรวจสถานะ GitHub Login ได้')}
  for(const id of ['ws-create-branch','ws-save','ws-pr-create'])el(id).disabled=!auth;
 }
 async function refresh(){
  fileSha='';lastFile='';el('ws-branches').replaceChildren(new Option('เลือกพื้นที่ (Branch)',''));
  await login();
- if(!auth)return;
  if(!FULL_REPOS.includes(el('repo-select').value)){state('ไม่รองรับ Repository');return;}
  state('กำลังโหลด Branch ของโปรเจกต์...');
  try{
-  const data=await api('branches?repo='+encodeURIComponent(repo()));
-  for(const branch of data.branches)el('ws-branches').add(new Option(branch.name,branch.name));
-  state(data.branches.length?'เลือก Branch ที่มีอยู่ หรือสร้างพื้นที่ใหม่':'ยังไม่มี Branch acc/ · สร้างพื้นที่ทำงานใหม่ได้');
+  const publicResponse=await fetch('/api/v1/source/branches?repo='+encodeURIComponent(repo()),{cache:'no-store'});
+  const data=await publicResponse.json();
+  if(!publicResponse.ok)throw Error(data.reason||data.error);
+  const choices=['main',...data.branches.filter(b=>b.name.startsWith('acc/')).map(b=>b.name)];
+  for(const name of new Set(choices))el('ws-branches').add(new Option(name,name));
+  el('ws-branches').value='main';
+  state('เลือก Branch อ่านไฟล์และโค้ดได้โดยไม่ต้อง Login · การ Commit ต้องมีสิทธิ์เว็บ');
  }catch(e){state('โหลด Branch ไม่สำเร็จ: '+e.message+' · หากเป็น 403 ให้ตรวจการติดตั้ง GitHub App ในโปรเจกต์');}
 }
 function chosen(){if(!current())throw Error('กรุณาเลือก Branch ก่อน');return current();}
@@ -41,6 +49,23 @@ function setup(){
  nav.addEventListener('click',refresh);
  el('repo-select').addEventListener('change',()=>{if(!el('view-workspace').classList.contains('hidden'))refresh();});
  el('ws-refresh').addEventListener('click',refresh);
+ el('ws-browse').addEventListener('click',ev=>handle(ev.currentTarget,async()=>{
+  const branch=chosen(),path=el('ws-path').value.trim();
+  const folder=path.endsWith('/')?path.slice(0,-1):path.includes('/')?path.slice(0,path.lastIndexOf('/')):'';
+  const url='/api/v1/source/tree?repo='+encodeURIComponent(repo())+'&ref='+encodeURIComponent(branch)+'&path='+encodeURIComponent(folder);
+  const result=await fetch(url,{cache:'no-store'}),data=await result.json();
+  if(!result.ok)throw Error(data.reason||data.error);
+  const list=el('ws-tree');list.replaceChildren();
+  for(const item of data.entries){
+   const b=document.createElement('button');b.type='button';b.className='secondary-button';
+   b.textContent=(item.type==='dir'?'▸ ':'• ')+item.path;
+   b.addEventListener('click',()=>{
+    el('ws-path').value=item.type==='dir'?item.path+'/':item.path;
+    state(item.type==='dir'?'กดดูรายการไฟล์อีกครั้งเพื่อเปิดโฟลเดอร์':'กดอ่านไฟล์เพื่อเปิดโค้ด');
+   });list.append(b);
+  }
+  state('โหลดรายการไฟล์ '+data.entries.length+' รายการจาก '+branch);
+ }));
  el('ws-branches').addEventListener('change',()=>{fileSha='';lastFile='';state('เลือก Branch แล้ว · อ่านไฟล์ก่อนแก้เพื่อรับ SHA ที่ตรงกัน');});
  el('ws-create-branch').addEventListener('click',e=>handle(e.currentTarget,async()=>{
   const title=el('ws-title').value.trim();
@@ -55,7 +80,12 @@ function setup(){
   const branch=chosen(),path=el('ws-path').value.trim();
   if(!path)throw Error('กรอกพาธไฟล์');
   state('กำลังอ่านไฟล์...');
-  const data=await api('file?repo='+encodeURIComponent(repo())+'&branch='+encodeURIComponent(branch)+'&path='+encodeURIComponent(path));
+  let data;
+  if(auth&&branch.startsWith('acc/'))data=await api('file?repo='+encodeURIComponent(repo())+'&branch='+encodeURIComponent(branch)+'&path='+encodeURIComponent(path));
+  else{
+   const response=await fetch('/api/v1/source/file?repo='+encodeURIComponent(repo())+'&ref='+encodeURIComponent(branch)+'&path='+encodeURIComponent(path));
+   data=await response.json();if(!response.ok)throw Error(data.reason||data.error);
+  }
   el('ws-content').value=data.content;fileSha=data.sha;lastFile=path;
   state('อ่านไฟล์สำเร็จ · Blob SHA '+fileSha.slice(0,10)+' · พร้อมแก้ไข');
  }));
@@ -65,6 +95,7 @@ function setup(){
   if(!path)throw Error('กรอกพาธไฟล์ก่อน');
   if(fileSha&&lastFile!==path)throw Error('พาธเปลี่ยน กรุณาอ่านไฟล์ใหม่ก่อนบันทึก');
   if(new TextEncoder().encode(content).length>45000)throw Error('ไฟล์ใหญ่กว่า 45 KB');
+  if(!auth||!branch.startsWith('acc/'))throw Error('การแก้ไขต้องมีสิทธิ์และใช้ Branch acc/ เท่านั้น');
   state('กำลัง Commit ไปยัง '+branch+' (ไม่แตะ main)...');
   const payload={repo:repo(),branch,path,content};
   if(fileSha)payload.sha=fileSha;
