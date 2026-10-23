@@ -194,9 +194,13 @@ import {FULL_REPOS} from './repositories.js';
  async function createCEOInvite(e){
   e.preventDefault();
   await busy($('orgw-owner-invite-btn'),async()=>{
-   const result=await api('ceo-invite','POST',{repo:repo()});
+   const body={repo:repo()};
+   if(roomId&&identity?.role==='CEO'&&identity.status==='ACTIVE')body.from_room_id=roomId;
+   const result=await api('ceo-invite','POST',body);
    $('orgw-owner-invite-url').value=result.invite_url;
-   status('OWNER สร้างลิงก์แต่งตั้ง CEO แล้ว · ส่งลิงก์ให้ CEO แชทใหม่โดยตรง (ใช้ได้ครั้งเดียว/24 ชั่วโมง)');
+   const source=result.issued_by==='EXISTING_ROOM_CEO'?'บันทึก M สำหรับการแต่งตั้ง CEO คนถัดไปแล้ว':
+    'สร้างลิงก์ CEO จากสิทธิ์ที่ตรวจสอบแล้ว';
+   status(source+' · CEO สามารถตั้งทีม/สร้างห้องต่อได้เอง · ส่งลิงก์ส่วนตัวไปยังแชท CEO ใหม่');
   });
  }
  async function joinFromLink(){
