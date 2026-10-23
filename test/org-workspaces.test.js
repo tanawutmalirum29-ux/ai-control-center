@@ -131,7 +131,7 @@ test('room creator tickets cannot be redeemed twice',async()=>{
 });
 test('GitHub writer can bootstrap first CEO without OWNER login or an Issue; bearer remains private',async()=>{
  const ticket='b'.repeat(64);
- const stamp=new Date().toISOString().replace(/[-:]/g,'').replace(/\\.\\d{3}/,'');
+ const stamp=new Date().toISOString().replace(/[-:]/g,'').replace('.000Z','Z');
  const proofHash=createHash('sha256').update('ACC_ORG_MEMBER_V1:CEO-GITHUB-PROOF:'+ticket).digest('hex');
  const ref='refs/heads/acc/ceo-bootstrap/'+stamp+'-'+proofHash;
  let created=false,used=false,lookups=0;
@@ -153,7 +153,7 @@ test('GitHub writer can bootstrap first CEO without OWNER login or an Issue; bea
  }}};
  const fetcher=async url=>{
   lookups++;
-  assert.match(url,/github\\.com\\/repos\\/tanawutmalirum29-ux\\/ARCANA-SURVIVOR\\/git\\/ref\\/heads\\/acc\\/ceo-bootstrap\\//);
+  assert.ok(url.includes('/repos/tanawutmalirum29-ux/ARCANA-SURVIVOR/git/ref/heads/acc/ceo-bootstrap/'));
   assert.equal(url.includes(ticket),false,'GitHub must only see the hashed proof');
   return {ok:true,json:async()=>({ref,object:{type:'commit',sha:'a'.repeat(40)}})};
  };
@@ -169,7 +169,7 @@ test('GitHub writer can bootstrap first CEO without OWNER login or an Issue; bea
  assert.equal(wrong.status,400,'invalid repo never receives bootstrap');
 });
 test('public visitor cannot bootstrap a CEO from a missing or malformed GitHub proof',async()=>{
- const ticket='d'.repeat(64),stamp=new Date().toISOString().replace(/[-:]/g,'').replace(/\\.\\d{3}/,'');
+ const ticket='d'.repeat(64),stamp=new Date().toISOString().replace(/[-:]/g,'').replace('.000Z','Z');
  const args={ticket,bootstrap_repo:'ARCANA-SURVIVOR',bootstrap_stamp:stamp};
  const fail=await orgWorkspaceApi(post('ceo-activate',args),{db:emptyDB,
   fetcher:async()=>({ok:false,status:404})});
