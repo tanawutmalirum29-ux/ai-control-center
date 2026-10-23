@@ -54,6 +54,31 @@ test('anonymous write is not available when secret is absent, and main is never 
  assert.equal(blocked.status,400);
 });
 
+test('AI QA can inspect CI and job status through Worker, no GitHub page or login',async()=>{
+ const previous=globalThis.fetch,seen=[];
+ globalThis.fetch=async(url,init={})=>{
+  const path=new URL(url).pathname;
+  seen.push({path,auth:init.headers?.authorization});
+  if(path.endsWith('/actions/runs?per_page=50'))return new Response(JSON.stringify({
+   workflow_runs:[{id:987,name:'QA',status:'completed',conclusion:'success',
+    head_sha:'a'.repeat(40),head_branch:'main'}]}),{status:200});
+  if(path.endsWith('/actions/runs/987/jobs?per_page=100'))return new Response(JSON.stringify({
+   jobs:[{id:4,name:'browser-qa',status:'completed',conclusion:'success',steps:[]}]}),{status:200});
+  throw Error('unexpected upstream '+path);
+ };
+ try{
+  for(const [urlPart,expected] of [['runs',{key:'runs',name:'QA'}],
+   ['jobs?run=987',{key:'jobs',name:'browser-qa'}]]){
+   const join=urlPart.includes('?')?'&':'?';
+   const resp=await worker.fetch(new Request(base+'/api/v1/ops/'+urlPart+join+'repo='+repo),env);
+   const value=await resp.json();
+   assert.equal(resp.status,200,JSON.stringify(value));
+   assert.equal(value[expected.key][0].name,expected.name);
+  }
+  assert.equal(seen.length,2);
+  assert.ok(seen.every(x=>x.auth==='Bearer '+token));
+ }finally{globalThis.fetch=previous}
+});
 test('retired Issue, comment and role invitation endpoints reject all direct callers before GitHub',async()=>{
  const paths=['/api/v1/issues','/api/v1/queue','/api/v1/detail','/api/agent/invite',
   '/api/v1/ops/issue','/api/v1/ops/issues','/api/v1/ops/comment',
