@@ -261,3 +261,19 @@ test('proof-based CEO bootstrap rejects wrong repository proof and invalid proof
   fetcher:async()=>{throw Error('GitHub temporarily unavailable')}});
  assert.equal(unavailable.status,503);
 });
+
+test('an existing organization blocks new Github proof CEOs, while successor invites remain the authorized path',async()=>{
+ const ticket='f'.repeat(64),stamp=new Date().toISOString().slice(0,19).replace(/[-:]/g,'')+'Z';
+ const requests=[];
+ const db={prepare(sql){return{
+  bind(...values){requests.push({sql,values});return this},
+  async first(){if(sql.includes('SELECT id FROM org_rooms'))return {id:'existing-room'};return null},
+  async run(){throw Error('bootstrap must not write after finding existing CEO room')}
+ }}};
+ const response=await orgWorkspaceApi(post('ceo-activate',{
+  ticket,bootstrap_repo:'ARCANA-SURVIVOR',bootstrap_stamp:stamp
+ }),{db,fetcher:async()=>{throw Error('must not contact GitHub once room exists')}});
+ assert.equal(response.status,403);
+ assert.equal((await response.json()).error,'github_proof_first_ceo_only');
+ assert.ok(requests.some(r=>r.sql.includes('SELECT id FROM org_rooms')));
+});
