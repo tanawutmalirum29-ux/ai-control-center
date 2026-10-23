@@ -165,19 +165,27 @@ export async function workApi(request,{token,allowedRepo=null,claim=null,fetcher
    if(!pathOk(path,{repo}))return send({error:'invalid_file_path',hint:'Only project files or ARCANA-SURVIVOR/.github/workflows/ci.yml are writable'},400);
    if(!editContent(content))return send({error:'invalid_file_content',hint:'File must be UTF-8 text up to 200 KB'},400);
    if(!(sha===undefined||validSha(sha)))return send({error:'invalid_blob_sha'},400);
-   // No main writes: only branches minted under "acc/" are allowed.
+   // Always read the current blob before attempting a write. GitHub can create
+   // a new commit even when its content is byte-for-byte identical.
    const payload={message:'chore(workspace): '+path,content:encodeText(content),branch};
-   if(sha)payload.sha=sha;
-   else{
-    // GitHub requires a blob SHA to update a file that already exists.
-    // Resolve the current SHA for an existing file; new files still work without SHA.
-    try{
-     const existing=await gh(root+'/contents/'+encPath(path)+'?ref='+encodeURIComponent(branch));
-     if(existing.type==='file'&&validSha(existing.sha))payload.sha=existing.sha;
-     else return send({error:'file_not_regular_text'},422);
-    }catch(error){if(error.code!==404)throw error;}
-   }
+   let existing=null,existingText=null;
+   try{
+    existing=await gh(root+'/contents/'+encPath(path)+'?ref='+encodeURIComponent(branch));
+    if(existing.type!=='file'||existing.encoding!=='base64'||!validSha(existing.sha))
+     return send({error:'file_not_regular_text'},422);
+    if(existing.size>MAX_TEXT_BYTES)return send({error:'file_is_not_small_text'},422);
+    existingText=decodeText(existing.content||'');
+   }catch(error){if(error.code!==404)throw error;}
+   if(existing){
+    if(sha&&sha!==existing.sha)return send({error:'stale_file_sha',expected_sha:sha,current_sha:existing.sha,
+      hint:'File has changed. Reload and review Diff before saving.'},409);
+    if(content===existingText)return send({error:'no_content_changes',
+      sha:existing.sha,hint:'No Diff: content is identical to the current GitHub file. No Commit created.'},409);
+    payload.sha=existing.sha;
+   }else if(sha)return send({error:'file_was_deleted',
+    hint:'The existing file disappeared. Reload before committing.'},409);
    const saved=await gh(root+'/contents/'+encPath(path),'PUT',payload);
+   if(!validSha(saved.commit?.sha))return send({error:'github_commit_not_confirmed',hint:'Verify the branch before retrying'},502);
    return send({saved:true,repo:OWNER+'/'+repo,branch,path,sha:saved.content?.sha,commit_sha:saved.commit?.sha,url:saved.content?.html_url},201);
   }
   if(route==='/api/v1/work/pr'&&verb==='POST'){
