@@ -17,6 +17,7 @@
 <script type="module" src="./workspace-patch.js"></script>
 <script type="module" src="./organization.js"></script>
 <script type="module" src="./operations.js"></script>
+<script type="module" src="./issue-cleanup.js"></script>
 <script type="module" src="./ceo.js"></script>
 <script type="module" src="./delegation.js"></script>
 <script type="module" src="./issue-reader.js"></script>
@@ -427,7 +428,24 @@
    <p class="small-note">การ Assign เป็นการมอบหมายให้บัญชี GitHub ไม่ใช่การสร้างตัว AI หรือเริ่มเซสชันของ AI อัตโนมัติ</p>
   </section>
  </div>
- <section class="panel">
+ <section class="panel cleanup-panel" id="cleanup-panel" aria-label="Permanent Issue cleanup">
+ <div class="section-title"><div><h3>ลบ GitHub Issues ถาวร — OWNER ONLY</h3>
+ <p>สำหรับ Repository ที่เลือกด้านบน · ลบทั้ง Open และ Closed จริง · ไม่ใช่ Close และไม่รวม Pull Requests</p></div>
+ <button id="cleanup-preview" type="button" class="secondary-button">1. ตรวจรายการ (Preview)</button></div>
+ <p class="small-note" id="cleanup-owner" aria-live="polite">ตรวจสิทธิ์ OWNER…</p>
+ <div class="cleanup-metric"><strong id="cleanup-count" aria-live="polite">—</strong><span>Issues (Open + Closed)</span></div>
+ <div class="cleanup-scroll" id="cleanup-sample" aria-label="รายการที่จะลบ"></div>
+ <button id="cleanup-copy" type="button" class="secondary-button" disabled>คัดลอก Preview JSON สำหรับ AI</button>
+ <p class="small-note">ลบ Issue และบทสนทนาอย่างถาวร แต่ไม่ลบ Pull Requests · หมายเลข Issue ของ GitHub ไม่รีเซ็ตกลับเป็น #1</p>
+ <div class="cleanup-verify">
+ <label for="cleanup-confirm">2. พิมพ์ <code>DELETE owner/repo</code> โดยใช้ชื่อ Repository เต็ม
+ <input id="cleanup-confirm" autocomplete="off" spellcheck="false" placeholder="DELETE tanawutmalirum29-ux/ชื่อ-repo"/></label>
+ <label class="ops-check"><input type="checkbox" id="cleanup-agree"/> ฉันต้องการลบ Issues ทั้งหมดอย่างถาวร และยอมรับว่าเรียกคืนจาก GitHub ไม่ได้</label>
+ <div class="cleanup-actions"><button type="button" class="danger-button" id="cleanup-delete" disabled>3. ลบทั้งหมดแบบถาวร</button>
+ <button type="button" class="secondary-button" id="cleanup-stop" hidden>หยุดหลัง Batch นี้</button></div></div>
+ <p id="cleanup-status" class="small-note" role="status" aria-live="polite">กด Preview เพื่อตรวจสอบก่อนลบ</p>
+</section>
+<section class="panel">
   <h3>GitHub Actions — Workflows และผลทดสอบ</h3>
   <p class="small-note">ดู Workflow Runs และ Jobs พร้อม Commit SHA จริงได้ · การกดรัน Workflow ต้องมี Actions: Write และใช้ได้เฉพาะ Branch งาน acc/</p>
   <div id="ops-run-list" class="ops-list"><p class="small-note">ยังไม่ได้โหลด</p></div>
@@ -440,7 +458,7 @@
   <label>Workflow Inputs (JSON object)<textarea id="ops-inputs" rows="3" spellcheck="false">{}</textarea></label>
   <label class="ops-check"><input id="ops-confirm" type="checkbox"/> ฉันตรวจชื่อ Workflow/Branch และอนุญาตให้รัน Actions รอบนี้</label>
   <button type="button" class="primary-button" id="ops-dispatch-send">สั่งรัน Workflow ใน Branch งาน</button>
-  <p class="small-note">ไม่มีคำสั่ง Merge/Delete ในระบบนี้ · การรัน CI ไม่ใช่หลักฐาน QA อิสระ และ Actions Write ยังใช้ไม่ได้จนกว่าจะได้รับสิทธิ์ GitHub App</p>
+  <p class="small-note">ไม่มีคำสั่ง Merge อัตโนมัติ · ฟีเจอร์ลบ Issues ถาวรมีเฉพาะ OWNER ในกล่องด้านบน · การรัน CI ไม่ใช่หลักฐาน QA อิสระ และ Actions Write ยังใช้ไม่ได้จนกว่าจะได้รับสิทธิ์ GitHub App</p>
  </section>
  </section>
 <section class="view hidden" id="view-settings"><div class="section-title"><div><h2>จัดการ Repository</h2><p>ปรับรายการโปรเจกต์ที่ต้องการติดตามบนอุปกรณ์นี้</p></div></div><div class="panel"><h3>โปรเจกต์ของคุณ</h3><p class="muted-copy">เลือก Repository จากรายการที่ Backend รองรับเท่านั้น ข้อมูลเลือกแสดงเก็บบนอุปกรณ์นี้ ไม่เก็บรหัสผ่าน</p><div id="repo-list" class="repo-list"></div><form id="repo-form" class="inline-form"><label class="sr-only" for="repo-add">owner/repository</label><input required id="repo-add" placeholder="owner/repository" autocomplete="off" /><button type="submit" class="primary-button">เพิ่มโปรเจกต์</button></form><p id="repo-notice" class="small-note" aria-live="polite"></p></div><div class="panel"><h3>ความปลอดภัยและสิทธิ์</h3><div class="settings-grid"><div><strong>สถานะระบบ</strong><p>อ่าน Public Repo; เจ้าของที่ Login สร้าง Issue ได้เฉพาะ Repo ที่อนุญาต</p></div><div><strong>สิทธิ์การเขียน</strong><p>ตรวจสอบ Owner ผ่าน GitHub App ก่อนเขียน</p></div><div><strong>OpenAI API</strong><p>ไม่ใช้ — ไม่มีค่าบริการ AI เพิ่ม</p></div><div><strong>GitHub Token</strong><p>ไม่ร้องขอ / ไม่จัดเก็บ</p></div></div></div></section>
