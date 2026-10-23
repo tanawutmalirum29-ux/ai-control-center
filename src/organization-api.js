@@ -1,5 +1,6 @@
 // Live read-only org policy bridge. The GitHub repository is the authority;
 // a page, prompt or local memory cannot silently override the current main.
+import bundle from '../public/organization-bundle.json';
 const ORG='tanawutmalirum29-ux/ai-organization-hub';
 const FILES=['README.md','COMMANDS.md','RULES.md'];
 const TTL=120000,STALE=900000;
@@ -73,6 +74,20 @@ async function getOrg(fetcher,now,edge){
 export async function organizationApi(request,{fetcher=globalThis.fetch,now,edge=globalThis.caches?.default}={}){
  const url=new URL(request.url);
  if(request.method!=='GET'&&request.method!=='HEAD')return json({error:'read_only'},405);
+ if(url.pathname==='/api/v1/organization/bundle'||url.pathname==='/api/v1/organization/bundle/document'){
+  const file=url.searchParams.get('name');
+  const docs=Object.entries(bundle.files).map(([name,d])=>({name,sha:d.sha,url:'https://github.com/'+bundle.repository+'/blob/'+bundle.source_main_sha+'/'+name}));
+  if(url.pathname.endsWith('/document')){
+   if(!file||!Object.hasOwn(bundle.files,file))return json({error:'document_not_allowed'},400);
+   return json({repository:bundle.repository,main_sha:bundle.source_main_sha,bundled:true,stale:false,
+    name:file,sha:bundle.files[file].sha,text:bundle.files[file].text,source:'BUNDLED_SNAPSHOT'});
+  }
+  return json({repository:bundle.repository,main_sha:bundle.source_main_sha,bundled:true,stale:false,
+   source:'BUNDLED_SNAPSHOT',fetched_at:bundle.snapshot_utc,documents:docs,
+   readme_preview:bundle.files['README.md'].text.slice(0,6500),
+   commands_preview:bundle.files['COMMANDS.md'].text.slice(0,5500),
+   agent_runtime:false,role_enforcement:false});
+ }
  if(!['/api/v1/organization','/api/v1/organization/document'].includes(url.pathname))return json({error:'not_found'},404);
  const file=url.pathname.endsWith('/document')?url.searchParams.get('name'):null;
  if(file&&!FILES.includes(file))return json({error:'document_not_allowed'},400);
