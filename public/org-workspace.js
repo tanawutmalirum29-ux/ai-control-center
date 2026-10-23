@@ -176,9 +176,12 @@ import {FULL_REPOS} from './repositories.js';
  async function activateCEO(){
   const params=new URLSearchParams(location.search),ticket=params.get('ceo_ticket');
   if(!ticket)return;
-  const activeRepo=params.get('repo');
+  const activeRepo=params.get('repo'),stamp=params.get('ceo_stamp');
+  // Remove the bearer from browser history before the first network request.
   history.replaceState(null,'','/?repo='+encodeURIComponent(activeRepo||repo()));
-  const d=await api('ceo-activate','POST',{ticket});
+  const auth={ticket};
+  if(stamp){auth.bootstrap_repo=activeRepo;auth.bootstrap_stamp=stamp;}
+  const d=await api('ceo-activate','POST',auth);
   if(d.repo!==repo())throw Error('CEO activation completed; select repository '+d.repo);
   status('CEO activation successful: create a new organization room (no GitHub login needed)');
  }
