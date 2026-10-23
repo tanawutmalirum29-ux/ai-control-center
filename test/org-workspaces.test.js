@@ -54,6 +54,48 @@ test('OWNER can mint an expiring one-time CEO link; visitor cannot',async()=>{
  assert.match(data.invite_url,/ceo_ticket=[a-f0-9]{64}$/);
  assert.ok(!ok.headers.get('set-cookie'));
 });
+test('authorized repo-scoped CEO may appoint successor without OWNER, Issues or a second confirmation',async()=>{
+ const authorized={role:'CEO',repo:'ARCANA-SURVIVOR',slot:'CEO',nonce:'signed-ceo'};
+ const result=await orgWorkspaceApi(post('ceo-invite',{repo:'ARCANA-SURVIVOR'}),{db:emptyDB,agent:authorized});
+ assert.equal(result.status,201);
+ const info=await result.json();
+ assert.equal(info.issued_by,'SIGNED_CEO');
+ assert.equal(info.single_use,true);
+ assert.match(info.invite_url,/ceo_ticket=[a-f0-9]{64}$/);
+ assert.equal((await orgWorkspaceApi(post('ceo-invite',{repo:'ant-project'}),{db:emptyDB,agent:authorized})).status,403);
+ for(const role of ['ENGINEER','QA-REVIEWER']){
+  const disallowed=await orgWorkspaceApi(post('ceo-invite',{repo:'ARCANA-SURVIVOR'}),{
+   db:emptyDB,agent:{...authorized,role}});
+  assert.equal(disallowed.status,403);
+ }
+ const stranger=await orgWorkspaceApi(post('ceo-invite',{repo:'ARCANA-SURVIVOR'}),{db:emptyDB});
+ assert.equal(stranger.status,403);
+});
+test('current active D1 room CEO may issue successor link with room-only membership',async()=>{
+ const room='3e3988e0-6d32-4d4b-b317-a793d1c6e0e2',writes=[];
+ let role='CEO',status='ACTIVE';
+ const db={prepare(sql){return{
+  bind(...values){this.values=values;return this},
+  async first(){
+   if(sql.includes('SELECT m.room_id,m.slot,m.role'))return {role,repo:'ARCANA-SURVIVOR',status,slot:'CEO'};
+   if(sql.includes('SELECT id,seq,sender_slot'))return {id:'recorded',seq:1};
+   return null;
+  },
+  async run(){writes.push({sql,values:this.values});return {meta:{changes:1}}}
+ }}};
+ const request=()=>post('ceo-invite',{repo:'ARCANA-SURVIVOR',from_room_id:room},
+  {headers:{cookie:'__Host-acc_org='+('a'.repeat(64))}});
+ const approved=await orgWorkspaceApi(request(),{db});
+ assert.equal(approved.status,201);
+ assert.equal((await approved.json()).issued_by,'EXISTING_ROOM_CEO');
+ assert.ok(writes.some(w=>w.sql.includes('INSERT INTO org_messages')),'D1 room succession receipt is created');
+ assert.ok(!writes.some(w=>w.sql.includes('org_messages')&&w.values.some(v=>/ceo_ticket=/.test(String(v)))),
+  'no secret invitation links are persisted in M messages');
+ role='ENGINEER';
+ assert.equal((await orgWorkspaceApi(request(),{db})).status,403);
+ role='CEO';status='CLOSED';
+ assert.equal((await orgWorkspaceApi(request(),{db})).status,403);
+});
 test('request origin and JSON content-type checked before any D1 mutation',async()=>{
  const req=post('messages',{room_id:'3e3988e0-6d32-4d4b-b317-a793d1c6e0e2',to:'QA',body:'test'},
   {headers:{origin:'https://evil.example'}});

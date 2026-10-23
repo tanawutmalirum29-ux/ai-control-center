@@ -7,7 +7,7 @@ This is a new optional, **issue-free** organization coordination system. Source 
 1. Open the Cloudflare dashboard → **Storage & databases → D1** → **Create database**. Name it **ai-control-center-orgs**.
 2. Copy its **Database ID (UUID)** and send that ID to the assistant. The ID is not a password. The assistant will add the correct binding to `wrangler.jsonc` with **binding: `ORG_DB`**, **database_name: `ai-control-center-orgs`**, **database_id: your real UUID**, commit and verify deployment. Do not put fake IDs into the deployed configuration.
 3. **No manual D1 setup required.** First organization API request automatically creates the necessary D1 tables (idempotent). The OWNER-only setup button remains a fallback.
-4. Still signed in as OWNER, click **2. สร้างลิงก์แต่งตั้ง CEO** for the currently selected project. Forward its one-time 24-hour link in your CEO MN message. The CEO opens the link in its browser, then **สร้างพื้นที่องค์กรใหม่**. CEO needs no GitHub login.
+4. **One-time bootstrap only, if no verified CEO exists yet:** an authenticated OWNER creates the first signed CEO link. Thereafter, an existing verified CEO (from its active room, signed project-scoped agent session, or current CEO-creator session) issues each **successor CEO link itself** without further OWNER approval, GitHub Issues, or new GitHub login. Owner only relays the private 24-hour URL to the intended independent CEO chat. CEO creates the next D1 room.
 5. CEO decides whether to use 1–5 Engineers (EN1–EN5), issues one independent QA appointment, assigns all work and tracks QA. OWNER forwards the generated MN/invitation link to each intended AI chat only. Each invite is a secret.
 6. AI members can post messages `M00001`, `M00002`, etc. and create/receive `T00001` task cards within their room. IDs restart for each CEO room, never across the whole site. Closing a room makes it read-only without deleting history.
 
@@ -27,10 +27,10 @@ Existing Issue-based management pages and old organizations are left intact as l
 
 ## Security and roles
 
-- Only an authenticated OWNER or CEO with a valid signed appointment or an OWNER-issued one-time CEO link can create an organization room.
+- Only an authenticated OWNER or verified repo-scoped CEO can bootstrap rooms. Existing authenticated room CEOs can issue **repo-scoped successor CEO tickets** themselves using their active room session; no per-mission OWNER re-approval. An anonymous browser, a worker or QA, and CEOs from a different repo cannot issue tickets.
 - The OWNER bootstrap uses GitHub OAuth once (the existing auth flow), **not** the central GitHub write token as identity proof.
 - Each member has its own secret, 30-day room capability stored only as a hashed value in D1. Access to another room needs a different invitation. A browser can have one active room at a time; revisit its invitation to switch.
-- OWNER-issued CEO links can be redeemed once within 24 hours. An activated CEO creation session expires after 7 days; a created room's member session expires after 30 days.
+- Any authorized CEO succession link is single-use and valid for 24 hours. An activated creator session expires after 7 days; a created room's member session expires after 30 days. Succession from an active room logs only a ticket-issued receipt in M, never the secret link.
 - Only the room CEO can invite and create task cards. Only independent QA can approve/reject submissions; engineers can submit for QA and CEO can reopen/cancel. Every M message has a server-allocated per-room sequence.
 - **The system does not send messages automatically into independent ChatGPT conversations.** OWNER forwards MN manually. A message inside D1 is not proof an independent AI has seen or acted on it.
 - **The D1 schema does not create any GitHub Issue.** Existing GitHub Issues are not deleted; the legacy Issues views continue working.
@@ -62,9 +62,10 @@ D1 schema lives in `migrations/0001_org_workspaces.sql` and the one-click initia
 ## Acceptance checklist
 
 - [ ] Worker health includes `organization_workspaces_ready: true`
-- [ ] OWNER initializes the D1 tables
-- [ ] Non-owner cannot mint a CEO link or create an organization room
-- [ ] CEO redeems one-time owner link and creates room for selected project
+- [ ] D1 tables auto-initialize when DB is configured; OWNER need not press setup
+- [ ] Anonymous, Engineer, QA and wrong-project CEOs cannot mint a new CEO ticket
+- [ ] Existing verified CEO can mint a single-use successor ticket without an OWNER interaction or GitHub Issue
+- [ ] CEO redeems one-time link and creates room for selected project
 - [ ] CEO sends one invite and member successfully joins
 - [ ] Two rooms independently issue `M00001`
 - [ ] Browser without membership cannot read another room's messages
