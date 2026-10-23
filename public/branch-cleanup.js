@@ -26,7 +26,7 @@ function refresh(){
  el('branch-preview').disabled=!owner||busy||!WRITE_REPOS.includes(repo());
 }
 function clear(){
- snapshot=null;context=repo();selected.clear();stop=false;closeConfirm();
+ snapshot=null;context=repo();selected.clear();if(!busy)stop=false;closeConfirm();
  for(const id of ['branch-count','branch-pr-count','branch-protected-count'])el(id).textContent='—';
  el('branch-list').replaceChildren();el('branch-stop').hidden=true;
  refresh();note('เลือก Repository แล้วกดตรวจ Branch เพื่อแสดงรายการให้ติ๊กเลือก');
