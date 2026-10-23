@@ -85,18 +85,6 @@ test('preserve CRLF in unedited lines and replacements',async()=>{
  assert.equal((await contentDigest(edit.result)).length,64);
  assert.equal(splitLines(edit.result).lines.length,4);
 });
-test('line editor UI has bounded source chunks, diff gate and no auto-merge',()=>{
- const html=readFileSync(new URL('../public/index.html',import.meta.url),'utf8');
- const client=readFileSync(new URL('../public/workspace-patch.js',import.meta.url),'utf8');
- for(const id of ['ws-lines-read','ws-lines-view','ws-lines-start','ws-lines-end','ws-lines-copy',
-  'ws-lines-replacement','ws-lines-preview-btn','ws-lines-preview','ws-lines-commit','ws-lines-sha']){
-  assert.ok(html.includes('id="'+id+'"'),id);
- }
- assert.match(client,/patch-lines/);
- assert.match(client,/file-lines/);
- assert.match(client,/preview_digest/);
- assert.match(html,/id="ws-lines-commit"[^>]*disabled/);
-});
 
 test('read all 204 Astra CI YAML lines in a single GitHub request',async()=>{
  const big=Array.from({length:204},(_,i)=>i===159?'    timeout-minutes: 30':'# line '+(i+1)).join('\n')+'\n';
@@ -114,47 +102,11 @@ test('read all 204 Astra CI YAML lines in a single GitHub request',async()=>{
  assert.equal(value.sha,sha);
  assert.equal(calls.length,1,'whole-file view must request GitHub only once');
 });
-test('full-file UI available by default, 40-line paging remains optional',()=>{
- const html=readFileSync(new URL('../public/index.html',import.meta.url),'utf8');
- const client=readFileSync(new URL('../public/workspace-patch.js',import.meta.url),'utf8');
- assert.match(html,/id="ws-lines-read"[^>]*>อ่านทั้งไฟล์</);
- assert.match(html,/id="ws-lines-read-page"[^>]*>อ่านทีละ 40 บรรทัด</);
- assert.match(client,/readLines\(true\)/);
- assert.match(client,/readLines\(false\)/);
- assert.match(client,/all:'true'/);
-});
 
-test('quick single-line editor uses ordinary text inputs and existing SHA-bound patch gates',()=>{
- const html=readFileSync(new URL('../public/index.html',import.meta.url),'utf8');
- const script=readFileSync(new URL('../public/workspace-patch.js',import.meta.url),'utf8');
- for(const id of ['ws-quick-line','ws-quick-new','ws-quick-select','ws-quick-preview','ws-quick-status']){
-  assert.ok(html.includes('id="'+id+'"'),id);
- }
- assert.match(html,/id="ws-quick-new" type="text"/);
- assert.match(script,/function selectQuickLine/);
- assert.match(script,/async function previewQuickLine/);
- assert.match(script,/source\.text\.match\(\/\^\\s\*\/\)/);
- assert.match(script,/source\.text===replacement/);
- assert.match(script,/function commitQuickLine/);
- assert.match(script,/el\('ws-quick-commit'\)\.disabled=false/);
- assert.match(script,/preview_digest:data\.preview_digest/);
- assert.match(script,/verified\.sha!==result\.sha/);
- assert.match(script,/preview_digest/);
- assert.match(script,/el\('ws-lines-commit'\)\.disabled=false/);
-});
 
-test('quick editor has its own Diff + Commit controls without multiline textarea prerequisites',()=>{
+
+test('Legacy line editing UI is actually removed from the rendered website',()=>{
  const html=readFileSync(new URL('../public/index.html',import.meta.url),'utf8');
- const client=readFileSync(new URL('../public/workspace-patch.js',import.meta.url),'utf8');
- const workspace=readFileSync(new URL('../public/workspace.js',import.meta.url),'utf8');
- for(const id of ['ws-quick-preview','ws-quick-commit','ws-quick-diff']){
-  assert.ok(html.includes('id="'+id+'"'));
- }
- assert.match(html,/id="ws-quick-commit"[^>]*disabled/);
- assert.match(client,/function previewQuickLine/);
- assert.match(client,/function commitQuickLine/);
- assert.match(client,/start:number,end:number,replacement,preview:true/);
- assert.match(client,/preview:false,preview_digest/);
- assert.doesNotMatch(client.slice(client.indexOf('async function previewQuickLine'),client.indexOf('async function commitQuickLine')),/ws-lines-start/);
- assert.match(workspace,/acc:workspace-file-invalidated/);
+ assert.doesNotMatch(html,/id="ws-lines-read"|id="ws-quick-line"|id="ws-quick-commit"/);
+ assert.match(html,/id="bridge-rooms"/);
 });
