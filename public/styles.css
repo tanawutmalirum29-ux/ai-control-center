@@ -87,3 +87,10 @@
 .nav-advanced[open] summary::after{content:'⌃'}
 .nav-advanced summary:hover,.nav-advanced summary:focus-visible{background:var(--panel2)}
 .nav-advanced-items{display:grid;gap:6px;padding-top:6px}
+
+/* Short owner-to-CEO-to-team bootstrap controls. */
+#delegate-panel label{display:block;margin:12px 0;color:var(--muted);font-size:12px;font-weight:650}
+#delegate-panel select,#delegate-panel textarea{display:block;width:100%;min-width:0;margin-top:7px;padding:12px;color:var(--text);background:var(--panel2);border:1px solid #314059;border-radius:10px}
+#delegate-panel textarea{font:12px/1.65 ui-monospace,monospace;resize:vertical;overflow-wrap:anywhere}
+#delegate-panel button{margin:7px 0}
+#delegate-panel [hidden]{display:none!important}

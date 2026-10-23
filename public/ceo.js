@@ -113,7 +113,7 @@ async function whoCanWrite(){
    fetch('/api/auth/me',{credentials:'same-origin',cache:'no-store'}).then(r=>r.json()),
    fetch('/api/agent/me',{credentials:'same-origin',cache:'no-store'}).then(r=>r.json())
   ]);
-  rights=Boolean(o.authenticated||(a.agent_authenticated&&a.agent_repo===currentRepo()));
+  rights=Boolean(o.authenticated||(a.agent_authenticated&&a.agent_repo===currentRepo()&&['CEO','PROJECT-LEAD'].includes(a.agent_role)));
   e('ceo-submit').disabled=!rights;
   message('ceo-write-state',o.authenticated?'เซสชันเจ้าของ: สร้าง Issue ได้ตามสิทธิ์ GitHub App':
     rights?'เซสชัน AI ที่ได้รับสิทธิ์โปรเจกต์นี้: สร้าง Issue ได้':

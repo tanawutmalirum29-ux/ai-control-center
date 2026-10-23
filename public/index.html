@@ -16,6 +16,7 @@
 <script type="module" src="./organization.js"></script>
 <script type="module" src="./operations.js"></script>
 <script type="module" src="./ceo.js"></script>
+<script type="module" src="./delegation.js"></script>
 </head>
 <body>
   <div class="shell">
@@ -61,7 +62,29 @@
   <article class="stat"><span>OPEN PRs</span><strong id="ceo-pr-count">—</strong><small>ยังไม่ใช่อนุมัติ Merge</small></article>
  </div>
  <p id="ceo-board-warning" class="small-note" aria-live="polite"></p>
- <div class="two-col">
+ <section class="panel" id="delegate-panel">
+ <h3>ตั้งต้น CEO และส่งสิทธิ์ต่อให้ทีม</h3>
+ <p class="small-note">คุณทำแค่แต่งตั้ง CEO ครั้งแรก จากนั้น CEO แจกงานและออกลิงก์ให้ Engineer/QA ในเว็บไซต์เอง ทุกลิงก์ใช้เฉพาะโปรเจกต์และหน้าที่ที่ได้รับ</p>
+ <p id="delegate-who" class="small-note" aria-live="polite">กำลังตรวจสิทธิ์...</p>
+ <div id="delegate-owner-panel" hidden>
+  <p>OWNER: กดสร้างลิงก์ CEO แล้วส่งให้แชท CEO ครั้งแรก ไม่ต้องให้ CEO ล็อกอิน GitHub</p>
+  <button id="delegate-owner" type="button" class="primary-button">ออกลิงก์แต่งตั้ง CEO (7 วัน)</button>
+ </div>
+ <div id="delegate-child-panel" hidden>
+  <p>CEO: เลือก Issue ของ AI ที่แต่งตั้งไว้แล้ว ระบบจะยืนยันบทบาทและขอบเขตไฟล์จาก Issue ก่อนออกลิงก์</p>
+  <label>งานที่ต้องให้ AI รับผิดชอบ<select id="delegate-task"><option value="">เลือก Issue</option></select></label>
+  <button id="delegate-child" type="button" class="primary-button">สร้างลิงก์ให้ Engineer / QA (12 ชั่วโมง)</button>
+ </div>
+ <div class="workspace-control">
+  <button id="delegate-login" type="button" class="secondary-button">OWNER เชื่อม GitHub ครั้งแรก</button>
+  <button id="delegate-refresh" type="button" class="secondary-button">ตรวจสิทธิ์ใหม่</button>
+ </div>
+ <label>ข้อความสั้นสำหรับส่งให้แชท AI<textarea readonly id="delegate-relay" rows="3" spellcheck="false" placeholder="กดสร้างลิงก์ก่อน"></textarea></label>
+ <button id="delegate-copy" type="button" class="secondary-button">คัดลอกคำสั่งส่งต่อหนึ่งบรรทัด</button>
+ <p id="delegate-status" class="small-note" aria-live="polite"></p>
+ <p class="small-note">ผู้ถือครองลิงก์จะใช้สิทธิ์นั้นได้จนหมดอายุ จึงต้องส่งเฉพาะแชทผู้รับงาน ไม่ใช่แชร์สาธารณะ</p>
+</section>
+<div class="two-col">
   <section class="panel">
    <h3>แต่งตั้งและแจกงานให้ AI</h3>
    <p class="small-note">CEO สร้าง AP-ROLE ใน GitHub Issue จริง เว็บแนบกฎองค์กร/3 Repository ให้ · การออก Issue ไม่เรียก ChatGPT แชทใหม่เอง</p>
