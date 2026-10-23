@@ -9,10 +9,10 @@ export const refOK=ref=>typeof ref==='string'&&ref.length>0&&ref.length<=120&&/^
 export const pathOK=p=>typeof p==='string'&&p.length<=300&&!p.includes('\\')&&
  !/[\x00-\x1f\x7f%]/.test(p)&&(p===''||!p.startsWith('/')&&!p.endsWith('/')&&p.split('/').every(x=>x&&x!=='.'&&x!=='..'));
 const encodePath=p=>p.split('/').map(encodeURIComponent).join('/');
-async function github(path,fetcher){
+async function github(path,fetcher,token){
  const abort=new AbortController(),timeout=setTimeout(()=>abort.abort(),10000);
  try{
-  const response=await fetcher('https://api.github.com'+path,{headers:{'accept':'application/vnd.github+json','user-agent':'AI-Control-Center-Public-Source'},signal:abort.signal});
+  const response=await fetcher('https://api.github.com'+path,{headers:{'accept':'application/vnd.github+json','user-agent':'AI-Control-Center-Public-Source',...(token?{authorization:'Bearer '+token}:{})},signal:abort.signal});
   if(!response.ok){const e=new Error('github_http_'+response.status);e.status=response.status;throw e}
   return response.json();
  }finally{clearTimeout(timeout);}
@@ -36,7 +36,7 @@ async function backed(key,fetcher,load){
  ongoing.set(key,pending);
  try{return await pending}finally{ongoing.delete(key)}
 }
-export async function publicSourceApi(request,{fetcher=globalThis.fetch}={}){
+export async function publicSourceApi(request,{fetcher=globalThis.fetch,token=null}={}){
  const url=new URL(request.url);
  if(request.method!=='GET'&&request.method!=='HEAD')return send({error:'read_only'},405);
  const repo=url.searchParams.get('repo'),ref=url.searchParams.get('ref')||'main',path=url.searchParams.get('path')||'';
@@ -48,16 +48,16 @@ export async function publicSourceApi(request,{fetcher=globalThis.fetch}={}){
  try{
   const value=await backed(key,fetcher,async f=>{
    if(mode==='branches'){
-    const branches=await github(root+'/branches?per_page=100',f);
+    const branches=await github(root+'/branches?per_page=100',f,token);
     return {repo,branches:branches.map(b=>({name:b.name,head_sha:b.commit?.sha})),truncated:branches.length===100,public:true};
    }
    if(mode==='tree'){
-    const entries=await github(root+'/contents'+(path?'/'+encodePath(path):'')+'?ref='+encodeURIComponent(ref),f);
+    const entries=await github(root+'/contents'+(path?'/'+encodePath(path):'')+'?ref='+encodeURIComponent(ref),f,token);
     if(!Array.isArray(entries))return {repo,ref,path,entries:[],note:'This path is a file, not a directory'};
     return {repo,ref,path,entries:entries.slice(0,1000).map(x=>({name:x.name,path:x.path,type:x.type,size:x.size,sha:x.sha,url:x.html_url})),public:true};
    }
    if(!path)return {repo,ref,error:'path_required'};
-   const item=await github(root+'/contents/'+encodePath(path)+'?ref='+encodeURIComponent(ref),f);
+   const item=await github(root+'/contents/'+encodePath(path)+'?ref='+encodeURIComponent(ref),f,token);
    if(item.type!=='file'||item.encoding!=='base64'||item.size>150000)return {repo,ref,path,error:'file_not_small_utf8'};
    let content;
    try{content=decode(item.content||'')}catch{return {repo,ref,path,error:'file_not_utf8'}}
