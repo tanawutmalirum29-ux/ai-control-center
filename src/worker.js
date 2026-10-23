@@ -8,6 +8,7 @@ import {opsApi} from './ops-api.js';
 import {agentGateway,agentSession,delegatedAccess,issuerReady} from './agent-gateway.js';
 import {publicSourceApi} from './public-source.js';
 import {missionApi} from './mission-api.js';
+import {detailApi} from './issue-detail.js';
 import {centralGithubAccess,centralCredentialConfigured} from './central-github.js';
 const credentialedFetcher=token=>(endpoint,init={})=>fetch(endpoint,{...init,headers:{...init.headers,authorization:'Bearer '+token}});
 const jsonHeaders = {'content-type':'application/json; charset=utf-8','cache-control':'no-store','x-content-type-options':'nosniff'};
@@ -141,6 +142,10 @@ export default {async fetch(request,env){
   const sourceRepo=url.searchParams.get('repo');
   const central=await centralGithubAccess(env,sourceRepo);
   return publicSourceApi(request,{token:central.token||null});
+ }
+ if(path==='/api/v1/detail'){
+  const central=await centralGithubAccess(env,url.searchParams.get('repo'));
+  return detailApi(request,central.token?{fetcher:credentialedFetcher(central.token)}:{});
  }
  if(path==='/api/v1/mission'){
   const shared=await centralGithubAccess(env,url.searchParams.get('repo'));

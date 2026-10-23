@@ -17,6 +17,7 @@
 <script type="module" src="./operations.js"></script>
 <script type="module" src="./ceo.js"></script>
 <script type="module" src="./delegation.js"></script>
+<script type="module" src="./issue-reader.js"></script>
 </head>
 <body>
   <div class="shell">
@@ -25,6 +26,7 @@
       <p class="side-label">WORKSPACE</p>
       <nav class="navigation" aria-label="เมนูหลัก">
  <button class="nav-item active" data-view="workspace" type="button"><span>⌘</span> แก้โค้ด (ไม่ต้องล็อกอิน)</button>
+ <button class="nav-item" data-view="issue" type="button"><span>☷</span> อ่าน Issue / PR ในเว็บ</button>
  <button class="nav-item" data-view="ceo" type="button"><span>♛</span> CEO Dashboard</button>
  <button class="nav-item" data-view="mywork" type="button"><span>◇</span> งานของ AI</button>
  <button class="nav-item" data-view="qa" type="button"><span>✓</span> QA Center</button>
@@ -123,6 +125,20 @@
   <h3>งานที่รอตรวจ PR / QA</h3><p class="small-note">เช็ก HEAD SHA ของ PR แต่ละรายการแยกจาก CI ล่าสุดของ Repository · ต้องมี QA อิสระก่อน Merge</p>
   <p id="ceo-qa-status" class="small-note" aria-live="polite">เลือก PR เพื่อตรวจ QA</p>
   <div id="ceo-pr-list" class="ceo-list"></div>
+ </section>
+</section>
+<section class="view hidden" id="view-issue">
+ <div class="section-title"><div><h2>อ่านงานภายใน AI Control Center</h2>
+  <p>รายละเอียด Issue/PR ความคิดเห็น และไฟล์ที่เปลี่ยน · ไม่ต้องออกไป GitHub</p></div>
+  <button type="button" id="detail-refresh" class="secondary-button">↻ โหลดใหม่</button></div>
+ <section class="panel">
+  <form id="detail-form" class="workspace-grid">
+   <label>ประเภท<select id="detail-kind"><option value="issue">Issue</option><option value="pr">Pull Request</option></select></label>
+   <label>หมายเลข<input id="detail-number" inputmode="numeric" type="number" min="1" placeholder="98" required/></label>
+   <div class="workspace-control"><button type="submit" class="primary-button">อ่านภายในเว็บ</button></div>
+  </form>
+  <p id="detail-state" class="small-note" aria-live="polite">ใส่หมายเลข Issue หรือ PR แล้วกดอ่าน</p>
+  <div id="detail-content"></div>
  </section>
 </section>
 <section class="view hidden" id="view-mywork">

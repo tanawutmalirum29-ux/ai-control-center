@@ -98,3 +98,13 @@
 #delegate-guest-panel{border-top:1px solid var(--line);padding-top:18px;margin-top:16px}
 #delegate-guest-panel h4{font-size:14px;margin:0 0 8px;color:var(--text)}
 #delegate-guest-panel button{margin:10px 0}
+
+/* Read-only issue and PR panel; source text is rendered with textContent. */
+#view-issue .detail-section{margin:18px 0;border-top:1px solid var(--line);padding-top:15px;min-width:0}
+#view-issue .detail-section h4{font-size:14px;margin:0 0 12px}
+#view-issue .detail-plaintext{white-space:pre-wrap;overflow-wrap:anywhere;word-break:break-word;font:12px/1.75 ui-monospace,SFMono-Regular,Consolas,monospace;background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:13px;max-height:650px;overflow:auto;color:var(--text)}
+#view-issue .detail-comment{border:1px solid var(--line);border-radius:12px;padding:12px;margin-bottom:12px}
+#view-issue .detail-comment strong{display:block;margin-bottom:8px;font-size:12px}
+#view-issue .detail-file{border:1px solid var(--line);padding:10px;border-radius:10px;margin:8px 0}
+#view-issue .detail-file summary{cursor:pointer;overflow-wrap:anywhere}
+#detail-form input,#detail-form select{width:100%;padding:11px;border-radius:8px;background:var(--panel2);color:var(--text);border:1px solid var(--line)}
