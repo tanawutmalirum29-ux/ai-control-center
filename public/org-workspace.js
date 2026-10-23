@@ -153,6 +153,23 @@ import {FULL_REPOS} from './repositories.js';
    await loadTasks();status('สร้างงาน '+d.code+' สำเร็จ · ผู้รับ '+d.assignee_slot);
   });
  }
+ async function activateCEO(){
+  const params=new URLSearchParams(location.search),ticket=params.get('ceo_ticket');
+  if(!ticket)return;
+  const activeRepo=params.get('repo');
+  history.replaceState(null,'','/?repo='+encodeURIComponent(activeRepo||repo()));
+  const d=await api('ceo-activate','POST',{ticket});
+  if(d.repo!==repo())throw Error('CEO activation completed; select repository '+d.repo);
+  status('CEO activation successful: create a new organization room (no GitHub login needed)');
+ }
+ async function createCEOInvite(e){
+  e.preventDefault();
+  await busy($('orgw-owner-invite-btn'),async()=>{
+   const result=await api('ceo-invite','POST',{repo:repo()});
+   $('orgw-owner-invite-url').value=result.invite_url;
+   status('OWNER สร้างลิงก์แต่งตั้ง CEO แล้ว · ส่งลิงก์ให้ CEO แชทใหม่โดยตรง (ใช้ได้ครั้งเดียว/24 ชั่วโมง)');
+  });
+ }
  async function joinFromLink(){
   const p=new URLSearchParams(location.search),ticket=p.get('join'),room=p.get('org');
   if(!ticket||!room)return;
@@ -165,6 +182,7 @@ import {FULL_REPOS} from './repositories.js';
  async function initRoom(){
   if(loading)return;loading=true;
   try{
+   await activateCEO();
    await joinFromLink();
    await loadRooms();
    const p=new URLSearchParams(location.search),requested=p.get('org');
@@ -174,6 +192,7 @@ import {FULL_REPOS} from './repositories.js';
  }
  function setup(){
   $('orgw-create-form').addEventListener('submit',createRoom);
+  $('orgw-owner-invite-form').addEventListener('submit',createCEOInvite);
   $('orgw-invite-form').addEventListener('submit',invite);
   $('orgw-message-form').addEventListener('submit',message);
   $('orgw-task-form').addEventListener('submit',task);
