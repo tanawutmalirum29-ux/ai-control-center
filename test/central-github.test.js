@@ -53,3 +53,22 @@ test('anonymous write is not available when secret is absent, and main is never 
  }),env);
  assert.equal(blocked.status,400);
 });
+
+test('public AI work queue reads Issues with central token, not anonymous rate-limited API',async()=>{
+ const prior=globalThis.fetch,seen=[];
+ globalThis.fetch=async(url,options={})=>{
+  seen.push({path:new URL(url).pathname,auth:options.headers?.authorization});
+  assert.equal(options.headers.authorization,'Bearer '+token);
+  return new Response(JSON.stringify([
+   {number:98,title:'[ENGINEER] Astra polishing',labels:[],updated_at:'2026-10-23T08:00:00Z'}
+  ]),{status:200});
+ };
+ try{
+  const response=await worker.fetch(new Request(base+'/api/v1/queue?repo='+repo),env);
+  assert.equal(response.status,200);
+  const data=await response.json();
+  assert.equal(data.tasks[0].number,98);
+  assert.equal(seen.length,1);
+  assert.ok(!JSON.stringify(data).includes(token));
+ }finally{globalThis.fetch=prior;}
+});
