@@ -1,6 +1,7 @@
 // Isolated, issue-free CEO workspaces backed by Cloudflare D1.
 // No GitHub API, GitHub Issues, or per-message commits. Fail closed without D1 and membership.
 import {WRITE_REPOS} from '../public/repositories.js';
+import {ORG_SCHEMA} from './org-schema.js';
 const validRepo=repo=>WRITE_REPOS.includes(repo);
 const idOK=id=>typeof id==='string'&&/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
 const slotOK=slot=>typeof slot==='string'&&/^[A-Z][A-Z0-9_-]{0,39}$/.test(slot);
@@ -101,8 +102,16 @@ export async function orgWorkspaceApi(request,{db,owner=false,agent=null}={}){
  const data=verb==='POST'?await dataInput(request):null;
  if(verb==='POST'&&(!data||typeof data!=='object'||Array.isArray(data)))return res({error:'invalid_json'},400);
  const room=verb==='GET'?url.searchParams.get('room_id'):data?.room_id;
- const creator=await creatorSession(db,request);
  try{
+  if(route==='/api/v1/org/setup'&&verb==='POST'){
+   if(!owner)return res({error:'owner_login_required_for_database_setup'},403);
+   if(typeof db.exec!=='function')return res({error:'d1_exec_unavailable'},503);
+   await db.exec(ORG_SCHEMA);
+   return res({initialized:true,database_binding:'ORG_DB',
+    tables:['org_rooms','org_members','org_messages','org_tasks','org_ceo_tickets','org_creator_sessions'],
+    note:'Idempotent schema, GitHub Issues unaffected'});
+  }
+  const creator=await creatorSession(db,request);
   if(route==='/api/v1/org/ceo-invite'&&verb==='POST'){
    if(!owner)return res({error:'owner_session_required_to_appoint_ceo'},403);
    const repo=clean(data.repo,60);
