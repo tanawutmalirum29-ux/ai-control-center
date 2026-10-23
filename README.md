@@ -38,3 +38,13 @@ The web app has **no dependencies, no build step and no environment secrets**. P
 
 ## Next phase
 Secure backend (Cloudflare Worker + GitHub App + owner authentication) followed by an authenticated tool/MCP interface and approval-gated merges. Never expose installation tokens, personal access tokens or private keys in the frontend or repository.
+
+## V2: AI Work Queue and Public Bridge (Free)
+
+Production URL: https://ai-control-center.tanawutmalirum29.workers.dev/
+
+- AI Work Queue lists up to 50 recent open issues on supported public repositories; copy MN commands for a ChatGPT session with GitHub connector.
+- GET /api/health returns capability discovery. GET /api/v1/queue?repo=ARCANA-SURVIVOR returns issue work queue. GET /api/v1/summary?repo=ARCANA-SURVIVOR returns latest summary.
+- API is public **read only**. Write methods blocked (405); GitHub repositories allowlisted; no OpenAI API, GitHub tokens, or Cloudflare secrets.
+- This is not an autonomous background GPT agent. ChatGPT writes to GitHub only through separately authorized GitHub connector. Do not put tokens in public frontend.
+- Worker deployment: npx wrangler deploy (static assets in public, Worker entrypoint in src).

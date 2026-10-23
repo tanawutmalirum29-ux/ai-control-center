@@ -53,11 +53,11 @@ async function getJSON(path, force = false) {
   } finally { clearTimeout(timeout); }
 }
 function switchView(view) {
-  if (!['overview','issues','pulls','qa','settings'].includes(view)) return;
+  if (!['overview','issues','pulls','qa','agents','settings'].includes(view)) return;
   currentView = view;
   document.querySelectorAll('.view').forEach((node) => node.classList.toggle('hidden', node.id !== 'view-' + view));
   document.querySelectorAll('.navigation .nav-item').forEach((node) => node.classList.toggle('active', node.dataset.view === view));
-  const titles = {overview:['ภาพรวมการพัฒนา','OVERVIEW'],issues:['งาน / Issues','ISSUES'],pulls:['Pull Requests','PULL REQUESTS'],qa:['QA & Actions','QUALITY GATE'],settings:['โปรเจกต์และการตั้งค่า','SETTINGS']};
+  const titles = {overview:['ภาพรวมการพัฒนา','OVERVIEW'],issues:['งาน / Issues','ISSUES'],pulls:['Pull Requests','PULL REQUESTS'],qa:['QA & Actions','QUALITY GATE'],agents:['AI Work Queue','AI OPERATIONS'],settings:['โปรเจกต์และการตั้งค่า','SETTINGS']};
   el('page-heading').textContent = titles[view][0];
   el('section-kicker').textContent = titles[view][1];
   window.scrollTo({top:0,behavior:'smooth'});
