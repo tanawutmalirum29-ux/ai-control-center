@@ -304,6 +304,17 @@
   <details class="nav-advanced">
    <summary>กรณีเริ่มระบบครั้งแรกที่ยังไม่มี CEO รับสิทธิ์</summary>
    <p class="small-note">ต้องใช้สิทธิ์ตั้งต้นที่ตรวจสอบได้หนึ่งครั้งเพื่อป้องกันบุคคลภายนอกสวมรอย · <a href="/api/auth/login">เข้าสู่ระบบ OWNER เฉพาะครั้งแรกเมื่อจำเป็น</a></p>
+   <form id="orgw-proof-form">
+    <p class="small-note">ทางเลือกสำหรับ AI ที่มีสิทธิ์สร้าง Branch ใน GitHub โปรเจกต์นี้: สร้างรหัส Proof แล้วให้ AI สร้าง Branch ชื่อตามที่แสดงจาก main ก่อนเปิดลิงก์ CEO · ไม่มีการเผยแพร่ Ticket ลง GitHub</p>
+    <button id="orgw-proof-generate" type="submit" class="secondary-button">เตรียม CEO ด้วยสิทธิ์เขียน GitHub</button>
+    <label>ชื่อ Branch Proof ที่ผู้มีสิทธิ์ GitHub ต้องสร้างจาก main (ไม่ใช่ Token)
+     <textarea id="orgw-proof-branch" rows="3" readonly spellcheck="false"></textarea>
+    </label>
+    <label>ลิงก์ส่วนตัวสำหรับเปิดใช้ CEO (ห้ามโพสต์ลง GitHub หรือข้อความ M)
+     <textarea id="orgw-proof-activation" rows="3" readonly spellcheck="false"></textarea>
+    </label>
+    <p class="small-note">ลิงก์ใช้ได้ครั้งเดียวภายใน 24 ชั่วโมง · ห้ามเปิดก่อนสร้าง Branch Proof · ผู้เข้าถึง Branch นี้ได้อย่างเดียวจะไม่มีสิทธิ์ CEO หากไม่มี Ticket ลับ</p>
+   </form>
    <form id="orgw-setup-form">
     <button id="orgw-setup-btn" type="submit" class="secondary-button">ตรวจ/ตั้งค่าตาราง D1 (เมื่อจำเป็น)</button>
    </form>
