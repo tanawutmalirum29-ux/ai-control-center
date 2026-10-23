@@ -154,3 +154,25 @@
 #view-orgrooms input,#view-orgrooms textarea,#view-orgrooms select{display:block;width:100%;margin-top:6px;padding:10px;min-width:0;background:var(--panel2);color:var(--text);border:1px solid var(--line);border-radius:9px}
 #view-orgrooms .panel{margin-bottom:15px}
 #orgw-room-list{display:grid;gap:10px}
+
+
+/* AI-friendly maintenance: explicit, non-modal destructive workflow. */
+.cleanup-panel{border-color:#74414d}
+.cleanup-panel .section-title{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.cleanup-panel .section-title h3{margin:0 0 8px}
+.cleanup-panel .section-title p{margin:0 0 10px;color:var(--muted)}
+.cleanup-metric{display:flex;align-items:center;gap:12px;margin:14px 0;font:13px/1.5 ui-monospace,monospace}
+.cleanup-metric strong{font-size:34px;font-variant-numeric:tabular-nums;color:var(--text)}
+.cleanup-scroll{max-height:200px;overflow:auto;background:var(--panel2);border:1px solid var(--line);border-radius:9px;margin:12px 0}
+.cleanup-scroll:empty{display:none}
+.cleanup-entry{font:12px/1.6 ui-monospace,monospace;overflow-wrap:anywhere;padding:6px 10px;border-bottom:1px solid var(--line)}
+.cleanup-verify{display:grid;gap:12px;margin-top:15px}
+.cleanup-verify label{display:block;font-size:13px}
+.cleanup-verify input[type=text],.cleanup-verify input:not([type]){display:block;width:100%;margin:7px 0 0;padding:11px;border:1px solid var(--line);background:var(--panel2);color:var(--text);border-radius:9px;font-family:ui-monospace,monospace}
+.cleanup-actions{display:flex;gap:10px;flex-wrap:wrap}
+.danger-button{min-height:44px;border:1px solid #af5363;background:#8a2639;color:white;padding:11px 16px;border-radius:10px;font:700 13px/1.4 inherit;cursor:pointer}
+.danger-button:hover:not(:disabled){background:#ac324b}
+.danger-button:disabled,button:disabled{opacity:.55;cursor:not-allowed}
+#cleanup-stop[hidden]{display:none!important}
+#cleanup-status{white-space:pre-wrap;overflow-wrap:anywhere;font-family:ui-monospace,monospace}
+@media(max-width:560px){.cleanup-panel .section-title{align-items:stretch}.cleanup-actions>*{flex:1 1 100%}}
