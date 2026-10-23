@@ -88,6 +88,25 @@ export async function opsApi(request,{token,fetcher=globalThis.fetch}={}){
    const x=await fetchGh('/issues/'+body.number+'/assignees','POST',{assignees:[body.username]});
    return make({assigned:true,issue:Number(body.number),assignees:(x.assignees||[]).map(a=>a.login)});
   }
+  if(path==='/api/v1/ops/status'&&verb==='POST'){
+   const statuses=['READY','IN_PROGRESS','WAITING_QA','QA_BLOCK','PAUSED'];
+   if(!validNumber(body.number)||!statuses.includes(body.status)||body.confirm!=='CHANGE_STATUS')return make({error:'invalid_status_change'},400);
+   const number=Number(body.number),issue=await fetchGh('/issues/'+number);
+   if(issue.pull_request)return make({error:'only_issue_status_supported'},400);
+   if(body.expected_updated_at&&issue.updated_at!==body.expected_updated_at)return make({error:'issue_updated_since_review'},409);
+   const label=body.status,colors={READY:'267d64',IN_PROGRESS:'2b83c5',WAITING_QA:'ad831e',QA_BLOCK:'b42b34',PAUSED:'666e77'};
+   try{await fetchGh('/labels/'+encodeURIComponent(label));}
+   catch(err){
+    if(err.status!==404)throw err;
+    try{await fetchGh('/labels','POST',{name:label,color:colors[label],description:'AI Control Center human-managed work state'});}
+    catch(e){if(e.status!==422)throw e;}
+   }
+   const current=(issue.labels||[]).map(x=>x.name).filter(Boolean);
+   const keep=current.filter(x=>!statuses.includes(x.toUpperCase().replace(/[\s:-]/g,'_')));
+   const changed=await fetchGh('/issues/'+number+'/labels','PUT',{labels:[...keep,label]});
+   return make({changed:true,issue:number,status:label,labels:(changed||[]).map(x=>x.name),agent_activated:false,
+    qa_approved:false,warning:'Status is a manual GitHub label. No atomic multi-agent claim or QA certification.'});
+  }
   if(path==='/api/v1/ops/workflows'&&verb==='GET'){
    const x=await fetchGh('/actions/workflows?per_page=100');
    return make({repo:OWNER+'/'+name,workflows:(x.workflows||[]).map(w=>({id:w.id,name:w.name,path:w.path,state:w.state,url:w.html_url})),truncated:(x.total_count||0)>100});
