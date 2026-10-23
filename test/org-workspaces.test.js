@@ -131,7 +131,7 @@ test('room creator tickets cannot be redeemed twice',async()=>{
 });
 test('GitHub writer can bootstrap first CEO without OWNER login or an Issue; bearer remains private',async()=>{
  const ticket='b'.repeat(64);
- const stamp=new Date().toISOString().replace(/[-:]/g,'').replace('.000Z','Z');
+ const stamp=new Date().toISOString().slice(0,19).replace(/[-:]/g,'')+'Z';
  const proofHash=createHash('sha256').update('ACC_ORG_MEMBER_V1:CEO-GITHUB-PROOF:'+ticket).digest('hex');
  const ref='refs/heads/acc/ceo-bootstrap/'+stamp+'-'+proofHash;
  let created=false,used=false,lookups=0;
@@ -169,7 +169,7 @@ test('GitHub writer can bootstrap first CEO without OWNER login or an Issue; bea
  assert.equal(wrong.status,400,'invalid repo never receives bootstrap');
 });
 test('public visitor cannot bootstrap a CEO from a missing or malformed GitHub proof',async()=>{
- const ticket='d'.repeat(64),stamp=new Date().toISOString().replace(/[-:]/g,'').replace('.000Z','Z');
+ const ticket='d'.repeat(64),stamp=new Date().toISOString().slice(0,19).replace(/[-:]/g,'')+'Z';
  const args={ticket,bootstrap_repo:'ARCANA-SURVIVOR',bootstrap_stamp:stamp};
  const fail=await orgWorkspaceApi(post('ceo-activate',args),{db:emptyDB,
   fetcher:async()=>({ok:false,status:404})});
