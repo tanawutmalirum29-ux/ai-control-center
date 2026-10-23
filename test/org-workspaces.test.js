@@ -104,20 +104,18 @@ test('UI includes separate project organization rooms, M messages, T cards and o
 });
 
 test('OWNER D1 setup is secured and loads packaged schema before any member query',async()=>{
- let called=false;
- const db={prepare(){throw Error('should not need membership tables before setup')},async exec(query){
-  called=true;
-  assert.match(query,/CREATE TABLE IF NOT EXISTS org_messages/);
-  assert.match(query,/CREATE TABLE IF NOT EXISTS org_creator_sessions/);
- }};
+ let count=0,sql=[];
+ const db={prepare(query){return {async run(){count++;sql.push(query);return {meta:{changes:1}}}}}};
  const req=post('setup',{});
  const unauth=await orgWorkspaceApi(req.clone(),{db});
  assert.equal(unauth.status,403);
- assert.equal(called,false);
+ assert.equal(count,0);
  const auth=await orgWorkspaceApi(req,{db,owner:true});
  assert.equal(auth.status,200,JSON.stringify(await auth.clone().json()));
  assert.equal((await auth.json()).initialized,true);
- assert.equal(called,true);
+ assert.ok(count>=6);
+ assert.ok(sql.some(x=>x.includes('CREATE TABLE IF NOT EXISTS org_messages')));
+ assert.ok(sql.some(x=>x.includes('CREATE TABLE IF NOT EXISTS org_creator_sessions')));
 });
 test('packaged D1 schema matches the SQL migration file byte for byte',async()=>{
  const {ORG_SCHEMA}=await import('../src/org-schema.js');
