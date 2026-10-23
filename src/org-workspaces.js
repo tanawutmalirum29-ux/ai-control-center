@@ -135,17 +135,34 @@ export async function orgWorkspaceApi(request,{db,owner=false,agent=null}={}){
   }
   const creator=await creatorSession(db,request);
   if(route==='/api/v1/org/ceo-invite'&&verb==='POST'){
-   if(!owner)return res({error:'owner_session_required_to_appoint_ceo'},403);
    const repo=clean(data.repo,60);
    if(!validRepo(repo))return res({error:'invalid_repository'},400);
+   // No repetitive OWNER confirmation: a verified existing CEO may nominate
+   // another repo-scoped CEO, but visitors and engineer/QA sessions cannot.
+   const fromRoom=data.from_room_id;
+   const sourceCEO=idOK(fromRoom)?await member(db,request,fromRoom):null;
+   const roomAuthorized=sourceCEO?.role==='CEO'&&sourceCEO.repo===repo&&
+    sourceCEO.status==='ACTIVE';
+   const agentAuthorized=agent?.role==='CEO'&&agent.repo===repo;
+   const creatorAuthorized=creator?.repo===repo;
+   if(!owner&&!roomAuthorized&&!agentAuthorized&&!creatorAuthorized)
+    return res({error:'verified_owner_or_existing_ceo_required_to_appoint_ceo'},403);
    const ticket=secret();
    await db.prepare('INSERT INTO org_ceo_tickets(token_hash,repo,expires_at) VALUES(?,?,?)')
     .bind(await digest('CEO-INVITE:'+ticket),repo,new Date(Date.now()+86400000).toISOString()).run();
+   // Keep the bearer out of GitHub Issues and M messages. Log only the
+   // issuance event for an authorized room CEO.
+   if(roomAuthorized){
+    const receipt=await nextMessage(db,fromRoom,sourceCEO.slot,'CEO',
+     'CEO_SUCCESSION_INVITE_ISSUED for '+repo+' (private single-use ticket)');
+    if(!receipt)return res({error:'room_closed_during_ceo_succession'},409);
+   }
    return res({created:true,repo,
     invite_url:url.origin+'/?repo='+encodeURIComponent(repo)+'&ceo_ticket='+ticket,
-    expires_in:'24h',single_use:true},201);
+    expires_in:'24h',single_use:true,issued_by:
+     owner?'OWNER':roomAuthorized?'EXISTING_ROOM_CEO':agentAuthorized?'SIGNED_CEO':'APPOINTED_CEO'},201);
   }
-  if(route==='/api/v1/org/ceo-activate'&&verb==='POST'){
+    if(route==='/api/v1/org/ceo-activate'&&verb==='POST'){
    const ticket=data.ticket;
    if(typeof ticket!=='string'||!/^[0-9a-f]{64}$/.test(ticket))
     return res({error:'invalid_ceo_ticket'},400);
