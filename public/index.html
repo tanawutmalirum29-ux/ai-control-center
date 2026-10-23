@@ -402,25 +402,36 @@
  <section class="panel cleanup-panel" id="cleanup-panel" aria-label="Permanent Issue cleanup">
  <div class="section-title"><div><h3>ลบ GitHub Issues ถาวร — OWNER ONLY</h3>
  <p>สำหรับ Repository ที่เลือกด้านบน · ลบทั้ง Open และ Closed จริง · ไม่ใช่ Close และไม่รวม Pull Requests</p></div>
- <button id="cleanup-preview" type="button" class="secondary-button">1. ตรวจรายการ (Preview)</button></div>
+ <button id="cleanup-preview" type="button" class="secondary-button">1. ตรวจ Issues</button></div>
  <p class="small-note" id="cleanup-owner" aria-live="polite">ตรวจสิทธิ์ OWNER…</p>
  <a id="cleanup-login" class="primary-button" href="/api/auth/login">เชื่อมต่อ GitHub ในฐานะ OWNER เพื่อเปิดสิทธิ์ลบ</a>
  <div class="cleanup-metric"><strong id="cleanup-count" aria-live="polite">—</strong><span>Issues (Open + Closed)</span></div>
- <div class="cleanup-scroll" id="cleanup-sample" aria-label="รายการที่จะลบ"></div>
- <button id="cleanup-copy" type="button" class="secondary-button" disabled>คัดลอก Preview JSON สำหรับ AI</button>
- <p class="small-note">ลบ Issue และบทสนทนาอย่างถาวร แต่ไม่ลบ Pull Requests · หมายเลข Issue ของ GitHub ไม่รีเซ็ตกลับเป็น #1</p>
- <div class="cleanup-verify">
- <label for="cleanup-confirm">2. พิมพ์ <code>DELETE owner/repo</code> โดยใช้ชื่อ Repository เต็ม
- <input id="cleanup-confirm" autocomplete="off" spellcheck="false" placeholder="DELETE tanawutmalirum29-ux/ชื่อ-repo"/></label>
- <label class="ops-check"><input type="checkbox" id="cleanup-agree"/> ฉันต้องการลบ Issues ทั้งหมดอย่างถาวร และยอมรับว่าเรียกคืนจาก GitHub ไม่ได้</label>
- <div class="cleanup-actions"><button type="button" class="danger-button" id="cleanup-delete" disabled>3. ลบทั้งหมดแบบถาวร</button>
- <button type="button" class="secondary-button" id="cleanup-stop" hidden>หยุดหลัง Batch นี้</button></div></div>
- <p id="cleanup-status" class="small-note" role="status" aria-live="polite">กด Preview เพื่อตรวจสอบก่อนลบ</p>
+ <div class="cleanup-pickbar" aria-label="เลือก Issues ที่ต้องการลบ">
+  <button id="cleanup-select-all" type="button" class="secondary-button" disabled>เลือกทั้งหมด</button>
+  <button id="cleanup-clear-selection" type="button" class="secondary-button" disabled>ยกเลิกการเลือก</button>
+  <strong id="cleanup-selected-count" aria-live="polite">เลือก 0 รายการ</strong>
+ </div>
+ <div class="cleanup-scroll cleanup-select-list" id="cleanup-sample" aria-label="ติ๊กเลือก Issue ที่ต้องการลบ"></div>
+ <div class="cleanup-actions">
+  <button id="cleanup-delete" type="button" class="danger-button" disabled>2. ลบ Issues ที่เลือก</button>
+  <button id="cleanup-copy" type="button" class="secondary-button" disabled>คัดลอกรายการ JSON</button>
+  <button type="button" class="secondary-button" id="cleanup-stop" hidden>หยุดหลังชุดนี้</button>
+ </div>
+ <div id="cleanup-final" class="cleanup-final" hidden role="group" aria-label="ยืนยันลบ Issues ถาวร">
+  <strong id="cleanup-final-title"></strong>
+  <p id="cleanup-final-detail"></p>
+  <div class="cleanup-actions">
+   <button id="cleanup-final-yes" type="button" class="danger-button">ยืนยัน ลบถาวร</button>
+   <button id="cleanup-final-no" type="button" class="secondary-button">ยกเลิก</button>
+  </div>
+ </div>
+ <p class="small-note">ลบ Issues ถาวรพร้อมความคิดเห็น แต่ไม่ลบ Pull Requests · หมายเลข Issue ใหม่ไม่เริ่มจาก #1</p>
+ <p id="cleanup-status" class="small-note" role="status" aria-live="polite">กดตรวจรายการก่อนเลือก</p>
 </section>
 <section class="panel cleanup-panel" id="branch-panel" aria-label="Keep main, delete all other Git branches">
  <div class="section-title"><div><h3>ลบ Branch ทั้งหมด — เก็บ main เท่านั้น</h3>
   <p>สำหรับ Repository ที่เลือกด้านบน · ตรวจรายการทุกหน้า ไม่จำกัด 100 รายการแรก</p></div>
-  <button type="button" class="secondary-button" id="branch-preview">1. ตรวจ Branch (Preview)</button></div>
+  <button type="button" class="secondary-button" id="branch-preview">1. ตรวจ Branch</button></div>
  <p class="small-note" id="branch-owner" aria-live="polite">ตรวจ OWNER…</p>
  <a class="primary-button" id="branch-login" href="/api/auth/login">เชื่อมต่อ GitHub ในฐานะ OWNER ก่อนลบ Branch</a>
  <div class="cleanup-stats">
@@ -428,20 +439,28 @@
   <div class="cleanup-metric"><strong id="branch-pr-count">—</strong><span>Branch มี PR เปิดอยู่</span></div>
   <div class="cleanup-metric"><strong id="branch-protected-count">—</strong><span>Branch ถูกป้องกัน</span></div>
  </div>
- <div id="branch-list" class="cleanup-scroll" aria-label="รายชื่อ Branch สำหรับตรวจสอบก่อนลบ"></div>
- <button type="button" class="secondary-button" id="branch-copy" disabled>คัดลอกรายการ Branch + SHA + PR (JSON)</button>
- <p class="small-note">Branch อาจมี Commit ที่ยังไม่ Merge และ PR ที่เปิดอยู่ การลบอาจทำให้โค้ดหายและทำให้ PR ใช้งานต่อไม่ได้ ไม่มีการสำรองโค้ดอัตโนมัติ · ระบบจะไม่ลบ main</p>
- <div class="cleanup-verify">
-  <label for="branch-confirm">2. พิมพ์ DELETE BRANCHES ตามด้วยชื่อ Repository แบบเต็ม
-   <input id="branch-confirm" autocomplete="off" spellcheck="false" placeholder="DELETE BRANCHES tanawutmalirum29-ux/ชื่อ-repo" /></label>
-  <label class="ops-check"><input type="checkbox" id="branch-risk-code"/> ฉันยอมรับว่า Commit ที่ยังไม่ Merge เข้า main อาจสูญหายถาวร</label>
-  <label class="ops-check"><input type="checkbox" id="branch-risk-pr"/> ฉันตรวจสอบแล้วว่า PR ที่ยังเปิดอยู่และงานที่กำลังทำอาจเสียหาย</label>
+ <div class="cleanup-pickbar" aria-label="เลือก Branch ที่ต้องการลบ">
+  <button id="branch-select-all" type="button" class="secondary-button" disabled>เลือกทั้งหมดที่ลบได้</button>
+  <button id="branch-select-no-pr" type="button" class="secondary-button" disabled>เลือกเฉพาะไม่มี PR</button>
+  <button id="branch-clear-selection" type="button" class="secondary-button" disabled>ยกเลิกการเลือก</button>
+  <strong id="branch-selected-count" aria-live="polite">เลือก 0 รายการ</strong>
+ </div>
+ <div id="branch-list" class="cleanup-scroll cleanup-select-list" aria-label="ติ๊กเลือก Branch ที่ต้องการลบ"></div>
+ <div class="cleanup-actions">
+  <button class="danger-button" type="button" id="branch-delete" disabled>2. ลบ Branch ที่เลือก</button>
+  <button type="button" class="secondary-button" id="branch-copy" disabled>คัดลอกรายการ JSON</button>
+  <button class="secondary-button" type="button" id="branch-stop" hidden>หยุดหลังชุดนี้</button>
+ </div>
+ <div id="branch-final" class="cleanup-final" hidden role="group" aria-label="ยืนยันลบ Branch ถาวร">
+  <strong id="branch-final-title"></strong>
+  <p id="branch-final-detail"></p>
   <div class="cleanup-actions">
-   <button class="danger-button" type="button" id="branch-delete" disabled>3. ลบทุก Branch ยกเว้น main</button>
-   <button class="secondary-button" type="button" id="branch-stop" hidden>หยุดหลัง Batch นี้</button>
+   <button id="branch-final-yes" type="button" class="danger-button">ยืนยัน ลบ Branch</button>
+   <button id="branch-final-no" type="button" class="secondary-button">ยกเลิก</button>
   </div>
  </div>
- <p class="small-note" role="status" aria-live="polite" id="branch-status">กด Preview เพื่อตรวจสอบรายการ</p>
+ <p class="small-note">ระบบจะไม่ลบ main และ Branch ที่ถูกป้องกัน · Branch อาจมีโค้ดที่ยังไม่ Merge · ลบแล้วอาจกู้คืนไม่ได้</p>
+ <p class="small-note" role="status" aria-live="polite" id="branch-status">กดตรวจ Branch ก่อนเลือก</p>
 </section>
 
 <div class="two-col">
