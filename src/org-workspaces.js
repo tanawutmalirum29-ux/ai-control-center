@@ -19,7 +19,18 @@ async function digest(s){
 const now=()=>new Date().toISOString();
 const expiration=()=>new Date(Date.now()+30*86400000).toISOString();
 const cookieName='__Host-acc_org';
+const creatorCookieName='__Host-acc_ceo';
 const cookie=(value,age)=>cookieName+'='+value+'; Path=/; Max-Age='+age+'; Secure; HttpOnly; SameSite=Lax';
+function creatorToken(req){
+ const line=(req.headers.get('cookie')||'').split(';').map(s=>s.trim()).find(s=>s.startsWith(creatorCookieName+'='));
+ return line?line.slice(creatorCookieName.length+1):null;
+}
+async function creatorSession(db,request){
+ const token=creatorToken(request);
+ if(!token||!/^[0-9a-f]{64}$/.test(token))return null;
+ return db.prepare('SELECT id,repo,expires_at FROM org_creator_sessions WHERE token_hash=? AND expires_at>?')
+  .bind(await digest('CEO:'+token),now()).first();
+}
 function cookieToken(req){
  const line=(req.headers.get('cookie')||'').split(';').map(s=>s.trim()).find(s=>s.startsWith(cookieName+'='));
  return line?line.slice(cookieName.length+1):null;
@@ -90,17 +101,47 @@ export async function orgWorkspaceApi(request,{db,owner=false,agent=null}={}){
  const data=verb==='POST'?await dataInput(request):null;
  if(verb==='POST'&&(!data||typeof data!=='object'||Array.isArray(data)))return res({error:'invalid_json'},400);
  const room=verb==='GET'?url.searchParams.get('room_id'):data?.room_id;
+ const creator=await creatorSession(db,request);
  try{
+  if(route==='/api/v1/org/ceo-invite'&&verb==='POST'){
+   if(!owner)return res({error:'owner_session_required_to_appoint_ceo'},403);
+   const repo=clean(data.repo,60);
+   if(!validRepo(repo))return res({error:'invalid_repository'},400);
+   const ticket=secret();
+   await db.prepare('INSERT INTO org_ceo_tickets(token_hash,repo,expires_at) VALUES(?,?,?)')
+    .bind(await digest('CEO-INVITE:'+ticket),repo,new Date(Date.now()+86400000).toISOString()).run();
+   return res({created:true,repo,
+    invite_url:url.origin+'/?repo='+encodeURIComponent(repo)+'&ceo_ticket='+ticket,
+    expires_in:'24h',single_use:true},201);
+  }
+  if(route==='/api/v1/org/ceo-activate'&&verb==='POST'){
+   const ticket=data.ticket;
+   if(typeof ticket!=='string'||!/^[0-9a-f]{64}$/.test(ticket))
+    return res({error:'invalid_ceo_ticket'},400);
+   const hash=await digest('CEO-INVITE:'+ticket),time=now();
+   const row=await db.prepare('SELECT repo FROM org_ceo_tickets WHERE token_hash=? AND used_at IS NULL AND expires_at>?')
+    .bind(hash,time).first();
+   if(!row)return res({error:'ceo_ticket_used_or_expired'},403);
+   const consumed=await db.prepare('UPDATE org_ceo_tickets SET used_at=? WHERE token_hash=? AND used_at IS NULL AND expires_at>?')
+    .bind(time,hash,time).run();
+   if(!consumed.meta?.changes)return res({error:'ceo_ticket_used_or_expired'},403);
+   const token=secret();
+   await db.prepare('INSERT INTO org_creator_sessions(id,token_hash,repo,expires_at) VALUES(?,?,?,?)')
+    .bind(crypto.randomUUID(),await digest('CEO:'+token),row.repo,new Date(Date.now()+7*86400000).toISOString()).run();
+   return res({activated:true,repo:row.repo,role:'CEO',
+    note:'CEO can create a room without GitHub login; this cookie expires after 7 days.'},
+    200,{'set-cookie':creatorCookieName+'='+token+'; Path=/; Max-Age=604800; Secure; HttpOnly; SameSite=Lax'});
+  }
   if(route==='/api/v1/org/rooms'&&verb==='POST'){
    const repo=clean(data.repo,60),title=clean(data.title,120),mission=clean(data.mission,4000);
    if(!validRepo(repo)||title.length<3||title.length>120||!mission||mission.length>4000)
     return res({error:'invalid_workspace_details'},400);
-   if(!owner&&!(agent?.role==='CEO'&&agent.repo===repo))
+   if(!owner&&!(agent?.role==='CEO'&&agent.repo===repo)&&creator?.repo!==repo)
     return res({error:'verified_owner_or_appointed_ceo_required',
      hint:'Activate the signed CEO appointment session first; a GitHub write token is not proof of CEO identity'},403);
    const roomId=crypto.randomUUID(),memberId=crypto.randomUUID(),ticket=secret(),
-    actor=owner?'OWNER':'CEO:'+agent.slot+':'+agent.nonce;
-   const slot=owner?'CEO':agent.slot;
+    actor=owner?'OWNER':creator?.repo===repo?'CEO:BOOTSTRAP:'+creator.id:'CEO:'+agent.slot+':'+agent.nonce;
+   const slot=owner||creator?.repo===repo?'CEO':agent.slot;
    const hash=await digest(ticket);
    await db.batch([
     db.prepare('INSERT INTO org_rooms(id,repo,title,mission,created_by) VALUES(?,?,?,?,?)')
@@ -132,9 +173,10 @@ export async function orgWorkspaceApi(request,{db,owner=false,agent=null}={}){
    if(owner){
     const out=await db.prepare('SELECT id,repo,title,mission,status,created_at FROM org_rooms WHERE repo=? ORDER BY created_at DESC LIMIT 50').bind(repo).all();
     rows=out.results||[];
-   }else if(agent?.role==='CEO'&&agent.repo===repo){
+   }else if((agent?.role==='CEO'&&agent.repo===repo)||creator?.repo===repo){
+    const actor=creator?.repo===repo?'CEO:BOOTSTRAP:'+creator.id:'CEO:'+agent.slot+':'+agent.nonce;
     const out=await db.prepare('SELECT id,repo,title,mission,status,created_at FROM org_rooms WHERE repo=? AND created_by=? ORDER BY created_at DESC LIMIT 50')
-     .bind(repo,'CEO:'+agent.slot+':'+agent.nonce).all();
+     .bind(repo,actor).all();
     rows=out.results||[];
    }else{
     const all=await db.prepare('SELECT id,repo,title,mission,status,created_at FROM org_rooms WHERE repo=? ORDER BY created_at DESC LIMIT 50').bind(repo).all();
