@@ -66,7 +66,10 @@ function chosen(){if(!current())throw Error('กรุณาเลือก Bran
 async function handle(button,fn){
  button.disabled=true;
  try{await fn();}catch(e){state('ไม่สำเร็จ: '+e.message);}
- finally{button.disabled=false;}
+ finally{
+  // Never re-enable a Commit control unless the current content was previewed.
+  button.disabled=button.id==='ws-save'?!fullPreview:false;
+ }
 }
 function setup(){
  const nav=document.querySelector('.navigation [data-view="workspace"]');if(!nav)return;
