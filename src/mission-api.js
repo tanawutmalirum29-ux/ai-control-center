@@ -30,7 +30,7 @@ export function asTask(issue,repo){
   reports_to:fields.reports_to,editable_paths:fields.editable_paths,base_sha:fields.base_sha,
   acceptance:fields.acceptance,session_activation:fields.session_activation,
   status:status.status,status_source:status.source,
-  relay:isAppointment?role+': '+(status.status==='APPOINTED'?'AP-ROLE':'MN')+' #'+issue.number+' '+
+  relay:isAppointment?(fields.agent_slot||role)+': '+(status.status==='APPOINTED'?'AP-ROLE':'MN')+' #'+issue.number+' '+
     (issue.html_url||'https://github.com/'+OWNER+'/'+repo+'/issues/'+issue.number):null,
   labels:(issue.labels||[]).map(l=>typeof l==='string'?l:l.name),
   updated_at:issue.updated_at,github_assignees:(issue.assignees||[]).map(a=>a.login)};
