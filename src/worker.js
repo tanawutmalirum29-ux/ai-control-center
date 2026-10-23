@@ -151,6 +151,15 @@ export default {async fetch(request,env){
   const shared=await centralGithubAccess(env,url.searchParams.get('repo'));
   return missionApi(request,shared.token?{fetcher:credentialedFetcher(shared.token)}:{});
  }
+ if(path==='/api/v1/ops/comment'&&request.method==='POST'||
+    path==='/api/v1/ops/comments'&&request.method==='GET'){
+  const body=request.method==='POST'?await request.clone().json().catch(()=>({})):null;
+  const target=request.method==='POST'?body?.repo:url.searchParams.get('repo');
+  const shared=await centralGithubAccess(env,target);
+  if(shared.token)return opsApi(request,{token:shared.token});
+  if(!shared.token)return reply({error:'central_github_credential_unavailable',
+    reason:shared.error||'not_configured',login_required:false},503);
+ }
  if(path.startsWith('/api/v1/work/')){
   const repository=request.method==='POST'?(await request.clone().json().catch(()=>({}))).repo:url.searchParams.get('repo');
   const shared=await centralGithubAccess(env,repository);
@@ -165,7 +174,7 @@ export default {async fetch(request,env){
  }
  if(path==='/api/v1/organization'||path==='/api/v1/organization/document'||path==='/api/v1/organization/bundle'||path==='/api/v1/organization/bundle/document')return organizationApi(request);
  if(path==='/api/health')return reply({
-  service:'AI Control Center',version:13,owner:OWNER,ai_provider:'none',
+  service:'AI Control Center',version:14,owner:OWNER,ai_provider:'none',
   repositories:REPOS.map(name=>OWNER+'/'+name),
   write_repositories:WRITE_REPOS.map(name=>OWNER+'/'+name),
   auth_ready:configured(env),delegation_ready:issuerReady(env),guest_oauth_ready:configured(env),central_credential_present:centralCredentialConfigured(env),qa_note:'PR QA and head SHA are inspected separately from repository CI',
