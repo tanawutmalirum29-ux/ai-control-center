@@ -94,3 +94,7 @@
 #delegate-panel textarea{font:12px/1.65 ui-monospace,monospace;resize:vertical;overflow-wrap:anywhere}
 #delegate-panel button{margin:7px 0}
 #delegate-panel [hidden]{display:none!important}
+
+#delegate-guest-panel{border-top:1px solid var(--line);padding-top:18px;margin-top:16px}
+#delegate-guest-panel h4{font-size:14px;margin:0 0 8px;color:var(--text)}
+#delegate-guest-panel button{margin:10px 0}

@@ -22,6 +22,8 @@ import {OWNER,WRITE_REPOS} from './repositories.js';
    const boss=owner||role==='CEO'||role==='PROJECT-LEAD';
    e('delegate-owner').disabled=!owner||!a.configured;
    e('delegate-child').disabled=!boss||owner||!a.configured;
+   e('delegate-guest').disabled=!boss||!a.configured;
+   e('delegate-guest-panel').hidden=!boss;
    if(!a.configured){
     state('ยังไม่พร้อมออกลิงก์: Cloudflare ต้องมี GITHUB_APP_PRIVATE_KEY Secret พร้อม GitHub App Client ID/Secret ก่อนหนึ่งครั้ง');
     return;
@@ -48,7 +50,9 @@ import {OWNER,WRITE_REPOS} from './repositories.js';
  async function createLink(payload){
   const result=await get('/api/agent/invite',{method:'POST',headers:{'content-type':'application/json'},
    body:JSON.stringify(payload)});
-  const line=result.slot+': AP-ROLE'+(result.issue?' #'+result.issue:'')+' '+result.url;
+  const line=result.role==='GUEST-ENGINEER'?
+    'GUEST-ENGINEER: MN '+result.url+' | '+result.task:
+    result.slot+': AP-ROLE'+(result.issue?' #'+result.issue:'')+' '+result.url;
   e('delegate-relay').value=line;
   state('สร้างลิงก์ '+result.role+' สำหรับ '+result.repo+' แล้ว · คัดลอกหนึ่งบรรทัดไปส่งในแชท AI');
   try{await navigator.clipboard.writeText(line);state('คัดลอกข้อความแต่งตั้งหนึ่งบรรทัดแล้ว · ส่งให้แชทผู้รับได้ทันที');}
@@ -70,6 +74,12 @@ import {OWNER,WRITE_REPOS} from './repositories.js';
   e('delegate-owner').addEventListener('click',event=>activateButton(event.currentTarget,()=>createLink({
    repo:repo(),role:'CEO',slot:'CEO',minutes:10080
   })));
+  e('delegate-guest').addEventListener('click',event=>activateButton(event.currentTarget,async()=>{
+   const task=e('delegate-guest-task').value.trim();
+   if(!task)throw Error('กรอกงานสั้น ๆ สำหรับ AI อิสระ');
+   await createLink({repo:repo(),role:'GUEST-ENGINEER',slot:'GUEST-ENGINEER',
+    issue:0,reason:task,minutes:720});
+  }));
   e('delegate-child').addEventListener('click',event=>activateButton(event.currentTarget,async()=>{
    const no=Number(e('delegate-task').value),task=tasks.find(t=>t.number===no);
    if(!task)throw Error('เลือก Issue ที่ CEO แต่งตั้งแล้ว');
@@ -89,6 +99,7 @@ import {OWNER,WRITE_REPOS} from './repositories.js';
     e('repo-select').dispatchEvent(new Event('change'));
     history.replaceState(null,'',location.pathname+location.hash);
     if(location.hash==='#ceo')nav?.click();
+    else if(location.hash==='#workspace')document.querySelector('.navigation [data-view="workspace"]')?.click();
     else document.querySelector('.navigation [data-view="mywork"]')?.click();
    }
   }

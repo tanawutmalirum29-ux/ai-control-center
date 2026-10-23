@@ -75,6 +75,12 @@
   <label>งานที่ต้องให้ AI รับผิดชอบ<select id="delegate-task"><option value="">เลือก Issue</option></select></label>
   <button id="delegate-child" type="button" class="primary-button">สร้างลิงก์ให้ Engineer / QA (12 ชั่วโมง)</button>
  </div>
+ <div id="delegate-guest-panel" hidden>
+  <h4>AI ภายนอกที่กำลังทำงาน (ไม่ต้องเข้าองค์กร)</h4>
+  <p class="small-note">สร้างลิงก์ให้ AI อิสระทำงานในโปรเจกต์นี้ได้เลย ไม่ต้องสร้าง AP-ROLE หรือ Issue องค์กร AI จะ Commit บน Branch แยกและเปิด Draft PR ได้ ไม่แตะ main โดยตรง</p>
+  <label>บอกงานสั้น ๆ ให้ AI ทำ<input id="delegate-guest-task" maxlength="180" value="ทำงานที่ได้รับมอบหมายต่อในโปรเจกต์นี้ แล้วเปิด Draft PR ให้ QA" placeholder="แก้ UI Astra และเปิด Draft PR" /></label>
+  <button id="delegate-guest" type="button" class="primary-button">ออกลิงก์ให้ AI อิสระ (12 ชั่วโมง)</button>
+ </div>
  <div class="workspace-control">
   <button id="delegate-login" type="button" class="secondary-button">OWNER เชื่อม GitHub ครั้งแรก</button>
   <button id="delegate-refresh" type="button" class="secondary-button">ตรวจสิทธิ์ใหม่</button>

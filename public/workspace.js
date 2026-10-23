@@ -18,7 +18,7 @@ async function login(){
  const agent=await agentResponse.json();
  auth=Boolean(me.authenticated||(agent.agent_authenticated&&agent.agent_repo===repo()&&['CEO','PROJECT-LEAD','ENGINEER','CREATOR','GUEST-ENGINEER'].includes(agent.agent_role)));
  status(me.authenticated?'OWNER · ใช้ GitHub App ทำงาน':
-  auth?'AI '+(agent.agent_role||'')+' · สิทธิ์งาน '+(agent.agent_issue||'CEO')+': ทำงานใน Branch ได้':
+  auth?'AI '+(agent.agent_role||'')+(agent.agent_task?' · '+agent.agent_task:' · สิทธิ์งาน '+(agent.agent_issue||'CEO'))+' · ทำงานใน Branch แยกได้':
   'โหมดอ่านโค้ด GitHub สาธารณะ · ยังไม่มีสิทธิ์ Commit/สร้าง PR');
  }catch{auth=false;status('ไม่สามารถตรวจสถานะ GitHub Login ได้')}
  for(const id of ['ws-create-branch','ws-save','ws-pr-create'])el(id).disabled=!auth;
