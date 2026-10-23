@@ -1,70 +1,69 @@
 # AI Control Center
 
-Free-first operations dashboard for GitHub projects. No paid OpenAI API, no GitHub credentials in browser code.
+ศูนย์จัดการโปรเจกต์ GitHub ผ่านเว็บไซต์สำหรับ OWNER และ AI ที่เปิดเว็บด้วย ChatGPT Work / เครื่องมือเบราว์เซอร์ที่ได้รับอนุญาต
 
-## V1 features
-- Responsive Thai-language dashboard for GitHub public repositories.
-- Live open Issues, Pull Requests, and GitHub Actions workflow runs, with 2-minute in-memory request caching.
-- Switch and manage the repositories tracked on this device.
-- Prepare a role-based work order (`CEO`, `DIR`, `TL`, `ENGINEER`, `QA-REVIEWER`) and open GitHub to **review and submit** it as an Issue.
-- Direct links to pull requests and QA runs. **No merging, deleting, or pushing from the website in V1.**
+- **Production:** https://ai-control-center.tanawutmalirum29.workers.dev
+- **Code:** https://github.com/tanawutmalirum29-ux/ai-control-center
+- **Organization rules:** https://github.com/tanawutmalirum29-ux/ai-organization-hub
+- **Staging:** https://github.com/tanawutmalirum29-ux/Staging_area
+- **Cost model:** Cloudflare Workers / GitHub Free, no paid OpenAI API
 
-## Deploy to Cloudflare Workers (current project type)
-The existing Cloudflare app `ai-control-center` is a **Worker**, not a Pages project. The included `wrangler.jsonc` deploys the static `public/` website without an OpenAI API key or a server-side secret.
+## Real capabilities (V8)
 
-1. Open Cloudflare > **Workers & Pages** > **ai-control-center**.
-2. Go to **Settings > Build**. Select production branch `main`, leave build command blank, and use deploy command `npx wrangler deploy` (project root `/`).
-3. On **Deployments**, inspect the latest build and retry if required after this configuration is merged.
-4. Open the **Domains** tab, enable the free **workers.dev** subdomain for this Worker, and use the resulting URL. **No custom domain purchase is needed.**
-5. Check that the website loads, not just a default Worker response. If a build fails, check build logs before retrying.
+| Feature | Support |
+| --- | --- |
+| Read Issues, PRs, QA and task queue | Public read-only API with 2-minute edge cache and stale fallback |
+| Role/status evidence | Label-based READY / IN_PROGRESS / WAITING_QA / QA_BLOCK / PAUSED; APPOINTED from explicit manual activation hold |
+| PR QA | Inspect checks and reviews on exact PR head SHA; not a substitute for manual QA |
+| Organization | Six bundled Markdown documents from ai-organization-hub/main, pinned by SHA; optional live comparison |
+| Issue creation | Owner GitHub App sign-in, role/scope/3-repo links/organization snapshot SHA in Issue body |
+| Issue comments, GitHub assignees and human status labels | Owner-only operations API; does not wake an AI agent |
+| Workspaces | Create `acc/` Branch, edit UTF-8 text files ≤45 KB, commit to Branch, create Draft PR |
+| Actions | Owner-only list Workflows, Runs and Jobs/Steps; dispatch on `acc/` Branch requires Actions Write permission and explicit confirmation |
+| Automated code checks | `npm run check` + `npm test` via .github/workflows/qa.yml |
+| Merge, repository deletion, branch deletion | Not exposed through the website |
+| Autonomous agents, independent agent auth, durable claims, multi-agent execution | **Not implemented** |
 
-**Note:** The GitHub repository can remain public as this version contains only public code. Do not commit Cloudflare or GitHub tokens. Cloudflare may apply different Worker static-asset routing limits under the Free plan.
+## First-time setup
 
-## Alternative: Deploy on Cloudflare Pages (Free)
-1. Cloudflare Dashboard > **Workers & Pages** > **Create** > **Pages** > **Connect to Git**.
-2. Authorize your GitHub account and select `tanawutmalirum29-ux/ai-control-center`.
-3. Production branch: `main`.
-4. Framework preset: **None**; build command: **leave blank**; output directory: `public`.
-5. Deploy. Cloudflare gives a `*.pages.dev` address. No domain purchase is needed.
+1. Create/install your GitHub App on **selected repositories** in GitHub Settings > Developer settings > GitHub Apps. Minimum Issues RW, Contents RW, Pull requests RW, Actions Read. To dispatch Actions, intentionally enable Actions Write and authorize the updated installation permissions.
+2. Configure GitHub App callback URL `https://ai-control-center.tanawutmalirum29.workers.dev/api/auth/callback`.
+3. In Cloudflare Worker > Settings > Variables and Secrets, add two **Secret-type** variables: `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET`. Never paste the client secret, PAT, or private key into the repository, website inputs or ChatGPT messages.
+4. Open Production and click **เชื่อมต่อ GitHub**. Only the configured GitHub owner is permitted to authenticate.
+5. For a new work order, choose the Repository > **ควบคุมงาน** > create Issue with role/scope/QA. To edit code, go to **พื้นที่ทำงาน** and create a Branch. After edits, create a **Draft PR** for QA.
+6. For current organization rules, go to **องค์กร AI**. Full copies are embedded in `public/organization-bundle.json`; press **อ่านกฎล่าสุด** to compare pinned snapshot SHA against the live organization main. If newer, re-bundle from the latest verified main before using the template for a new mandate.
 
-The web app has **no dependencies, no build step and no environment secrets**. Pushes to `main` deploy automatically after Git integration is configured. GitHub Actions is not required for this static deployment.
+The control center uses GitHub as its source of truth for code, Issues, labels, assignments, comments, CI and branch history. No extra database has been provisioned.
 
-## Important limits
-- The dashboard uses public unauthenticated GitHub REST endpoints (typically 60 requests/hour per originating IP). It cannot read private repositories or modify GitHub directly.
-- Issue creation opens GitHub for the signed-in owner to submit. The dashboard does not submit or write issues by itself.
-- GPT in ChatGPT can separately access GitHub using an authorized connector, but **this website is not an autonomous GPT agent**. No promise of persistent/background AI execution.
-- Private repositories and direct writes require an authenticated server-side GitHub App integration with narrowly scoped permissions; see [Security](docs/SECURITY.md).
-- No paid OpenAI API or paid Cloudflare features are required for V1. Usage stays subject to each provider's free-plan limits.
+## GitHub APIs
 
-## Next phase
-Secure backend (Cloudflare Worker + GitHub App + owner authentication) followed by an authenticated tool/MCP interface and approval-gated merges. Never expose installation tokens, personal access tokens or private keys in the frontend or repository.
+Public: `/api/health`, `/api/v1/repositories`, `/api/v1/queue`, `/api/v1/summary`, `/api/v1/pr-qa`, `/api/v1/organization` (live), `/api/v1/organization/bundle` (pinned), and `/api/v1/organization/bundle/document?name=RULES.md`.
 
-## V2: AI Work Queue and Public Bridge (Free)
+Owner-only: `/api/auth/me`, `/api/v1/work/*`, and `/api/v1/ops/*` (issues, comments, assignment, status, workflows, runs, jobs, guarded dispatch).
 
-Production URL: https://ai-control-center.tanawutmalirum29.workers.dev/
+Writes require owner authorization and same-origin JSON. Tokens are held inside encrypted, Secure, HttpOnly session cookies handled by the Worker, not exposed to JavaScript. The GitHub App must also be installed on the target Repository.
 
-- AI Work Queue lists up to 50 recent open issues on supported public repositories; copy MN commands for a ChatGPT session with GitHub connector.
-- GET /api/health returns capability discovery. GET /api/v1/queue?repo=ARCANA-SURVIVOR returns issue work queue. GET /api/v1/summary?repo=ARCANA-SURVIVOR returns latest summary.
-- API is public **read only**. Write methods blocked (405); GitHub repositories allowlisted; no OpenAI API, GitHub tokens, or Cloudflare secrets.
-- This is not an autonomous background GPT agent. ChatGPT writes to GitHub only through separately authorized GitHub connector. Do not put tokens in public frontend.
-- Worker deployment: npx wrangler deploy (static assets in public, Worker entrypoint in src).
+## QA and safeguards
 
-## GitHub App owner login (V3)
-See [docs/GITHUB_APP_SETUP.md](docs/GITHUB_APP_SETUP.md). After adding Client ID and Client Secret as Cloudflare Secrets, owner login and direct Issue creation are available **only for ai-control-center**. No paid OpenAI API used.
+- All edits go through an isolated `acc/` Branch; direct editing of `main` is blocked by the workspace API.
+- PR creation is **Draft only**. CI pass is not independent QA, and `CHECKS_PASS_REVIEWED` is not permission to merge.
+- No browser-based Delete/Merge buttons or endpoints. Workflow dispatch is restricted to `acc/` Branches and requires explicit confirmation.
+- Assignment of a GitHub issue to a username is not execution of a ChatGPT agent. A generated AP-ROLE is an instruction record awaiting real session activation by the OWNER.
+- The website currently has **one authorized OWNER GitHub identity**, not distinct AI agent credentials. Multiple browser sessions sharing that owner identity must not be treated as separately authorized engineers or independent QA.
+- The bundled organization rules can become older than `ai-organization-hub/main`; snapshot SHA and live SHA are displayed separately.
 
-## V4: Reliable work queue and PR-specific QA
-- Source of truth for both Worker and browser: `public/repositories.js`, including ant-project and ai-organization-hub.
-- Worker cache: 2 minutes, stale fallback up to 15 minutes; client queue retains most recent data up to one hour and marks stale content.
-- Issue statuses from explicit labels only; without status labels, `UNCLASSIFIED`.
-- PR QA is inspected on demand via `/api/v1/pr-qa?repo=...&pr=...`. Includes head SHA, check runs, latest reviewer state, and linked issue references. It **never** authorizes merge.
-- No changes to owner OAuth or to write permissions. Read `docs/QUEUE_QA.md` for contract and limitations.
-- Run `npm test` (Node 20+) for the no-dependency unit tests.
+## Development
 
-## V5: GitHub-backed project workspaces
-Owner GitHub App login allows dedicated `acc/` branches, reading/editing UTF-8 files and creating Draft Pull Requests for QA via the website. No direct pushes to main, merge, delete, AI model API, or unapproved third-party bot token. See [docs/WORKSPACES.md](docs/WORKSPACES.md).
+```bash
+npm run check
+npm test
+npx wrangler deploy
+```
 
-## V6: Live organization policy bridge
-The website displays the current ai-organization-hub/main rules, commands, source SHA and all three repository links for the selected project. The /api/v1/organization and /api/v1/organization/document endpoints are public read-only. The copyable work order cites the pinned organization source SHA. This does not implement autonomous agents, credentials per AI, automatic dispatch, full Actions or Issue editing, project-role permission enforcement, or Merge.
+The GitHub workflow `.github/workflows/qa.yml` runs syntax checks and Node unit tests. Production deploy is handled by the existing Cloudflare Workers Build integration. Browser tests, real GitHub App permission tests, and exact PR QA still require separate real-world verification.
 
-## V7: Embedded organization and owner operations
-All 6 public organization policy files are bundled at [public/organization-bundle.json](public/organization-bundle.json), pinned to a specific main SHA. The Organization tab renders the embedded docs and templates offline from GitHub API. The Operations tab adds GitHub App owner-only issue creation with three-repository governance context, comments, assignment to real GitHub users, Actions workflows/runs/jobs, and guarded workflow dispatch on acc/ work branches (requires separate Actions Write permission). No AI model running on the website, multi-agent identities, job-claim database, merge or delete. No token is exposed to browser.
+## Next engineering phase
+
+True autonomous multi-AI orchestration requires per-agent identities and revocable scopes, durable assignment/lease state, branch/file ownership, an audit log, safe execution sandbox, MCP/agent gateway and independent QA approvals. A public URL, GitHub Issue, or ChatGPT Plus subscription does not by itself start an AI worker. Do not distribute shared permanent PATs to AI workers.
+
+Detailed setup: [docs/GITHUB_APP_SETUP.md](docs/GITHUB_APP_SETUP.md), [docs/WORKSPACES.md](docs/WORKSPACES.md), [docs/QUEUE_QA.md](docs/QUEUE_QA.md), [docs/SECURITY.md](docs/SECURITY.md).
