@@ -222,3 +222,42 @@ test('invitation and CEO deep links do not leave bearer tickets in browser addre
  assert.match(script,/ceo-activate/);
  assert.match(html,/name="referrer" content="no-referrer"/);
 });
+
+test('first CEO proof helper generates the matching scoped branch and a separate private activation URL',()=>{
+ const js=readFileSync(new URL('../public/org-workspace.js',import.meta.url),'utf8');
+ const html=readFileSync(new URL('../public/index.html',import.meta.url),'utf8');
+ for(const id of ['orgw-proof-form','orgw-proof-generate','orgw-proof-branch','orgw-proof-activation']){
+  assert.match(html,new RegExp('id="'+id+'"'));
+ }
+ assert.match(js,/crypto\.getRandomValues\(random\)/);
+ assert.match(js,/ACC_ORG_MEMBER_V1:CEO-GITHUB-PROOF:/);
+ assert.match(js,/crypto\.subtle\.digest\('SHA-256',proof\)/);
+ assert.match(js,/acc\/ceo-bootstrap\//);
+ assert.match(js,/&ceo_ticket='/);
+ assert.match(js,/&ceo_stamp='/);
+ assert.match(js,/addEventListener\('submit',prepareGithubProof\)/);
+ assert.ok(!js.includes('fetch(\'https://api.github.com/repos'),
+  'browser cannot submit its private bootstrap bearer directly to GitHub');
+});
+
+test('proof-based CEO bootstrap rejects wrong repository proof and invalid proof response',async()=>{
+ const ticket='c'.repeat(64),stamp=new Date().toISOString().slice(0,19).replace(/[-:]/g,'')+'Z';
+ const payload={ticket,bootstrap_repo:'ARCANA-SURVIVOR',bootstrap_stamp:stamp};
+ const wrongRepo=await orgWorkspaceApi(post('ceo-activate',payload),{db:emptyDB,
+  fetcher:async()=>({ok:true,json:async()=>({
+   ref:'refs/heads/acc/ceo-bootstrap/'+stamp+'-another-repo',
+   object:{type:'commit',sha:'a'.repeat(40)}
+  })})});
+ assert.equal(wrongRepo.status,403);
+ assert.equal((await wrongRepo.json()).error,'invalid_github_write_proof');
+ const missingSha=await orgWorkspaceApi(post('ceo-activate',payload),{db:emptyDB,
+  fetcher:async()=>({ok:true,json:async()=>({
+   ref:'refs/heads/acc/ceo-bootstrap/'+stamp+'-'+createHash('sha256').update(
+    'ACC_ORG_MEMBER_V1:CEO-GITHUB-PROOF:'+ticket).digest('hex'),
+   object:{type:'commit',sha:'not-a-sha'}
+  })})});
+ assert.equal(missingSha.status,403);
+ const unavailable=await orgWorkspaceApi(post('ceo-activate',payload),{db:emptyDB,
+  fetcher:async()=>{throw Error('GitHub temporarily unavailable')}});
+ assert.equal(unavailable.status,503);
+});
