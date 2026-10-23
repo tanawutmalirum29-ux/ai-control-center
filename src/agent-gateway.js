@@ -42,7 +42,7 @@ export async function agentSession(request,env){
 function asnLength(n){if(n<128)return [n];if(n<256)return [0x81,n];return [0x82,(n>>8)&255,n&255];}
 function pkcs8FromPkcs1(der){
  const algorithm=Uint8Array.from([0x30,0x0d,0x06,0x09,0x2a,0x86,0x48,0x86,0xf7,0x0d,0x01,0x01,0x01,0x05,0x00]);
- const body=Uint8Array.from([0,2,1,0,...algorithm,4,...asnLength(der.length),...der]);
+ const body=Uint8Array.from([2,1,0,...algorithm,4,...asnLength(der.length),...der]);
  return Uint8Array.from([0x30,...asnLength(body.length),...body]);
 }
 async function appJwt(env){
