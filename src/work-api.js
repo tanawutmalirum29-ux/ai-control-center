@@ -1,6 +1,7 @@
 // Owner-authenticated project workspaces: branch -> text edits -> draft pull request.
 // Existing GitHub App user OAuth token stays server-side. No writes to main or deletions.
-import {OWNER, REPOS} from '../public/repositories.js';
+import {OWNER, REPOS,WRITE_REPOS} from '../public/repositories.js';
+import {authorizeWork,taskPrefix,manager} from './role-policy.js';
 const send=(data,status=200)=>new Response(JSON.stringify(data),{status,headers:{'content-type':'application/json; charset=utf-8','cache-control':'no-store','x-content-type-options':'nosniff'}});
 const nameOk=name=>REPOS.includes(name);
 const branchOk=branch=>typeof branch==='string'&&/^acc\/[a-z0-9][a-z0-9._-]{0,90}$/.test(branch)&&!branch.includes('..')&&!branch.endsWith('.');
@@ -40,7 +41,7 @@ function decodeText(encoded){
  const bytes=Uint8Array.from(binary,c=>c.charCodeAt(0));
  return new TextDecoder('utf-8',{fatal:true}).decode(bytes);
 }
-export async function workApi(request,{token,allowedRepo=null,fetcher=globalThis.fetch}={}){
+export async function workApi(request,{token,allowedRepo=null,claim=null,fetcher=globalThis.fetch}={}){
  if(!token)return send({error:'owner_login_required'},401);
  const url=new URL(request.url),route=url.pathname,verb=request.method;
  const name=verb==='GET'?url.searchParams.get('repo'):undefined;
@@ -54,12 +55,14 @@ export async function workApi(request,{token,allowedRepo=null,fetcher=globalThis
  const repo=verb==='GET'?name:data?.repo;
  if(!nameOk(repo))return send({error:'repository_not_allowed',allowed:REPOS},403);
  if(allowedRepo&&allowedRepo!==repo)return send({error:'agent_repo_scope_denied'},403);
+ if(verb==='POST'&&!WRITE_REPOS.includes(repo))return send({error:'repository_read_only'},403);
+ if(!authorizeWork(claim,route,verb,data,url.searchParams))return send({error:'agent_role_or_task_scope_denied'},403);
  const root=base(repo);
  const gh=(path,method='GET',body)=>requestGh(path,token,fetcher,method,body);
  try{
   if(route==='/api/v1/work/branches'&&verb==='GET'){
    const branches=await gh(root+'/branches?per_page=100');
-   return send({repo:OWNER+'/'+repo,branches:branches.filter(b=>branchOk(b.name)).map(b=>({name:b.name,head_sha:b.commit?.sha})),truncated:branches.length===100});
+   return send({repo:OWNER+'/'+repo,branches:branches.filter(b=>branchOk(b.name)&&(!claim||manager(claim.role)||b.name.startsWith(taskPrefix(claim)))).map(b=>({name:b.name,head_sha:b.commit?.sha})),truncated:branches.length===100});
   }
   if(route==='/api/v1/work/file'&&verb==='GET'){
    const branch=url.searchParams.get('branch'),path=url.searchParams.get('path');
@@ -77,7 +80,7 @@ export async function workApi(request,{token,allowedRepo=null,fetcher=globalThis
    const baseRef=await gh(root+'/git/ref/heads/'+defaultBranch.split('/').map(encodeURIComponent).join('/'));
    const sha=baseRef.object?.sha;
    if(!validSha(sha))return send({error:'invalid_base_sha'},502);
-   const slug=data.title.trim().toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'').slice(0,40)||'task';
+   const slug=(claim&&!manager(claim.role)?'issue-'+claim.issue+'-':'')+(data.title.trim().toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'').slice(0,34)||'task');
    const branch='acc/'+slug+'-'+crypto.randomUUID().slice(0,8);
    await gh(root+'/git/refs','POST',{ref:'refs/heads/'+branch,sha});
    return send({created:true,repo:OWNER+'/'+repo,branch,base:defaultBranch,base_sha:sha,url:'https://github.com/'+OWNER+'/'+repo+'/tree/'+branch},201);

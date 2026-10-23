@@ -1,6 +1,7 @@
 // Owner-only GitHub project operations: issues, comments, assignees, CI visibility,
 // workflow_dispatch on isolated work branches. No merges, deletes or background agents.
-import {OWNER,REPOS} from '../public/repositories.js';
+import {OWNER,REPOS,WRITE_REPOS} from '../public/repositories.js';
+import {authorizeOps} from './role-policy.js';
 import bundle from '../public/organization-bundle.json' with { type: 'json' };
 const make=(data,status=200)=>new Response(JSON.stringify(data),{status,headers:{
  'content-type':'application/json; charset=utf-8','cache-control':'no-store',
@@ -53,7 +54,7 @@ async function gh(path,token,fetcher,method='GET',body){
 function mapIssue(x){return {number:x.number,title:x.title,url:x.html_url,state:x.state,
  assignees:(x.assignees||[]).map(a=>a.login),labels:(x.labels||[]).map(a=>a.name),
  updated_at:x.updated_at,body:(x.body||'').slice(0,5000)};}
-export async function opsApi(request,{token,allowedRepo=null,fetcher=globalThis.fetch}={}){
+export async function opsApi(request,{token,allowedRepo=null,claim=null,fetcher=globalThis.fetch}={}){
  if(!token)return make({error:'owner_login_required'},401);
  const url=new URL(request.url),verb=request.method,path=url.pathname;
  let body=null;
@@ -65,6 +66,8 @@ export async function opsApi(request,{token,allowedRepo=null,fetcher=globalThis.
  const name=verb==='GET'?url.searchParams.get('repo'):body?.repo;
  if(!validName(name))return make({error:'unsupported_repo'},400);
  if(allowedRepo&&allowedRepo!==name)return make({error:'agent_repo_scope_denied'},403);
+ if(verb==='POST'&&!WRITE_REPOS.includes(name))return make({error:'repository_read_only'},403);
+ if(!authorizeOps(claim,path,verb,body,url.searchParams))return make({error:'agent_role_or_task_scope_denied'},403);
  const prefix='/repos/'+OWNER+'/'+name;
  const fetchGh=(p,m='GET',b)=>gh(prefix+p,token,fetcher,m,b);
  try{

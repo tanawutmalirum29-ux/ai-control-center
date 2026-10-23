@@ -161,6 +161,6 @@ export async function delegatedAccess(request,env,{fetcher=globalThis.fetch}={})
   try{repo=(await request.clone().json()).repo}catch{return {denied:true}}
  }
  if(repo!==agent.repo)return {denied:true};
- try{return {token:await installationToken(env,repo,fetcher),repo,agent:true};}
+ try{return {token:await installationToken(env,repo,fetcher),repo,agent:true,claim:agent};}
  catch(error){return {denied:true,error:String(error.message||error)};}
 }

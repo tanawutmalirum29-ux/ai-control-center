@@ -9,5 +9,7 @@ export const REPOS = Object.freeze([
   'appointment-CEO',
   'Staging_area'
 ]);
-export const WRITE_REPOS = Object.freeze(['ai-control-center']);
+// GitHub App installation and permission are separately checked on every real write.
+// The central organization policy repository remains read-only.
+export const WRITE_REPOS = Object.freeze(['ARCANA-SURVIVOR','ai-control-center','ant-project','appointment-CEO','Staging_area']);
 export const FULL_REPOS = Object.freeze(REPOS.map(name => `${OWNER}/${name}`));

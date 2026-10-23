@@ -139,14 +139,14 @@ export default {async fetch(request,env){
  if(path==='/api/v1/mission')return missionApi(request);
  if(path.startsWith('/api/v1/ops/')||path.startsWith('/api/v1/work/')){
   const s=await session(request,env);
-  const access=s?{token:s.token,repo:null}:await delegatedAccess(request,env);
+  const access=s?{token:s.token,repo:null,claim:null}:await delegatedAccess(request,env);
   if(access?.denied)return reply({error:'agent_access_denied',details:access.error||'wrong_repository_or_installation'},403);
-  if(path.startsWith('/api/v1/ops/'))return opsApi(request,{token:access?.token,allowedRepo:access?.repo});
-  return workApi(request,{token:access?.token,allowedRepo:access?.repo});
+  if(path.startsWith('/api/v1/ops/'))return opsApi(request,{token:access?.token,allowedRepo:access?.repo,claim:access?.claim});
+  return workApi(request,{token:access?.token,allowedRepo:access?.repo,claim:access?.claim});
  }
  if(path==='/api/v1/organization'||path==='/api/v1/organization/document'||path==='/api/v1/organization/bundle'||path==='/api/v1/organization/bundle/document')return organizationApi(request);
  if(path==='/api/health')return reply({
-  service:'AI Control Center',version:10,owner:OWNER,ai_provider:'none',
+  service:'AI Control Center',version:11,owner:OWNER,ai_provider:'none',
   repositories:REPOS.map(name=>OWNER+'/'+name),
   write_repositories:WRITE_REPOS.map(name=>OWNER+'/'+name),
   auth_ready:configured(env),qa_note:'PR QA and head SHA are inspected separately from repository CI',
