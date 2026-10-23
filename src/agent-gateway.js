@@ -162,7 +162,7 @@ export async function agentGateway(request,env,url,{owner=false,ownerSession=nul
    editable='PROJECT_FILES';
   }
   const shortTask=role==='GUEST-ENGINEER'?String(input.reason).trim():'';
-  const useOwnerToken=Boolean(role==='GUEST-ENGINEER'&&oauthGuest);
+  const useOwnerToken=Boolean(role==='GUEST-ENGINEER'&&oauthGuest&&!issuerReady(env));
   const remaining=useOwnerToken?
     Math.floor((ownerSession.exp-Date.now()-90000)/60000):Infinity;
   const minutes=Number(input.minutes||(manager(role)?7*1440:useOwnerToken?Math.min(180,remaining):720));

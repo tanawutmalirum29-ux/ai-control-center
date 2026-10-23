@@ -3,7 +3,7 @@
 import {OWNER,WRITE_REPOS} from './repositories.js';
 (()=>{
  const e=id=>document.getElementById(id);
- let owner=false,role='',agentRepo='',tasks=[];
+ let owner=false,role='',agentRepo='',tasks=[],guestMinutes=720;
  const repo=()=>e('repo-select').value.split('/')[1];
  const state=message=>{e('delegate-status').textContent=message};
  async function get(url,options){
@@ -20,12 +20,18 @@ import {OWNER,WRITE_REPOS} from './repositories.js';
    role=a.agent_authenticated&&a.agent_repo===repo()?a.agent_role||'':'';
    agentRepo=a.agent_repo||'';
    const boss=owner||role==='CEO'||role==='PROJECT-LEAD';
+   guestMinutes=a.configured?720:180;
    e('delegate-owner').disabled=!owner||!a.configured;
    e('delegate-child').disabled=!boss||owner||!a.configured;
-   e('delegate-guest').disabled=!boss||!a.configured;
+   e('delegate-guest').disabled=!boss||!(a.configured||(owner&&a.guest_oauth_available));
+   e('delegate-guest').textContent=a.configured?'ออกลิงก์ AI อิสระ (12 ชั่วโมง)':'ออกลิงก์ AI อิสระ (ประมาณ 3 ชั่วโมง · ไม่ต้อง Private Key)';
    e('delegate-guest-panel').hidden=!boss;
-   if(!a.configured){
-    state('ยังไม่พร้อมออกลิงก์: Cloudflare ต้องมี GITHUB_APP_PRIVATE_KEY Secret พร้อม GitHub App Client ID/Secret ก่อนหนึ่งครั้ง');
+   if(!a.configured&&!owner){
+    state('การแจกสิทธิ์ CEO ต้องมี GitHub App Private Key แต่ AI อิสระสามารถขอลิงก์จาก OWNER ได้');
+    return;
+   }
+   if(!a.configured&&!a.guest_oauth_available){
+    state('GitHub App OAuth ยังไม่พร้อมออกลิงก์ชั่วคราว');
     return;
    }
    e('delegate-owner-panel').hidden=!owner;
@@ -35,7 +41,7 @@ import {OWNER,WRITE_REPOS} from './repositories.js';
      role?role+' · โปรเจกต์ '+agentRepo+' · สามารถแต่งตั้งทีมตามกฎได้':
      'ไม่มีสิทธิ์แต่งตั้ง · ต้องได้รับลิงก์ CEO จาก OWNER หรือ Login ด้วยบัญชี OWNER เพียงครั้งแรก';
    if(!boss){state('อ่านโปรเจกต์ได้ แต่ไม่มีสิทธิ์ออกลิงก์สำหรับ AI');return;}
-   if(owner){state('เลือก Repository แล้วออกลิงก์ CEO สำหรับแชท CEO ได้');return;}
+   if(owner){state(a.configured?'เลือก Repository แล้วออกลิงก์ CEO หรือ AI อิสระได้':'โหมดชั่วคราวพร้อม: OWNER ออกลิงก์ให้ AI อิสระได้เลย โดยใช้ GitHub Login ของ OWNER ที่เชื่อมแล้ว');return;}
    const data=await get('/api/v1/mission?repo='+encodeURIComponent(repo()));
    tasks=data.tasks||[];
    const select=e('delegate-task'),keep=select.value;select.replaceChildren(new Option('เลือก Issue งานที่ CEO สร้างไว้',''));
@@ -78,7 +84,7 @@ import {OWNER,WRITE_REPOS} from './repositories.js';
    const task=e('delegate-guest-task').value.trim();
    if(!task)throw Error('กรอกงานสั้น ๆ สำหรับ AI อิสระ');
    await createLink({repo:repo(),role:'GUEST-ENGINEER',slot:'GUEST-ENGINEER',
-    issue:0,reason:task,minutes:720});
+    issue:0,reason:task,minutes:guestMinutes});
   }));
   e('delegate-child').addEventListener('click',event=>activateButton(event.currentTarget,async()=>{
    const no=Number(e('delegate-task').value),task=tasks.find(t=>t.number===no);
