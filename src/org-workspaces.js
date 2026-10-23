@@ -92,6 +92,14 @@ async function nextTask(db,room,actor,to,title,description){
  }
  return null;
 }
+// D1 only supports one SQL statement per prepared query. Do not rely on multiline exec()
+ // when first initializing an empty production database.
+async function initializeSchema(db){
+ const statements=ORG_SCHEMA.split(';').map(chunk=>chunk.split('\n')
+  .filter(line=>!line.trimStart().startsWith('--')).join('\n').trim()).filter(Boolean);
+ for(const statement of statements)await db.prepare(statement).run();
+ return statements.length;
+}
 export async function orgWorkspaceApi(request,{db,owner=false,agent=null}={}){
  const url=new URL(request.url),route=url.pathname,verb=request.method;
  if(!db||typeof db.prepare!=='function')return res({
@@ -106,18 +114,23 @@ export async function orgWorkspaceApi(request,{db,owner=false,agent=null}={}){
  try{
   if(route==='/api/v1/org/setup'&&verb==='POST'){
    if(!owner)return res({error:'owner_login_required_for_database_setup'},403);
-   if(typeof db.exec!=='function')return res({error:'d1_exec_unavailable'},503);
-   await db.exec(ORG_SCHEMA);
+   const statements=await initializeSchema(db);
    return res({initialized:true,database_binding:'ORG_DB',
-    tables:['org_rooms','org_members','org_messages','org_tasks','org_ceo_tickets','org_creator_sessions'],
+    statements,tables:['org_rooms','org_members','org_messages','org_tasks','org_ceo_tickets','org_creator_sessions'],
     note:'Idempotent schema, GitHub Issues unaffected'});
   }
-  // D1 first-run initialization is idempotent; the OWNER does not have to create tables manually.
-  // The configured ORG_DB is pre-authorized via Cloudflare deployment, not public GitHub access.
+  // Idempotent first-use setup; OWNER does not need to operate the Cloudflare console.
+  let initialized=false;
   try{await db.prepare('SELECT 1 FROM org_creator_sessions LIMIT 1').first();}
   catch(error){
-   if(!/no such table/i.test(String(error))||typeof db.exec!=='function')throw error;
-   await db.exec(ORG_SCHEMA);
+   if(!/no such table/i.test(String(error)))throw error;
+   await initializeSchema(db);
+   initialized=true;
+  }
+  if(route==='/api/v1/org/schema-health'&&verb==='GET'){
+   const result=await db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name LIKE 'org_%' ORDER BY name").all();
+   const tables=(result.results||[]).map(row=>row.name);
+   return res({database_ready:tables.length>=6,tables,initialized_on_request:initialized});
   }
   const creator=await creatorSession(db,request);
   if(route==='/api/v1/org/ceo-invite'&&verb==='POST'){
