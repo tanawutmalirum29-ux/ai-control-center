@@ -89,13 +89,13 @@ async function edgeSave(cache,key,entry,ttl){
  if(!cache)return;
  try{await cache.put(new Request('https://acc-edge-cache.local/'+encodeURIComponent(key)),new Response(JSON.stringify(entry),{headers:{'cache-control':'public,max-age='+Math.floor(ttl/1000)}}));}catch{/* Edge cache best-effort */}
 }
-async function withCache(key,producer,{fetcher,edge,now}={}){
+async function withCache(key,producer,{fetcher,edge,now,forceFresh=false}={}){
  const time=typeof now==='number'?now:Date.now();
  const local=getCache(key,time);
- if(local&&time-local.at<FRESH_MS)return {...local.value,stale:false,cached_at:new Date(local.at).toISOString()};
- const fresh=await edgeLoad(edge,key+'-fresh');
+ if(!forceFresh&&local&&time-local.at<FRESH_MS)return {...local.value,stale:false,cached_at:new Date(local.at).toISOString()};
+ const fresh=forceFresh?null:await edgeLoad(edge,key+'-fresh');
  if(fresh&&time-fresh.at<FRESH_MS){fallback.set(key,fresh);return {...fresh.value,stale:false,cached_at:new Date(fresh.at).toISOString()};}
- if(inflight.has(key))return inflight.get(key);
+ if(!forceFresh&&inflight.has(key))return inflight.get(key);
  const pending=(async()=>{
   try{
    const value=await producer(fetcher);
@@ -107,7 +107,7 @@ async function withCache(key,producer,{fetcher,edge,now}={}){
   }catch(error){
    const old=getCache(key,time)||await edgeLoad(edge,key+'-stale');
    const warning=cause(error);
-   if(old&&time-old.at<=STALE_MS)return {...old.value,stale:true,cached_at:new Date(old.at).toISOString(),warning};
+   if(!forceFresh&&old&&time-old.at<=STALE_MS)return {...old.value,stale:true,cached_at:new Date(old.at).toISOString(),warning};
    const e=new Error('github_unavailable');e.reason=warning;throw e;
   }
  })();
@@ -180,7 +180,7 @@ export async function readApi(request,{fetcher=globalThis.fetch,edge=globalThis.
  }
  try{
   const produce=path==='/api/v1/queue'?f=>queue(repo,f):path==='/api/v1/summary'?f=>summary(repo,f):f=>prQA(repo,number,f);
-  const result=await withCache(key,produce,{fetcher,edge,now});
+  const result=await withCache(key,produce,{fetcher,edge,now,forceFresh:path==='/api/v1/pr-qa'||url.searchParams.get('fresh')==='1'});
   return respond(result);
  }catch(e){return respond({error:'github_unavailable',reason:e.reason||'GITHUB_UNAVAILABLE',stale:false,retry_after_seconds:120},503);}
 }
