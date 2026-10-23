@@ -9,6 +9,7 @@ import {agentGateway,agentSession,delegatedAccess,issuerReady} from './agent-gat
 import {publicSourceApi} from './public-source.js';
 import {missionApi} from './mission-api.js';
 import {centralGithubAccess,centralCredentialConfigured} from './central-github.js';
+const credentialedFetcher=token=>(endpoint,init={})=>fetch(endpoint,{...init,headers:{...init.headers,authorization:'Bearer '+token}});
 const jsonHeaders = {'content-type':'application/json; charset=utf-8','cache-control':'no-store','x-content-type-options':'nosniff'};
 const publicHeaders = {...jsonHeaders,'access-control-allow-origin':'*','access-control-allow-methods':'GET, HEAD, OPTIONS'};
 const reply=(data,status=200,isPublic=false)=>new Response(JSON.stringify(data),{status,headers:isPublic?publicHeaders:jsonHeaders});
@@ -141,7 +142,10 @@ export default {async fetch(request,env){
   const central=await centralGithubAccess(env,sourceRepo);
   return publicSourceApi(request,{token:central.token||null});
  }
- if(path==='/api/v1/mission')return missionApi(request);
+ if(path==='/api/v1/mission'){
+  const shared=await centralGithubAccess(env,url.searchParams.get('repo'));
+  return missionApi(request,shared.token?{fetcher:credentialedFetcher(shared.token)}:{});
+ }
  if(path.startsWith('/api/v1/work/')){
   const repository=request.method==='POST'?(await request.clone().json().catch(()=>({}))).repo:url.searchParams.get('repo');
   const shared=await centralGithubAccess(env,repository);
@@ -162,5 +166,6 @@ export default {async fetch(request,env){
   auth_ready:configured(env),delegation_ready:issuerReady(env),guest_oauth_ready:configured(env),central_credential_present:centralCredentialConfigured(env),qa_note:'PR QA and head SHA are inspected separately from repository CI',
   endpoints:['/api/health','/api/auth/me','/api/v1/repositories','/api/v1/queue?repo=ARCANA-SURVIVOR','/api/v1/summary?repo=ARCANA-SURVIVOR','/api/v1/pr-qa?repo=ARCANA-SURVIVOR&pr=1','POST /api/v1/issues (owner only)','/api/v1/organization','/api/v1/organization/document?name=RULES.md','/api/v1/organization/bundle','/api/v1/ops/issues','/api/v1/ops/workflows','/api/v1/ops/runs','/api/v1/ops/jobs','POST /api/v1/ops/issue','POST /api/v1/ops/comment','POST /api/v1/ops/assign','POST /api/v1/ops/status','POST /api/v1/ops/dispatch (Actions write required)','/api/v1/source/branches','/api/v1/source/tree','/api/v1/source/file','/api/agent/me','POST /api/agent/invite','GET /api/agent/activate','GET /api/v1/mission?repo=ARCANA-SURVIVOR','GET /api/v1/work/branches','GET /api/v1/work/tree','GET /api/v1/work/file','POST /api/v1/work/branch','POST /api/v1/work/file','POST /api/v1/work/pr (draft only)']
  },200,true);
- return readApi(request);
+ const shared=await centralGithubAccess(env,url.searchParams.get('repo'));
+ return readApi(request,shared.token?{fetcher:credentialedFetcher(shared.token)}:{});
 }};
