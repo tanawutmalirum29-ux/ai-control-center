@@ -6,21 +6,21 @@ import {OWNER, FULL_REPOS} from './repositories.js';
  const current=()=>el('repo-select')?.value||'';
  const allowed=repo=>FULL_REPOS.includes(repo);
  let loaded='',tasks=[],nonce=0;
- const actions={READY:'เริ่มงาน',IN_PROGRESS:'ติดตามงานเดิม',WAITING_QA:'ส่งตรวจ QA',QA_BLOCK:'รายงานสิ่งที่บล็อก',PAUSED:'ตรวจเหตุผลที่พัก',APPOINTED:'รอ OWNER ส่งคำสั่ง',UNCLASSIFIED:'ตรวจสถานะก่อน'};
+ const actions={READY:'เริ่มงาน',IN_PROGRESS:'ติดตามงานเดิม',WAITING_QA:'ส่งตรวจ QA',QA_BLOCK:'รายงานสิ่งที่บล็อก',PAUSED:'ตรวจเหตุผลที่พัก',APPOINTED:'เปิดงานในเว็บ',UNCLASSIFIED:'ตรวจสถานะก่อน'};
  const colors={READY:'good',IN_PROGRESS:'wait',WAITING_QA:'wait',QA_BLOCK:'bad',PAUSED:'bad',APPOINTED:'wait',UNCLASSIFIED:'wait'};
  function instruction(repo,task){
   const target=task?`Issue #${task.number}: ${task.title}\n${task.url}\nสถานะ: ${task.status} (${task.source})`:'ตรวจสถานะงานล่าสุด เลือกเฉพาะงาน READY ที่ยังไม่มีผู้รับผิดชอบและไม่ซ้ำ';
-  const rule=task?.status==='READY'?'ตรวจว่ามีผู้รับงานแล้วหรือไม่ก่อนลงมือ':task?.status==='IN_PROGRESS'?'ติดตามผู้รับงานเดิม ห้ามเริ่มซ้ำ':task?.status==='WAITING_QA'?'ตรวจหลักฐาน QA ห้าม Merge หากยังไม่ผ่าน':task?.status==='QA_BLOCK'?'รายงานจุด Block ห้าม Merge':task?.status==='PAUSED'?'ห้ามเริ่มงานจนกว่าจะปลดพัก':task?.status==='APPOINTED'?'ยังไม่มีการเรียกเซสชัน AI ผู้รับ ต้องรอ OWNER ส่ง AP-ROLE และยืนยันขอบเขต':'ไม่ทราบสถานะที่ยืนยันได้ ต้องตรวจ Issue ก่อนเริ่ม';
+  const rule=task?.status==='READY'?'ตรวจว่ามีผู้รับงานแล้วหรือไม่ก่อนลงมือ':task?.status==='IN_PROGRESS'?'ติดตามผู้รับงานเดิม ห้ามเริ่มซ้ำ':task?.status==='WAITING_QA'?'ตรวจหลักฐาน QA ห้าม Merge หากยังไม่ผ่าน':task?.status==='QA_BLOCK'?'รายงานจุด Block ห้าม Merge':task?.status==='PAUSED'?'ห้ามเริ่มงานจนกว่าจะปลดพัก':task?.status==='APPOINTED'?'งานนี้สามารถตรวจโค้ดและทำต่อผ่าน Workspace ได้โดยไม่ต้องมี AP-ROLE หากผู้สั่งมอบหมายแล้ว':'ไม่ทราบสถานะที่ยืนยันได้ ต้องตรวจ Issue ก่อนเริ่ม';
   return ['AI CONTROL CENTER / MN','Repository: https://github.com/'+repo,target,rule,
-   'อ่านกฎล่าสุดที่ https://github.com/'+OWNER+'/ai-organization-hub/blob/main/RULES.md และ COMMANDS.md ก่อนเริ่ม',
+   'หากเป็นงานในองค์กรให้อ่าน RULES.md ของ ai-organization-hub; งานอิสระไม่ต้องมีตำแหน่งองค์กร',
    'ORG_WORKSPACE_REPO: https://github.com/'+OWNER+'/ai-organization-hub',
    'STAGING_REPO: https://github.com/'+OWNER+'/Staging_area',
-   'ตรวจ PROJECT_REPO/main SHA, AP-ROLE, REPORTS_TO, EDITABLE_PATHS, BASE_SHA ก่อนทำงาน',
-   'ใช้ Control Center เป็นตัวกลาง หากการกระทำไม่รองรับให้รายงาน ไม่ข้ามสิทธิ์',
-   'รายงาน MN/MQ/TR/C สั้นตามกฎองค์กร','ต้องมี QA ตรงกับ PR และ head SHA ก่อน Merge','ห้ามลบ Repository หรือข้าม QA โดยไม่ได้รับอนุมัติ'].join('\n');
+   'ตรวจ Repository, main SHA และขอบเขตงานที่ผู้สั่งระบุ ไม่ต้องลงทะเบียน AI หรือเชื่อม GitHub',
+   'เปิด Control Center > แก้โค้ด สร้าง Branch acc/ แล้วอ่านไฟล์ แก้ Commit และส่ง Draft PR',
+   'รายงานผลสั้นพร้อม Branch, Commit SHA และ PR','ต้องมี QA ตรงกับ PR และ head SHA ก่อน Merge','ห้ามลบ Repository หรือข้าม QA โดยไม่ได้รับอนุมัติ'].join('\n');
  }
  async function copy(s){
-  try{await navigator.clipboard.writeText(s);el('agent-notice').textContent='คัดลอกแล้ว — วางใน ChatGPT ที่เชื่อม GitHub';}
+  try{await navigator.clipboard.writeText(s);el('agent-notice').textContent='คัดลอกแล้ว — ส่งให้ AI เปิด Control Center ทำงานได้โดยไม่ต้องเชื่อม GitHub';}
   catch{el('agent-notice').textContent='คัดลอกไม่สำเร็จ กรุณาอนุญาต Clipboard';}
  }
  function render(repo){
