@@ -78,6 +78,14 @@ async function handle(button,fn){
  }
 }
 function setup(){
+ window.addEventListener('acc:workspace-file-invalidated',event=>{
+  const d=event.detail||{};
+  if(d.repo!==repo()||d.branch!==current()||d.path!==el('ws-path').value.trim())return;
+  fileSha='';lastFile='';loadedContent=null;
+  el('ws-content').value='';
+  el('ws-loaded-file').textContent='มี Commit ใหม่แล้ว · กดอ่านทั้งไฟล์เพื่อโหลด Blob SHA ใหม่';
+  resetFullPreview();
+ });
  window.addEventListener('acc:workspace-file-loaded',event=>{
   const data=event.detail||{},branch=current(),path=el('ws-path').value.trim();
   if(!data.repo||data.repo!==repo()||data.branch!==branch||data.path!==path||

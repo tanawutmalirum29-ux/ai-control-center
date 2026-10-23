@@ -235,9 +235,14 @@
      <button id="ws-quick-select" type="button" class="secondary-button">ดึงบรรทัดเดิมมาแก้</button>
     </div>
     <label>เนื้อหาบรรทัดใหม่ (ไม่รวมช่องว่างนำหน้า)<input id="ws-quick-new" type="text" spellcheck="false" autocomplete="off" placeholder="timeout-minutes: 30"/></label>
-    <button id="ws-quick-preview" type="button" class="primary-button">ตรวจ Diff ของบรรทัดนี้</button>
-    <p id="ws-quick-status" class="small-note" aria-live="polite">โหลดไฟล์และเลือกบรรทัดก่อน · ยืนยัน Commit ด้านล่างเมื่อ Diff ถูกต้อง</p>
+    <div class="workspace-control">
+     <button id="ws-quick-preview" type="button" class="secondary-button">1. ตรวจ Diff ของบรรทัดนี้</button>
+     <button id="ws-quick-commit" type="button" class="primary-button" disabled>2. ยืนยัน Commit เฉพาะบรรทัดนี้</button>
+    </div>
+    <div id="ws-quick-diff" class="ws-line-diff" aria-live="polite"></div>
+    <p id="ws-quick-status" class="small-note" aria-live="polite">โหลดไฟล์และเลือกบรรทัดก่อน · กด Diff แล้วจึง Commit ที่นี่ได้เลย</p>
    </section>
+   <details class="ws-manual-editor"><summary>แก้หลายบรรทัด (ตัวเลือกขั้นสูง ใช้ textarea)</summary>
    <label>ข้อความใหม่สำหรับแทนที่ช่วงที่เลือก<textarea id="ws-lines-replacement" rows="7" spellcheck="false" placeholder="ระบบจะเติมข้อความเดิมเมื่อกด นำบรรทัดเดิมมาแก้ แล้วเปลี่ยนเฉพาะส่วนที่ต้องการ"></textarea></label>
    <div class="workspace-control">
     <button id="ws-lines-preview-btn" class="secondary-button" type="button">1. ดู Diff ก่อน Commit</button>
@@ -245,6 +250,7 @@
    </div>
    <p id="ws-lines-status" class="small-note" aria-live="polite">เลือก Branch และไฟล์ แล้วกด อ่านทั้งไฟล์ ได้เลย</p>
    <div id="ws-lines-preview" class="ws-line-diff" aria-live="polite"></div>
+   </details>
   </section>
   <details class="ws-full-editor" open><summary>ตัวแก้ไขทั้งไฟล์ (เปิดแสดงเนื้อหาทันทีเมื่ออ่านไฟล์)</summary>
   <label>ตัวแก้ไขไฟล์ข้อความ UTF-8 (ไม่เกิน 200 KB)<p id="ws-loaded-file" class="small-note" aria-live="polite">ยังไม่ได้โหลดเนื้อหา / SHA จาก GitHub</p><textarea id="ws-content" rows="13" spellcheck="false" placeholder="เลือก Branch และอ่านไฟล์เดิมก่อนแก้ไข"></textarea></label>

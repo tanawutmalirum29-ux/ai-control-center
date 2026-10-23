@@ -5,7 +5,7 @@
  const repo=()=>el('repo-select').value.split('/')[1];
  const branch=()=>el('ws-branches').value;
  const path=()=>el('ws-path').value.trim();
- let view=null,preview=null;
+ let view=null,preview=null,quickPreview=null;
  const set=msg=>{el('ws-lines-status').textContent=msg;};
  const errText=d=>[d.error,d.hint||d.github_message||d.message,...(d.github_errors||[])].filter(Boolean).join(' · ');
  async function fetchWork(action,options={}){
@@ -22,9 +22,11 @@
   return cur;
  }
  function invalidate(){
-  preview=null;
+  preview=null;quickPreview=null;
   el('ws-lines-commit').disabled=true;
   el('ws-lines-preview').replaceChildren();
+  el('ws-quick-commit').disabled=true;
+  el('ws-quick-diff').replaceChildren();
  }
  function matchView(){
   const s=validateScope();
@@ -89,16 +91,57 @@
   if(!Number.isSafeInteger(number)||number<1)throw Error('กรอกเลขบรรทัดก่อน');
   const source=view.lines.find(line=>line.number===number);
   if(!source)throw Error('ไม่พบบรรทัดในชุดข้อมูลที่อ่าน · กดอ่านทั้งไฟล์ก่อน');
-  const newText=el('ws-quick-new').value;
-  if(newText.includes('\n')||newText.includes('\r'))throw Error('ช่องสั้นแก้ได้หนึ่งบรรทัดเท่านั้น');
+  const typed=el('ws-quick-new').value;
+  if(typed.includes('\n')||typed.includes('\r'))throw Error('แก้ได้ทีละหนึ่งบรรทัด');
   const indent=source.text.match(/^\s*/)?.[0]||'';
-  const replacement=indent+newText;
+  const replacement=indent+typed;
   if(source.text===replacement)throw Error('เนื้อหาใหม่เหมือนบรรทัดเดิม ไม่มี Diff');
-  el('ws-lines-start').value=String(number);
-  el('ws-lines-end').value=String(number);
-  el('ws-lines-replacement').value=replacement;
-  await previewPatch();
-  el('ws-quick-status').textContent='Diff บรรทัด '+number+' พร้อมตรวจด้านล่าง · ยืนยัน Commit เฉพาะเมื่อถูกต้อง';
+  const payload={...v,start:number,end:number,replacement,preview:true};
+  el('ws-quick-status').textContent='กำลังสร้าง Diff จากบรรทัด '+number+' บน SHA '+v.sha+' ...';
+  const data=await fetchWork('patch-lines',{method:'POST',
+   headers:{'content-type':'application/json'},body:JSON.stringify(payload)});
+  if(!data.preview||!/^[a-f0-9]{64}$/.test(data.preview_digest||'')||
+    data.sha!==v.sha||data.line_start!==number||data.line_end!==number||
+    data.original_text!==source.text||data.replacement_text!==replacement)
+   throw Error('ข้อมูล Diff/SHA ไม่ตรงกับบรรทัดต้นฉบับ กรุณาโหลดไฟล์ใหม่');
+  const diff=el('ws-quick-diff');
+  diff.replaceChildren();
+  for(const [header,content] of [['ก่อนแก้',data.original_text],['หลังแก้',data.replacement_text]]){
+   const label=document.createElement('strong');label.textContent=header;
+   const code=document.createElement('pre');code.textContent=content;
+   diff.append(label,code);
+  }
+  const details=document.createElement('p');details.className='small-note';
+  details.textContent='Branch '+v.branch+' · '+v.path+' · Blob SHA '+v.sha+' · บรรทัด '+number;
+  diff.prepend(details);
+  quickPreview={payload:{...payload,preview:false,preview_digest:data.preview_digest},typed};
+  el('ws-quick-commit').disabled=false;
+  el('ws-quick-status').textContent='Diff พร้อมแล้ว · ตรวจข้อความก่อน/หลัง และกด ยืนยัน Commit เฉพาะบรรทัดนี้';
+ }
+ async function commitQuickLine(){
+  if(!quickPreview)throw Error('ต้องตรวจ Diff ของบรรทัดนี้ก่อน');
+  const v=matchView(),savedPreview=quickPreview;
+  const p=savedPreview.payload;
+  if(p.sha!==v.sha||p.path!==v.path||p.branch!==v.branch||p.repo!==v.repo||
+    Number(el('ws-quick-line').value)!==p.start||
+    el('ws-quick-new').value!==savedPreview.typed)
+   throw Error('เนื้อหาหรือ Branch เปลี่ยนแล้ว · ตรวจ Diff ใหม่');
+  invalidate();
+  el('ws-quick-status').textContent='กำลัง Commit ด้วย Blob SHA '+p.sha+' ...';
+  const result=await fetchWork('patch-lines',{method:'POST',
+   headers:{'content-type':'application/json'},body:JSON.stringify(p)});
+  if(!result.saved||!/^[a-f0-9]{40}$/.test(result.commit_sha||'')||
+    !/^[a-f0-9]{40}$/.test(result.sha||''))
+   throw Error('GitHub ยังไม่ยืนยัน Commit SHA · ตรวจ Branch ก่อนทำซ้ำ');
+  const verified=await fetchWork('file?'+new URLSearchParams({repo:v.repo,branch:v.branch,path:v.path}));
+  const actual=verified.content?.split('\n')[p.start-1]?.replace(/\r$/,'');
+  if(verified.sha!==result.sha||actual!==p.replacement)
+   throw Error('Commit '+result.commit_sha+' แล้ว แต่การอ่านยืนยันไม่ตรง · ห้ามกด Commit ซ้ำ');
+  view=null;
+  el('ws-quick-status').textContent='COMMIT VERIFIED '+result.commit_sha+' · Blob SHA '+result.sha+
+   ' · แก้เพียงบรรทัด '+p.start+' · main ไม่เปลี่ยน';
+  el('ws-lines-sha').textContent='Commit '+result.commit_sha+' · กดอ่านทั้งไฟล์เพื่อรับ SHA ล่าสุด';
+  window.dispatchEvent(new CustomEvent('acc:workspace-file-invalidated',{detail:v}));
  }
  async function previewPatch(){
   invalidate();
@@ -158,7 +201,7 @@
   try{await fn();}
   catch(error){invalidate();set('ไม่สำเร็จ: '+error.message);}
   finally{
-   if(button.id!=='ws-lines-commit')button.disabled=false;
+   if(!['ws-lines-commit','ws-quick-commit'].includes(button.id))button.disabled=false;
   }
  }
  function setup(){
@@ -169,6 +212,7 @@
     el('ws-lines-sha').textContent='เลือก Branch/ไฟล์แล้วกด อ่านบรรทัด ใหม่';});
   el('ws-quick-select').addEventListener('click',e=>run(e.currentTarget,async()=>selectQuickLine()));
   el('ws-quick-preview').addEventListener('click',e=>run(e.currentTarget,previewQuickLine));
+  el('ws-quick-commit').addEventListener('click',e=>run(e.currentTarget,commitQuickLine));
   el('ws-lines-read').addEventListener('click',e=>run(e.currentTarget,()=>readLines(true)));
   el('ws-lines-read-page').addEventListener('click',e=>run(e.currentTarget,()=>readLines(false)));
   el('ws-lines-copy').addEventListener('click',e=>run(e.currentTarget,copySelected));
