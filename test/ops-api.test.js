@@ -35,6 +35,10 @@ test('Issue assignment body pins three repo links and no auto activation',()=>{
  assert.match(s,/ORG_RULES_SNAPSHOT_SHA: [a-f\d]{40}/);
  assert.match(s,/PARENT_ISSUE: #3/);
  assert.match(s,/AGENT_SLOT: ENGINEER-UI/);
+ assert.match(s,/SCHEDULE_REQUEST: EVERY_1_HOUR/);
+ assert.match(s,/SCHEDULE_TARGET: RECEIVING_CHAT_ONLY/);
+ assert.match(s,/SCHEDULE_CHECK: https:\/\/ai-control-center/);
+ assert.match(s,/ตั้งงานประจำทุก 1 ชั่วโมงหนึ่งงาน/);
 });
 test('create issue, comment and assign actual GitHub user',async()=>{
  seen.length=0;
