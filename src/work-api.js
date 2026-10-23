@@ -80,8 +80,9 @@ export async function workApi(request,{token,allowedRepo=null,claim=null,fetcher
    const baseRef=await gh(root+'/git/ref/heads/'+defaultBranch.split('/').map(encodeURIComponent).join('/'));
    const sha=baseRef.object?.sha;
    if(!validSha(sha))return send({error:'invalid_base_sha'},502);
-   const slug=(claim&&!manager(claim.role)?'issue-'+claim.issue+'-':'')+(data.title.trim().toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'').slice(0,34)||'task');
-   const branch='acc/'+slug+'-'+crypto.randomUUID().slice(0,8);
+   const slug=data.title.trim().toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'').slice(0,34)||'task';
+   const prefix=claim&&!manager(claim.role)?taskPrefix(claim):'acc/';
+   const branch=prefix+slug+'-'+crypto.randomUUID().slice(0,8);
    await gh(root+'/git/refs','POST',{ref:'refs/heads/'+branch,sha});
    return send({created:true,repo:OWNER+'/'+repo,branch,base:defaultBranch,base_sha:sha,url:'https://github.com/'+OWNER+'/'+repo+'/tree/'+branch},201);
   }

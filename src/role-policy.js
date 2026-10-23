@@ -1,15 +1,18 @@
 // Delegated, task-scoped GitHub permissions. The signed claim is evidence of
 // authorization, not proof a browser is operated by an AI rather than a person.
 import {WRITE_REPOS} from '../public/repositories.js';
-export const ROLES=Object.freeze(['CEO','PROJECT-LEAD','ENGINEER','CREATOR','QA-REVIEWER','COORDINATOR']);
+export const ROLES=Object.freeze(['CEO','PROJECT-LEAD','ENGINEER','CREATOR','QA-REVIEWER','COORDINATOR','GUEST-ENGINEER']);
 export const manager=role=>role==='CEO'||role==='PROJECT-LEAD';
-export const coder=role=>role==='ENGINEER'||role==='CREATOR';
+export const coder=role=>role==='ENGINEER'||role==='CREATOR'||role==='GUEST-ENGINEER';
 export const reviewer=role=>role==='QA-REVIEWER';
-export const taskPrefix=claim=>'acc/issue-'+claim.issue+'-';
+export const taskPrefix=claim=>claim.role==='GUEST-ENGINEER'?
+ 'acc/guest-'+String(claim.nonce||'').slice(0,12).toLowerCase()+'-':
+ 'acc/issue-'+claim.issue+'-';
 export function pathAllowed(path,editable){
  if(typeof path!=='string'||typeof editable!=='string')return false;
  const patterns=editable.split(/[\n,;]/).map(x=>x.trim()).filter(Boolean);
  return patterns.some(p=>{
+  if(p==='PROJECT_FILES')return true;
   if(p==='HOLD'||p==='*'||p==='**'||p.length>200||p.includes('..')||p.startsWith('/'))return false;
   if(p.endsWith('/**'))return path.startsWith(p.slice(0,-2));
   if(p.endsWith('/*'))return path.startsWith(p.slice(0,-1));
@@ -37,6 +40,7 @@ export function authorizeOps(claim,route,verb,data,params){
  if(!claim)return true;
  if(!WRITE_REPOS.includes(claim.repo))return false;
  if(verb==='GET')return true;
+ if(claim.role==='GUEST-ENGINEER')return false;
  if(manager(claim.role))return true;
  if(!coder(claim.role)&&!reviewer(claim.role))return false;
  const suffix=route.split('/').at(-1);

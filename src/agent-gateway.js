@@ -28,7 +28,9 @@ export async function verifyInvite(env,value){
       v.exp-Date.now()>8*86400000||!Number.isFinite(v.issued)||v.issued>Date.now()+60000||
       v.issued>Date.now()||!Number.isSafeInteger(v.issue)||v.issue<0||
       typeof v.slot!=='string'||v.slot.length>40||typeof v.editable_paths!=='string'||v.editable_paths.length>800||
-      ((!manager(v.role))&&v.issue<1))return null;
+      ((!manager(v.role)&&v.role!=='GUEST-ENGINEER')&&v.issue<1)||
+      (v.role==='GUEST-ENGINEER'&&(!/^[A-Za-z0-9_-]{20,30}$/.test(v.nonce||'')||v.issue!==0||
+        v.editable_paths!=='PROJECT_FILES')))return null;
   return v;
  }catch{return null;}
 }
@@ -103,15 +105,16 @@ export async function agentGateway(request,env,url,{owner=false,fetcher=globalTh
       !request.headers.get('content-type')?.toLowerCase().startsWith('application/json'))return err('origin_or_content_type',403);
   let input;try{input=await request.json()}catch{return err('invalid_json')}
   if(!input||!WRITE_REPOS.includes(input.repo)||!ROLES.includes(input.role))return err('invalid_repo_or_role');
-  if(owner&&!manager(input.role))return err('owner_must_bootstrap_ceo',403);
+  if(owner&&!manager(input.role)&&input.role!=='GUEST-ENGINEER')return err('owner_must_bootstrap_ceo_or_guest',403);
   if(!owner&&(!existing||existing.repo!==input.repo||manager(input.role)))return err('ceo_can_only_delegate_in_own_repo',403);
   const role=input.role;
   const issue=Number(input.issue||0);
-  if(!Number.isSafeInteger(issue)||issue<0||(!manager(role)&&issue<1))return err('issue_required_for_worker');
+  if(!Number.isSafeInteger(issue)||issue<0||(!manager(role)&&role!=='GUEST-ENGINEER'&&issue<1)||
+      (role==='GUEST-ENGINEER'&&issue!==0))return err('issue_required_for_worker');
   let slot=String(input.slot||role).trim().toUpperCase(),editable='HOLD';
   if(!/^[A-Z][A-Z0-9_-]{0,39}$/.test(slot))return err('invalid_agent_slot');
   // Engineer and QA rights come from an existing role appointment Issue.
-  if(!manager(role)||issue){
+  if(role!=='GUEST-ENGINEER'&&(!manager(role)||issue)){
    let installation;
    try{installation=await installationToken(env,input.repo,fetcher);}
    catch{return err('github_app_installation_not_ready',503);}
@@ -129,6 +132,11 @@ export async function agentGateway(request,env,url,{owner=false,fetcher=globalTh
    if(coder(role)&&(!editable||editable==='HOLD'))
      return err('editable_paths_not_granted_in_issue',409);
   }
+  if(role==='GUEST-ENGINEER'){
+   if(!String(input.reason||'').trim()||String(input.reason).trim().length>180)
+     return err('guest_work_description_required',400);
+   editable='PROJECT_FILES';
+  }
   const minutes=Number(input.minutes||(manager(role)?7*1440:720));
   const max=manager(role)?7*1440:1440;
   if(!Number.isInteger(minutes)||minutes<15||minutes>max)return err('invalid_minutes');
@@ -145,7 +153,7 @@ export async function agentGateway(request,env,url,{owner=false,fetcher=globalTh
   if(request.method!=='GET')return err('method_not_allowed',405);
   const invite=await verifyInvite(env,url.searchParams.get('ticket'));
   if(!invite)return err('invite_expired_or_invalid',401);
-  const location='/?agent_repo='+encodeURIComponent(invite.repo)+'#'+(manager(invite.role)?'ceo':'mywork');
+  const location='/?agent_repo='+encodeURIComponent(invite.repo)+'#'+(manager(invite.role)?'ceo':invite.role==='GUEST-ENGINEER'?'workspace':'mywork');
   const headers=new Headers({location,'cache-control':'no-store','referrer-policy':'no-referrer'});
   headers.set('set-cookie',cookie('__Host-acc_agent',url.searchParams.get('ticket'),Math.min(8*86400,Math.ceil((invite.exp-Date.now())/1000))));
   return new Response(null,{status:302,headers});

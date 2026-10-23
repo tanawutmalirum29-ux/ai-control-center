@@ -16,7 +16,7 @@ async function login(){
  try{const response=await fetch('/api/auth/me',{cache:'no-store'});const me=await response.json();
  const agentResponse=await fetch('/api/agent/me',{credentials:'same-origin',cache:'no-store'});
  const agent=await agentResponse.json();
- auth=Boolean(me.authenticated||(agent.agent_authenticated&&agent.agent_repo===repo()&&['CEO','PROJECT-LEAD','ENGINEER','CREATOR'].includes(agent.agent_role)));
+ auth=Boolean(me.authenticated||(agent.agent_authenticated&&agent.agent_repo===repo()&&['CEO','PROJECT-LEAD','ENGINEER','CREATOR','GUEST-ENGINEER'].includes(agent.agent_role)));
  status(me.authenticated?'OWNER · ใช้ GitHub App ทำงาน':
   auth?'AI '+(agent.agent_role||'')+' · สิทธิ์งาน '+(agent.agent_issue||'CEO')+': ทำงานใน Branch ได้':
   'โหมดอ่านโค้ด GitHub สาธารณะ · ยังไม่มีสิทธิ์ Commit/สร้าง PR');
