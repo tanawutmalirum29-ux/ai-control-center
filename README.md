@@ -9,7 +9,18 @@ Free-first operations dashboard for GitHub projects. No paid OpenAI API, no GitH
 - Prepare a role-based work order (`CEO`, `DIR`, `TL`, `ENGINEER`, `QA-REVIEWER`) and open GitHub to **review and submit** it as an Issue.
 - Direct links to pull requests and QA runs. **No merging, deleting, or pushing from the website in V1.**
 
-## Deploy on Cloudflare Pages (Free)
+## Deploy to Cloudflare Workers (current project type)
+The existing Cloudflare app `ai-control-center` is a **Worker**, not a Pages project. The included `wrangler.jsonc` deploys the static `public/` website without an OpenAI API key or a server-side secret.
+
+1. Open Cloudflare > **Workers & Pages** > **ai-control-center**.
+2. Go to **Settings > Build**. Select production branch `main`, leave build command blank, and use deploy command `npx wrangler deploy` (project root `/`).
+3. On **Deployments**, inspect the latest build and retry if required after this configuration is merged.
+4. Open the **Domains** tab, enable the free **workers.dev** subdomain for this Worker, and use the resulting URL. **No custom domain purchase is needed.**
+5. Check that the website loads, not just a default Worker response. If a build fails, check build logs before retrying.
+
+**Note:** The GitHub repository can remain public as this version contains only public code. Do not commit Cloudflare or GitHub tokens. Cloudflare may apply different Worker static-asset routing limits under the Free plan.
+
+## Alternative: Deploy on Cloudflare Pages (Free)
 1. Cloudflare Dashboard > **Workers & Pages** > **Create** > **Pages** > **Connect to Git**.
 2. Authorize your GitHub account and select `tanawutmalirum29-ux/ai-control-center`.
 3. Production branch: `main`.
