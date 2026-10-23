@@ -1,0 +1,48 @@
+name: Production Bridge Smoke (read only)
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  production-health:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - name: Verify live Worker bridge without browser automation
+        shell: bash
+        run: |
+          set -euo pipefail
+          origin="https://ai-control-center.tanawutmalirum29.workers.dev"
+          echo "Production health check: ${origin}"
+          for attempt in $(seq 1 12); do
+            curl --silent --show-error --location --max-time 10 "${origin}/api/health" -o /tmp/acc-health.json || true
+            if python3 - <<'PY'
+import json
+try:
+    x=json.load(open('/tmp/acc-health.json'))
+    assert x.get('version',0)>=20
+    assert x.get('github_bridge_ready') is True
+    print('Worker v'+str(x['version'])+' has GitHub Bridge and D1')
+except Exception as error:
+    print('Worker not updated yet:', str(error))
+    raise SystemExit(1)
+PY
+            then break; fi
+            if [[ "${attempt}" == "12" ]]; then
+              echo "::error::Worker version 20 bridge not deployed after 12 attempts"
+              exit 1
+            fi
+            sleep 10
+          done
+          curl --fail --silent --show-error --location --max-time 12 "${origin}/api/v1/bridge/health" -o /tmp/bridge-health.json
+          python3 - <<'PY'
+import json
+x=json.load(open('/tmp/bridge-health.json'))
+assert x.get('ready') is True, x
+assert x.get('no_tinyfish') is True, x
+assert x.get('public_commands') is True, x
+print('Bridge endpoint PASS', {k:x.get(k) for k in ('ready','bridge_repo','cron','public_commands')})
+PY
+          echo "Read-only production bridge probes PASS; no organization records changed"
