@@ -37,6 +37,7 @@ async function auth(){
  const resp=await fetch('/api/auth/me',{credentials:'same-origin',cache:'no-store'});
  const data=await resp.json();
  owner=Boolean(data.authenticated&&data.login===OWNER);
+ el('cleanup-login').hidden=owner;
  el('cleanup-owner').textContent=owner?
   'OWNER ยืนยันตัวตนแล้ว — ลบถาวรได้เฉพาะ Repository ที่อนุญาต':
   'ต้องเข้าสู่ระบบ GitHub ด้วยบัญชี OWNER ก่อนใช้การลบถาวร (Token กลางและ AI ไม่ได้รับสิทธิ์นี้)';
