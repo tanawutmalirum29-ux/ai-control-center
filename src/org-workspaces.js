@@ -27,10 +27,10 @@ function cookieToken(req){
 async function member(db,request,id){
  const token=cookieToken(request);
  if(!idOK(id)||!token||!/^[0-9a-f]{64}$/.test(token))return null;
- return db.prepare(\`SELECT m.room_id,m.slot,m.role,m.expires_at,m.revoked_at,
+ return db.prepare(`SELECT m.room_id,m.slot,m.role,m.expires_at,m.revoked_at,
     r.repo,r.title,r.mission,r.status,r.created_at
     FROM org_members m JOIN org_rooms r ON r.id=m.room_id
-    WHERE m.room_id=? AND m.token_hash=? AND m.revoked_at IS NULL AND m.expires_at>?\`)
+    WHERE m.room_id=? AND m.token_hash=? AND m.revoked_at IS NULL AND m.expires_at>?`)
    .bind(id,await digest(token),now()).first();
 }
 function checkWrite(request,url){
@@ -49,10 +49,10 @@ async function nextMessage(db,room,actor,to,body){
  for(let attempt=0;attempt<4;attempt++){
   try{
    const id=crypto.randomUUID();
-   const insert=await db.prepare(\`INSERT INTO org_messages
+   const insert=await db.prepare(`INSERT INTO org_messages
      (id,room_id,seq,sender_slot,recipient_slot,body)
      SELECT ?,?,COALESCE((SELECT MAX(seq) FROM org_messages WHERE room_id=?),0)+1,?,?,?
-     WHERE EXISTS(SELECT 1 FROM org_rooms WHERE id=? AND status='ACTIVE')\`)
+     WHERE EXISTS(SELECT 1 FROM org_rooms WHERE id=? AND status='ACTIVE')`)
      .bind(id,room,room,actor,to,body,room).run();
    if(!insert.meta?.changes)return null;
    return db.prepare('SELECT id,seq,sender_slot,recipient_slot,body,created_at FROM org_messages WHERE id=?').bind(id).first();
@@ -66,10 +66,10 @@ async function nextTask(db,room,actor,to,title,description){
  for(let attempt=0;attempt<4;attempt++){
   try{
    const id=crypto.randomUUID();
-   const insert=await db.prepare(\`INSERT INTO org_tasks
+   const insert=await db.prepare(`INSERT INTO org_tasks
     (id,room_id,seq,title,description,assignee_slot,created_by)
     SELECT ?,?,COALESCE((SELECT MAX(seq) FROM org_tasks WHERE room_id=?),0)+1,?,?,?,?
-    WHERE EXISTS(SELECT 1 FROM org_rooms WHERE id=? AND status='ACTIVE')\`)
+    WHERE EXISTS(SELECT 1 FROM org_rooms WHERE id=? AND status='ACTIVE')`)
     .bind(id,room,room,title,description,to,actor,room).run();
    if(!insert.meta?.changes)return null;
    return db.prepare('SELECT id,seq,title,description,assignee_slot,created_by,status,created_at,updated_at FROM org_tasks WHERE id=?').bind(id).first();
@@ -115,9 +115,9 @@ export async function orgWorkspaceApi(request,{db,owner=false,agent=null}={}){
   if(route==='/api/v1/org/join'&&verb==='POST'){
    if(!idOK(room)||typeof data.ticket!=='string'||!/^[0-9a-f]{64}$/.test(data.ticket))
     return res({error:'invalid_invite'},400);
-   const row=await db.prepare(\`SELECT m.slot,m.role,r.repo,r.status FROM org_members m
+   const row=await db.prepare(`SELECT m.slot,m.role,r.repo,r.status FROM org_members m
     JOIN org_rooms r ON r.id=m.room_id WHERE m.room_id=? AND m.token_hash=?
-    AND m.revoked_at IS NULL AND m.expires_at>?\`)
+    AND m.revoked_at IS NULL AND m.expires_at>?`)
     .bind(room,await digest(data.ticket),now()).first();
    if(!row||row.status!=='ACTIVE')return res({error:'invite_invalid_expired_or_room_closed'},403);
    return res({joined:true,room_id:room,slot:row.slot,role:row.role,repo:row.repo},
@@ -205,13 +205,13 @@ export async function orgWorkspaceApi(request,{db,owner=false,agent=null}={}){
    if(!task)return res({error:'task_not_found'},404);
    if(task.assignee_slot!==who.slot&&!['CEO','PROJECT-LEAD','DIR','TL'].includes(who.role))
     return res({error:'task_owner_or_manager_only'},403);
-   await db.prepare(\`UPDATE org_tasks SET status=?,updated_at=strftime('%Y-%m-%dT%H:%M:%fZ','now')
-    WHERE room_id=? AND seq=?\`).bind(status,room,seq).run();
+   await db.prepare(`UPDATE org_tasks SET status=?,updated_at=strftime('%Y-%m-%dT%H:%M:%fZ','now')
+    WHERE room_id=? AND seq=?`).bind(status,room,seq).run();
    return res({updated:true,room_id:room,code:format('T',seq),status});
   }
   if(route==='/api/v1/org/close'&&verb==='POST'){
    if(who.role!=='CEO')return res({error:'ceo_only'},403);
-   await db.prepare(\`UPDATE org_rooms SET status='CLOSED',closed_at=strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE id=?\`).bind(room).run();
+   await db.prepare(`UPDATE org_rooms SET status='CLOSED',closed_at=strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE id=?`).bind(room).run();
    return res({closed:true,room_id:room});
   }
   return res({error:'method_not_allowed_or_not_found'},405);
