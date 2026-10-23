@@ -50,7 +50,7 @@ function fixture({default_branch='main',protectedBranch=false,stale=false,fail='
  };
  return {fetcher,calls,removed,state};
 }
-test('owner OAuth is always required even when central token is configured',async()=>{
+test('retired branch maintenance routes cannot run even with central token',async()=>{
  const env={GITHUB_WRITE_TOKEN:'public-shared-token',ASSETS:{fetch:()=>new Response('ok')}};
  const r=await worker.fetch(preview(),env);
  assert.equal(r.status,401);
