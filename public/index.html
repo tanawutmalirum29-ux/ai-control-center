@@ -18,6 +18,7 @@
 <script type="module" src="./organization.js"></script>
 <script type="module" src="./operations.js"></script>
 <script type="module" src="./issue-cleanup.js"></script>
+<script type="module" src="./branch-cleanup.js"></script>
 <script type="module" src="./ceo.js"></script>
 <script type="module" src="./delegation.js"></script>
 <script type="module" src="./issue-reader.js"></script>
@@ -30,7 +31,7 @@
       <p class="side-label">WORKSPACE</p>
       <nav class="navigation" aria-label="เมนูหลัก">
  <button class="nav-item active" data-view="workspace" type="button"><span>⌘</span> แก้โค้ด (ไม่ต้องล็อกอิน)</button>
- <button class="nav-item" data-view="operations" type="button"><span>▣</span> Operations / ลบ Issues</button>
+ <button class="nav-item" data-view="operations" type="button"><span>▣</span> Operations / Cleanup</button>
  <button class="nav-item" data-view="issue" type="button"><span>☷</span> อ่าน Issue / PR ในเว็บ</button>
  <button class="nav-item" data-view="ceo" type="button"><span>♛</span> CEO Dashboard</button>
  <button class="nav-item" data-view="orgrooms" type="button"><span>▦</span> พื้นที่องค์กร / ข้อความ M</button>
@@ -65,7 +66,7 @@
  <button type="button" data-view="workspace">2 · แก้โค้ด</button>
  <button type="button" data-view="orgrooms">3 · ข้อความองค์กร M</button>
  <button type="button" data-view="qa">4 · ตรวจ QA</button>
- <button type="button" data-view="operations">Issues · ลบถาวร</button>
+ <button type="button" data-view="operations">ลบ Issues / Branches</button>
 </nav>
         
 <section class="view" id="view-ceo">
@@ -416,6 +417,33 @@
  <button type="button" class="secondary-button" id="cleanup-stop" hidden>หยุดหลัง Batch นี้</button></div></div>
  <p id="cleanup-status" class="small-note" role="status" aria-live="polite">กด Preview เพื่อตรวจสอบก่อนลบ</p>
 </section>
+<section class="panel cleanup-panel" id="branch-panel" aria-label="Keep main, delete all other Git branches">
+ <div class="section-title"><div><h3>ลบ Branch ทั้งหมด — เก็บ main เท่านั้น</h3>
+  <p>สำหรับ Repository ที่เลือกด้านบน · ตรวจรายการทุกหน้า ไม่จำกัด 100 รายการแรก</p></div>
+  <button type="button" class="secondary-button" id="branch-preview">1. ตรวจ Branch (Preview)</button></div>
+ <p class="small-note" id="branch-owner" aria-live="polite">ตรวจ OWNER…</p>
+ <a class="primary-button" id="branch-login" href="/api/auth/login">เชื่อมต่อ GitHub ในฐานะ OWNER ก่อนลบ Branch</a>
+ <div class="cleanup-stats">
+  <div class="cleanup-metric"><strong id="branch-count">—</strong><span>Branch ที่จะลบ (ไม่รวม main)</span></div>
+  <div class="cleanup-metric"><strong id="branch-pr-count">—</strong><span>Branch มี PR เปิดอยู่</span></div>
+  <div class="cleanup-metric"><strong id="branch-protected-count">—</strong><span>Branch ถูกป้องกัน</span></div>
+ </div>
+ <div id="branch-list" class="cleanup-scroll" aria-label="รายชื่อ Branch สำหรับตรวจสอบก่อนลบ"></div>
+ <button type="button" class="secondary-button" id="branch-copy" disabled>คัดลอกรายการ Branch + SHA + PR (JSON)</button>
+ <p class="small-note">Branch อาจมี Commit ที่ยังไม่ Merge และ PR ที่เปิดอยู่ การลบอาจทำให้โค้ดหายและทำให้ PR ใช้งานต่อไม่ได้ ไม่มีการสำรองโค้ดอัตโนมัติ · ระบบจะไม่ลบ main</p>
+ <div class="cleanup-verify">
+  <label for="branch-confirm">2. พิมพ์ DELETE BRANCHES ตามด้วยชื่อ Repository แบบเต็ม
+   <input id="branch-confirm" autocomplete="off" spellcheck="false" placeholder="DELETE BRANCHES tanawutmalirum29-ux/ชื่อ-repo" /></label>
+  <label class="ops-check"><input type="checkbox" id="branch-risk-code"/> ฉันยอมรับว่า Commit ที่ยังไม่ Merge เข้า main อาจสูญหายถาวร</label>
+  <label class="ops-check"><input type="checkbox" id="branch-risk-pr"/> ฉันตรวจสอบแล้วว่า PR ที่ยังเปิดอยู่และงานที่กำลังทำอาจเสียหาย</label>
+  <div class="cleanup-actions">
+   <button class="danger-button" type="button" id="branch-delete" disabled>3. ลบทุก Branch ยกเว้น main</button>
+   <button class="secondary-button" type="button" id="branch-stop" hidden>หยุดหลัง Batch นี้</button>
+  </div>
+ </div>
+ <p class="small-note" role="status" aria-live="polite" id="branch-status">กด Preview เพื่อตรวจสอบรายการ</p>
+</section>
+
 <div class="two-col">
   <section class="panel">
    <h3>สร้างงาน / AP-ROLE ในโปรเจกต์</h3>
