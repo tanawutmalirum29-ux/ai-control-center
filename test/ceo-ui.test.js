@@ -11,7 +11,7 @@ test('AI UI has no legacy Issue or AP-ROLE creation views, scripts or entry poin
   assert.ok(!html.includes('src="./'+oldScript+'"'),'obsolete script '+oldScript);
  for(const form of ['ceo-appointment-form','ops-create','task-form','detail-comment-form'])
   assert.ok(!html.includes('id="'+form+'"'),'Issue composer still visible '+form);
- assert.ok(html.includes('id="pr-qa-form"'));
+ assert.ok(qa.includes("pr-qa?repo="));
  assert.match(app,/switchView\('orgrooms'\)/);
  assert.ok(!app.includes('/issues/new'));
  assert.ok(server.includes('legacy_issue_workflow_retired'));
