@@ -8,6 +8,25 @@ const from64=value=>Uint8Array.from(atob(value.replace(/-/g,'+').replace(/_/g,'/
 const err=(error,status=400)=>new Response(JSON.stringify({error}),{status,headers:{'content-type':'application/json','cache-control':'no-store'}});
 const cookie=(name,value,age)=>name+'='+value+'; Path=/; Max-Age='+age+'; HttpOnly; Secure; SameSite=Lax';
 export const issuerReady=env=>Boolean(env.GITHUB_CLIENT_SECRET&&env.GITHUB_CLIENT_ID&&env.GITHUB_APP_PRIVATE_KEY);
+export const guestOAuthReady=env=>Boolean(env.GITHUB_CLIENT_ID&&env.GITHUB_CLIENT_SECRET);
+async function guestKey(env){
+ const raw=await crypto.subtle.digest('SHA-256',bytes.encode('ACC_GUEST_OAUTH_V1:'+env.GITHUB_CLIENT_SECRET));
+ return crypto.subtle.importKey('raw',raw,{name:'AES-GCM'},false,['encrypt','decrypt']);
+}
+async function sealOwnerToken(env,token){
+ const iv=crypto.getRandomValues(new Uint8Array(12));
+ const data=await crypto.subtle.encrypt({name:'AES-GCM',iv},await guestKey(env),bytes.encode(token));
+ return to64(iv)+'.'+to64(new Uint8Array(data));
+}
+async function openOwnerToken(env,box){
+ if(typeof box!=='string'||box.length>1500||!/^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/.test(box))return null;
+ try{
+  const [iv,data]=box.split('.');
+  const plain=await crypto.subtle.decrypt({name:'AES-GCM',iv:from64(iv)},await guestKey(env),from64(data));
+  const token=decode.decode(plain);
+  return token.length>15&&token.length<=1200?token:null;
+ }catch{return null;}
+}
 const cache=new Map();
 async function hmac(env){
  return crypto.subtle.importKey('raw',bytes.encode('ACC_DELEGATION_V1:'+env.GITHUB_CLIENT_SECRET),{name:'HMAC',hash:'SHA-256'},false,['sign','verify']);
@@ -18,7 +37,7 @@ export async function signInvite(env,payload){
  return encoded+'.'+to64(new Uint8Array(sig));
 }
 export async function verifyInvite(env,value){
- if(!issuerReady(env)||typeof value!=='string'||value.length>4000||!/^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/.test(value))return null;
+ if(!guestOAuthReady(env)||typeof value!=='string'||value.length>5000||!/^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/.test(value))return null;
  try{
   const [p,s]=value.split('.');
   if(!await crypto.subtle.verify('HMAC',await hmac(env),from64(s),bytes.encode(p)))return null;
@@ -30,7 +49,10 @@ export async function verifyInvite(env,value){
       typeof v.slot!=='string'||v.slot.length>40||typeof v.editable_paths!=='string'||v.editable_paths.length>800||
       ((!manager(v.role)&&v.role!=='GUEST-ENGINEER')&&v.issue<1)||
       (v.role==='GUEST-ENGINEER'&&(!/^[A-Za-z0-9_-]{20,30}$/.test(v.nonce||'')||v.issue!==0||
-        v.editable_paths!=='PROJECT_FILES'||typeof v.task!=='string'||!v.task.trim()||v.task.length>180)))return null;
+        v.editable_paths!=='PROJECT_FILES'||typeof v.task!=='string'||!v.task.trim()||v.task.length>180))||
+      (v.oauth_box&&v.role!=='GUEST-ENGINEER')||
+      (!v.oauth_box&&!issuerReady(env))||
+      (v.oauth_box&&!await openOwnerToken(env,v.oauth_box)))return null;
   return v;
  }catch{return null;}
 }
@@ -87,24 +109,26 @@ export async function installationToken(env,repo,fetcher=globalThis.fetch){
  cache.set(repo,{token:access.token,until:Number.isFinite(expire)?expire:Date.now()+30*60000});
  return access.token;
 }
-export async function agentGateway(request,env,url,{owner=false,fetcher=globalThis.fetch}={}){
+export async function agentGateway(request,env,url,{owner=false,ownerSession=null,fetcher=globalThis.fetch}={}){
  const path=url.pathname;
  const existing=await agentSession(request,env);
  if(path==='/api/agent/me'){
   return new Response(JSON.stringify({configured:issuerReady(env),agent_authenticated:Boolean(existing),
    agent_repo:existing?.repo||null,agent_role:existing?.role||null,agent_slot:existing?.slot||null,
-   agent_issue:existing?.issue||null,agent_task:existing?.task||null,agent_expires_at:existing?new Date(existing.exp).toISOString():null,
+   agent_issue:existing?.issue||null,agent_task:existing?.task||null,guest_oauth_available:guestOAuthReady(env),agent_expires_at:existing?new Date(existing.exp).toISOString():null,
    can_delegate:Boolean(existing&&manager(existing.role)),can_write:Boolean(existing)}),
    {headers:{'content-type':'application/json','cache-control':'no-store'}});
  }
  if(path==='/api/agent/invite'){
   if(request.method!=='POST')return err('method_not_allowed',405);
   if(!owner&&!(existing&&manager(existing.role)))return err('owner_or_ceo_required',401);
-  if(!issuerReady(env))return err('github_app_private_key_not_configured',503);
+  const oauthGuest=Boolean(owner&&ownerSession?.token&&guestOAuthReady(env));
+  if(!issuerReady(env)&&!oauthGuest)return err('github_app_private_key_not_configured',503);
   if(request.headers.get('origin')!==url.origin||
       !request.headers.get('content-type')?.toLowerCase().startsWith('application/json'))return err('origin_or_content_type',403);
   let input;try{input=await request.json()}catch{return err('invalid_json')}
   if(!input||!WRITE_REPOS.includes(input.repo)||!ROLES.includes(input.role))return err('invalid_repo_or_role');
+  if(!issuerReady(env)&&input.role!=='GUEST-ENGINEER')return err('github_app_private_key_not_configured',503);
   if(owner&&!manager(input.role)&&input.role!=='GUEST-ENGINEER')return err('owner_must_bootstrap_ceo_or_guest',403);
   if(!owner&&(!existing||existing.repo!==input.repo||manager(input.role)))return err('ceo_can_only_delegate_in_own_repo',403);
   const role=input.role;
@@ -138,11 +162,15 @@ export async function agentGateway(request,env,url,{owner=false,fetcher=globalTh
    editable='PROJECT_FILES';
   }
   const shortTask=role==='GUEST-ENGINEER'?String(input.reason).trim():'';
-  const minutes=Number(input.minutes||(manager(role)?7*1440:720));
-  const max=manager(role)?7*1440:1440;
+  const useOwnerToken=Boolean(role==='GUEST-ENGINEER'&&oauthGuest);
+  const remaining=useOwnerToken?
+    Math.floor((ownerSession.exp-Date.now()-90000)/60000):Infinity;
+  const minutes=Number(input.minutes||(manager(role)?7*1440:useOwnerToken?Math.min(180,remaining):720));
+  const max=useOwnerToken?Math.min(240,remaining):manager(role)?7*1440:1440;
   if(!Number.isInteger(minutes)||minutes<15||minutes>max)return err('invalid_minutes');
   const now=Date.now(),payload={v:2,repo:input.repo,role,issue,slot,editable_paths:editable,task:shortTask,
    issued:now,exp:now+minutes*60000,nonce:to64(crypto.getRandomValues(new Uint8Array(16)))};
+  if(useOwnerToken)payload.oauth_box=await sealOwnerToken(env,ownerSession.token);
   const ticket=await signInvite(env,payload);
   return new Response(JSON.stringify({created:true,repo:input.repo,role,slot,issue,
    expires_at:new Date(payload.exp).toISOString(),
@@ -170,6 +198,11 @@ export async function delegatedAccess(request,env,{fetcher=globalThis.fetch}={})
   try{repo=(await request.clone().json()).repo}catch{return {denied:true}}
  }
  if(repo!==agent.repo)return {denied:true};
+ if(agent.role==='GUEST-ENGINEER'&&agent.oauth_box){
+  const token=await openOwnerToken(env,agent.oauth_box);
+  if(!token)return {denied:true,error:'guest_session_invalid'};
+  return {token,repo,agent:true,claim:agent};
+ }
  try{return {token:await installationToken(env,repo,fetcher),repo,agent:true,claim:agent};}
  catch(error){return {denied:true,error:String(error.message||error)};}
 }
