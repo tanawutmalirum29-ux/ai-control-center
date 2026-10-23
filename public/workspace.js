@@ -13,14 +13,21 @@ async function api(path,method='GET',body){
  return value;
 }
 async function login(){
- try{const response=await fetch('/api/auth/me',{cache:'no-store'});const me=await response.json();
- const agentResponse=await fetch('/api/agent/me',{credentials:'same-origin',cache:'no-store'});
- const agent=await agentResponse.json();
- auth=Boolean(me.authenticated||(agent.agent_authenticated&&agent.agent_repo===repo()&&['CEO','PROJECT-LEAD','ENGINEER','CREATOR','GUEST-ENGINEER'].includes(agent.agent_role)));
- status(me.authenticated?'OWNER · ใช้ GitHub App ทำงาน':
-  auth?'AI '+(agent.agent_role||'')+(agent.agent_task?' · '+agent.agent_task:' · สิทธิ์งาน '+(agent.agent_issue||'CEO'))+' · ทำงานใน Branch แยกได้':
-  'โหมดอ่านโค้ด GitHub สาธารณะ · ยังไม่มีสิทธิ์ Commit/สร้าง PR');
- }catch{auth=false;status('ไม่สามารถตรวจสถานะ GitHub Login ได้')}
+ try{
+  const [health,me,agent]=await Promise.all([
+   fetch('/api/health',{cache:'no-store'}).then(r=>r.json()),
+   fetch('/api/auth/me',{credentials:'same-origin',cache:'no-store'}).then(r=>r.json()),
+   fetch('/api/agent/me',{credentials:'same-origin',cache:'no-store'}).then(r=>r.json())
+  ]);
+  const central=Boolean(health.central_credential_present&&health.write_repositories?.includes(el('repo-select').value));
+  auth=Boolean(central||me.authenticated||
+   (agent.agent_authenticated&&agent.agent_repo===repo()&&
+   ['CEO','PROJECT-LEAD','ENGINEER','CREATOR','GUEST-ENGINEER'].includes(agent.agent_role)));
+  status(central?'พร้อมทำงาน · ใช้ GitHub Token กลาง ไม่ต้องล็อกอิน (Branch acc/ และ Draft PR)':
+   me.authenticated?'OWNER · ใช้สิทธิ์ GitHub App':
+   auth?'AI '+agent.agent_role+' · สิทธิ์ตามงาน':
+   'ยังไม่มี Credential สำหรับเขียน · ตรวจ GITHUB_WRITE_TOKEN ใน Cloudflare');
+ }catch{auth=false;status('ตรวจสถานะ API ไม่สำเร็จ · ลองรีเฟรช')}
  for(const id of ['ws-create-branch','ws-save','ws-pr-create'])el(id).disabled=!auth;
 }
 async function refresh(){
