@@ -101,8 +101,7 @@ import {FULL_REPOS,OWNER} from './repositories.js';
   note('โหลดแล้ว · '+results.filter(r=>r.status==='fulfilled').length+'/4 ส่วนพร้อม · สิทธิ์ของ GitHub App อาจต่างกันตาม Repository');
  }
  function setup(){
-  const nav=document.querySelector('.navigation [data-view="operations"]');
-  nav?.addEventListener('click',reload);
+  document.querySelectorAll('[data-view="operations"]').forEach(nav=>nav.addEventListener('click',reload));
   el('repo-select').addEventListener('change',()=>{if(!el('view-operations').classList.contains('hidden'))reload();});
   el('ops-refresh').addEventListener('click',reload);
   el('ops-create').addEventListener('click',e=>action(e.currentTarget,async()=>{
