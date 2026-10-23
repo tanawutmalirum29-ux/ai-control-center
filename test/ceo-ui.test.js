@@ -2,9 +2,12 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 const read=path=>readFileSync(new URL('../'+path,import.meta.url),'utf8');
-test('CEO navigation is the default homepage with all handoff controls',()=>{
+test('Organization M/T rooms open first and legacy CEO Issue controls stay available as advanced tools',()=>{
  const html=read('public/index.html'),app=read('public/app.js'),client=read('public/ceo.js');
- assert.match(app,/switchView\('workspace'\); loadProject\(\)/);
+ assert.match(app,/switchView\('orgrooms'\); loadProject\(\)/);
+ assert.match(app,/let currentView = 'orgrooms'/);
+ assert.match(html,/<button class="nav-item active" data-view="orgrooms"/);
+ assert.match(html,/data-view="ceo"[^>]*>.*CEO Dashboard เดิม \(Issues\)/);
  for(const tab of ['ceo','mywork','relay'])
   assert.ok(html.includes('data-view="'+tab+'"')&&html.includes('id="view-'+tab+'"'),tab);
  for(const id of ['ceo-task-list','ceo-appointment-form','ceo-role','ceo-parent','ceo-slot','ceo-title',
