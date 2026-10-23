@@ -223,19 +223,29 @@ function setup(){
    const existing=(mission.prs||[]).find(p=>p.head_branch===branch);
    if(existing){
     const area=el('ws-result');area.replaceChildren(document.createTextNode('Branch นี้มี PR #'+existing.number+' อยู่แล้ว · '));
-    const link=document.createElement('a');link.href=existing.url;link.textContent='เปิด PR เดิม';link.target='_self';area.append(link);
+    const btn=document.createElement('button');btn.type='button';btn.className='secondary-button';btn.textContent='ตรวจ PR ในเว็บ';
+    btn.onclick=()=>{
+     document.getElementById('qa-pr-number').value=String(existing.number);
+     document.querySelector('[data-view="qa"]')?.click();
+     document.getElementById('qa-inspect')?.click();
+    };area.append(btn);
     state('ไม่สร้าง PR ซ้ำ: พบ PR #'+existing.number+' สำหรับ Branch '+branch);
     return;
    }
   }
   const r=await api('pr','POST',{repo:repo(),branch,title,body});
   const area=el('ws-result');area.replaceChildren(document.createTextNode('สร้าง Draft PR #'+r.number+' แล้ว · '));
-  const a=document.createElement('a');a.href=r.url;a.textContent='เปิด PR';a.target='_blank';a.rel='noopener noreferrer';area.append(a);
+  const btn=document.createElement('button');btn.type='button';btn.className='secondary-button';btn.textContent='ตรวจ PR ในเว็บ';
+    btn.onclick=()=>{
+     document.getElementById('qa-pr-number').value=String(r.number);
+     document.querySelector('[data-view="qa"]')?.click();
+     document.getElementById('qa-inspect')?.click();
+    };area.append(btn);
   state('Draft PR ส่งตรวจแล้ว · ยังไม่ได้ Merge และยังไม่ได้ยืนยัน QA');
  }));
  el('ws-copy-agent').addEventListener('click',async()=>{
   const msg=['เปิด https://ai-control-center.tanawutmalirum29.workers.dev','เข้าเมนู พื้นที่ทำงาน และเลือกโปรเจกต์ '+el('repo-select').value,
-   'ทำงานนี้: '+(el('ws-title').value||'(อ่านคิวงานและเลือกงาน READY ก่อน)'),
+   'ทำงานนี้: '+(el('ws-title').value||'(รับงาน T จากห้ององค์กรก่อน)'),
    'ใช้ Branch acc/ หรือ feat/ ของ PR ที่มีอยู่ อ่านไฟล์ก่อนแก้ แล้ว Commit และตรวจว่า PR เดิมมีหรือไม่',
    'ห้าม Merge/Delete หรือถือว่า QA ผ่านเอง ต้องให้ QA ตรวจ head SHA','รายงาน MN/MQ/TR/C สั้น ๆ'].join('\n');
   try{await navigator.clipboard.writeText(msg);state('คัดลอกคำสั่งสำหรับ ChatGPT Work แล้ว');}
