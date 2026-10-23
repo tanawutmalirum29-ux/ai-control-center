@@ -54,53 +54,46 @@ test('anonymous write is not available when secret is absent, and main is never 
  assert.equal(blocked.status,400);
 });
 
-test('public AI work queue reads Issues with central token, not anonymous rate-limited API',async()=>{
- const prior=globalThis.fetch,seen=[];
- globalThis.fetch=async(url,options={})=>{
-  seen.push({path:new URL(url).pathname,auth:options.headers?.authorization});
-  assert.equal(options.headers.authorization,'Bearer '+token);
-  return new Response(JSON.stringify([
-   {number:98,title:'[ENGINEER] Astra polishing',labels:[],updated_at:'2026-10-23T08:00:00Z'}
-  ]),{status:200});
+test('AI QA can inspect CI and job status through Worker, no GitHub page or login',async()=>{
+ const previous=globalThis.fetch,seen=[];
+ globalThis.fetch=async(url,init={})=>{
+  const path=new URL(url).pathname;
+  seen.push({path,auth:init.headers?.authorization});
+  if(path.endsWith('/actions/runs'))return new Response(JSON.stringify({
+   workflow_runs:[{id:987,name:'QA',status:'completed',conclusion:'success',
+    head_sha:'a'.repeat(40),head_branch:'main'}]}),{status:200});
+  if(path.endsWith('/actions/runs/987/jobs'))return new Response(JSON.stringify({
+   jobs:[{id:4,name:'browser-qa',status:'completed',conclusion:'success',steps:[]}]}),{status:200});
+  throw Error('unexpected upstream '+path);
  };
  try{
-  const response=await worker.fetch(new Request(base+'/api/v1/queue?repo='+repo),env);
-  assert.equal(response.status,200);
-  const data=await response.json();
-  assert.equal(data.tasks[0].number,98);
-  assert.equal(seen.length,1);
-  assert.ok(!JSON.stringify(data).includes(token));
- }finally{globalThis.fetch=prior;}
+  for(const [urlPart,expected] of [['runs',{key:'runs',name:'QA'}],
+   ['jobs?run=987',{key:'jobs',name:'browser-qa'}]]){
+   const join=urlPart.includes('?')?'&':'?';
+   const resp=await worker.fetch(new Request(base+'/api/v1/ops/'+urlPart+join+'repo='+repo),env);
+   const value=await resp.json();
+   assert.equal(resp.status,200,JSON.stringify(value));
+   assert.equal(value[expected.key][0].name,expected.name);
+  }
+  assert.equal(seen.length,2);
+  assert.ok(seen.every(x=>x.auth==='Bearer '+token));
+ }finally{globalThis.fetch=previous}
 });
-
-test('public Issue comment uses the server token without a GitHub login',async()=>{
- const prior=globalThis.fetch,seen=[];
- globalThis.fetch=async(url,options={})=>{
-  seen.push({path:new URL(url).pathname,method:options.method,
-   body:JSON.parse(options.body),auth:options.headers?.authorization});
-  return new Response(JSON.stringify({id:601,html_url:'https://github.com/test-comment'}),{status:201});
- };
+test('retired Issue, comment and role invitation endpoints reject all direct callers before GitHub',async()=>{
+ const paths=['/api/v1/issues','/api/v1/queue','/api/v1/detail','/api/agent/invite',
+  '/api/v1/ops/issue','/api/v1/ops/issues','/api/v1/ops/comment',
+  '/api/v1/ops/comments','/api/v1/ops/assign','/api/v1/ops/status'];
+ const prior=globalThis.fetch;let calls=0;
+ globalThis.fetch=async()=>{calls++;throw Error('retired endpoint must not touch GitHub')};
  try{
-  const response=await worker.fetch(new Request(base+'/api/v1/ops/comment',{
-   method:'POST',headers:{origin:base,'content-type':'application/json'},
-   body:JSON.stringify({repo,number:100,comment:'QA-REVIEWER: MN #100 — verify PR #99 head SHA'})
-  }),env);
-  assert.equal(response.status,201,JSON.stringify(await response.clone().json()));
-  const value=await response.json();
-  assert.equal(value.created,true);assert.equal(value.issue,100);assert.equal(value.id,601);
-  assert.deepEqual(seen.map(x=>x.path),['/repos/tanawutmalirum29-ux/ARCANA-SURVIVOR/issues/100/comments']);
-  assert.equal(seen[0].auth,'Bearer '+token);
-  assert.equal(seen[0].body.body,'QA-REVIEWER: MN #100 — verify PR #99 head SHA');
-  assert.ok(!JSON.stringify(value).includes(token));
- }finally{globalThis.fetch=prior;}
-});
-test('comment endpoint requires JSON same-origin and rejects invalid input',async()=>{
- const other=new Request(base+'/api/v1/ops/comment',{method:'POST',
-  headers:{origin:'https://another.example','content-type':'application/json'},
-  body:JSON.stringify({repo,number:100,comment:'something'})});
- assert.equal((await worker.fetch(other,env)).status,403);
- const bad=new Request(base+'/api/v1/ops/comment',{method:'POST',
-  headers:{origin:base,'content-type':'application/json'},
-  body:JSON.stringify({repo,number:100,comment:''})});
- assert.equal((await worker.fetch(bad,env)).status,400);
+  for(const path of paths){
+   for(const method of ['GET','POST']){
+    const response=await worker.fetch(new Request(base+path,{method,
+     ...(method==='POST'?{headers:{origin:base,'content-type':'application/json'},body:JSON.stringify({repo,number:100,comment:'would write Issue'})}:{})}),env);
+    assert.equal(response.status,410,path+' '+method);
+    assert.equal((await response.json()).error,'legacy_issue_workflow_retired');
+   }
+  }
+  assert.equal(calls,0,'retired API cannot access GitHub even with site-wide write token');
+ }finally{globalThis.fetch=prior}
 });

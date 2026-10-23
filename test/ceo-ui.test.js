@@ -2,23 +2,20 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 const read=path=>readFileSync(new URL('../'+path,import.meta.url),'utf8');
-test('Organization M/T rooms open first and legacy CEO Issue controls stay available as advanced tools',()=>{
- const html=read('public/index.html'),app=read('public/app.js'),client=read('public/ceo.js');
- assert.match(app,/switchView\('orgrooms'\); loadProject\(\)/);
- assert.match(app,/let currentView = 'orgrooms'/);
- assert.match(html,/<button class="nav-item active" data-view="orgrooms"/);
- assert.match(html,/data-view="ceo"[^>]*>.*CEO Dashboard เดิม \(Issues\)/);
- for(const tab of ['ceo','mywork','relay'])
-  assert.ok(html.includes('data-view="'+tab+'"')&&html.includes('id="view-'+tab+'"'),tab);
- for(const id of ['ceo-task-list','ceo-appointment-form','ceo-role','ceo-parent','ceo-slot','ceo-title',
-  'ceo-submit','ceo-pr-list','ceo-qa-status','relay-list','relay-text','relay-copy-current',
-  'mywork-list','mywork-role','ceo-write-state']){
-  assert.ok(html.includes('id="'+id+'"'),id+' not in HTML');
- }
- assert.match(client,/\/api\/v1\/mission/);
- assert.match(client,/\/api\/v1\/ops\/issue/);
- assert.match(client,/AP-ROLE/);
- assert.match(html,/src="\.\/ceo\.js"/);
+test('AI UI has no legacy Issue or AP-ROLE creation views, scripts or entry points',()=>{
+ const html=read('public/index.html'),app=read('public/app.js'),server=read('src/worker.js');
+ for(const tab of ['orgrooms','workspace','qa','organization'])assert.ok(html.includes('id="view-'+tab+'"'));
+ for(const old of ['ceo','issue','mywork','relay','overview','issues','pulls','agents'])
+  assert.ok(!html.includes('id="view-'+old+'"'),'obsolete UI '+old);
+ for(const oldScript of ['ceo.js','delegation.js','issue-reader.js','operations.js','auth.js','agent.js'])
+  assert.ok(!html.includes('src="./'+oldScript+'"'),'obsolete script '+oldScript);
+ for(const form of ['ceo-appointment-form','ops-create','task-form','detail-comment-form'])
+  assert.ok(!html.includes('id="'+form+'"'),'Issue composer still visible '+form);
+ assert.ok(html.includes('id="pr-qa-form"'));
+ assert.ok(html.includes('id="qa-runs"'));
+ assert.match(app,/switchView\('orgrooms'\)/);
+ assert.ok(!app.includes('/issues/new'));
+ assert.ok(server.includes('legacy_issue_workflow_retired'));
 });
 test('source browsing works without authenticated code writes',()=>{
  const html=read('public/index.html'),client=read('public/workspace.js');
@@ -40,16 +37,15 @@ test('server routes public mission reads separately from authenticated write ope
  assert.match(worker,/return workApi\(request,\{token:access\?\.token,allowedRepo:access\?\.repo,claim:access\?\.claim\}\)/);
 });
 
-test('full-file Workspace is visible by default, verified SHA and PR checks are uncached',()=>{
- const html=read('public/index.html'),ws=read('public/workspace.js'),ceo=read('public/ceo.js'),qa=read('public/qa.js'),app=read('public/app.js');
+test('full-file Workspace remains available and PR QA reads exact SHA',()=>{
+ const html=read('public/index.html'),ws=read('public/workspace.js'),qa=read('public/qa.js');
  assert.match(html,/<details class="ws-full-editor" open>/);
  assert.match(html,/id="ws-loaded-file"/);
  assert.match(ws,/data\.content/);
  assert.match(ws,/el\('ws-load'\)\.click\(\)/);
  assert.match(ws,/refreshEpoch/);
- assert.match(ceo,/fresh=1/);
  assert.match(qa,/fresh=1/);
- assert.match(app,/api\/v1\/mission\?repo=/);
+ assert.ok(qa.includes("pr-qa?repo="));
 });
 
 test('Read all now fills both line viewer and full-file textarea only after matching blob SHA',()=>{

@@ -53,15 +53,12 @@ test('invalid repo, malformed issue and writes cannot access GitHub',async()=>{
  const r=await detailApi(new Request(root+'/api/v1/detail?repo='+repo+'&number=98',{method:'POST'}),{fetcher:fetchNever});
  assert.equal(r.status,405);
 });
-test('links for task handoff are internal, and Issue reader is a real UI',()=>{
+test('Issue reader has been removed from AI website; deep-linked API is retired',()=>{
  const read=p=>readFileSync(new URL('../'+p,import.meta.url),'utf8');
- const html=read('public/index.html'),agent=read('public/agent.js'),ceo=read('public/ceo.js');
- const worker=read('src/worker.js'),client=read('public/issue-reader.js');
- assert.match(html,/id="view-issue"/);
- for(const id of ['detail-kind','detail-number','detail-content','detail-state','detail-form'])assert.ok(html.includes('id="'+id+'"'));
- assert.match(html,/src="\.\/issue-reader\.js"/);
- assert.match(agent,/&issue='/);
- assert.match(ceo,/function taskUrl\(task\)\{return '\/\?repo='/);
- assert.match(worker,/detailApi\(request/);
- assert.match(client,/\/api\/v1\/detail/);
+ const html=read('public/index.html'),worker=read('src/worker.js');
+ assert.ok(!html.includes('id="view-issue"'));
+ assert.ok(!html.includes('src="./issue-reader.js"'));
+ assert.ok(!html.includes('id="detail-comment-form"'));
+ assert.ok(worker.includes("'/api/v1/detail'"));
+ assert.ok(worker.includes('legacy_issue_workflow_retired'));
 });

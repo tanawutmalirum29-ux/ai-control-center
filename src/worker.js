@@ -8,7 +8,6 @@ import {opsApi} from './ops-api.js';
 import {agentGateway,agentSession,delegatedAccess,issuerReady} from './agent-gateway.js';
 import {publicSourceApi} from './public-source.js';
 import {missionApi} from './mission-api.js';
-import {detailApi} from './issue-detail.js';
 import {orgWorkspaceApi} from './org-workspaces.js';
 import {centralGithubAccess,centralCredentialConfigured} from './central-github.js';
 import {issueCleanupApi} from './issue-cleanup.js';
@@ -108,35 +107,18 @@ async function auth(request,env,url){
  }
  return reply({error:'not_found'},404);
 }
-function getRole(title=''){
- const m=String(title).match(/^\[?(CEO|DIR(?:-[A-Z])?|TL(?:-[A-Z0-9]+)?|ENGINEER(?:-[A-Z0-9]+)?|QA-REVIEWER|PROJECT-LEAD)\]?(?=[\s:-])/i);
- return m?m[1].toUpperCase():'UNASSIGNED';
-}
-async function newIssue(request,env,url){
- if(request.method!=='POST')return reply({error:'method_not_allowed'},405);
- if(request.headers.get('origin')!==url.origin)return reply({error:'forbidden_origin'},403);
- if(!request.headers.get('content-type')?.toLowerCase().startsWith('application/json'))return reply({error:'json_required'},415);
- const s=await session(request,env);
- if(!s)return reply({error:'login_required'},401);
- let body;
- try{body=await request.json();}catch{return reply({error:'invalid_json'},400);}
- if(!body||typeof body!=='object')return reply({error:'invalid_body'},400);
- const name=body.repo;
- const title=typeof body.title==='string'?body.title.trim():'';
- const detail=typeof body.body==='string'?body.body.trim():'';
- if(!WRITE_REPOS.includes(name))return reply({error:'repository_not_approved',allowed:WRITE_REPOS},403);
- if(!title||title.length>120||detail.length>4000)return reply({error:'invalid_issue_content'},400);
- try{
-  const result=await github('/repos/'+OWNER+'/'+name+'/issues',s.token,{method:'POST',body:{title,body:detail}});
-  return reply({created:true,repo:OWNER+'/'+name,number:result.number,url:result.html_url},201);
- }catch(err){return reply({error:'github_issue_failed',github_status:err.code||502},502);}
-}
 export default {async fetch(request,env){
  const url=new URL(request.url);
  const path=url.pathname;
  if(!path.startsWith('/api/'))return env.ASSETS.fetch(request);
  if(path.startsWith('/api/auth/'))return auth(request,env,url);
- if(path==='/api/v1/issues')return newIssue(request,env,url);
+ // Block retired Issue/appointment endpoints at the server boundary.
+ const retired=['/api/v1/issues','/api/v1/queue','/api/v1/detail',
+   '/api/agent/invite','/api/v1/ops/issue','/api/v1/ops/issues',
+   '/api/v1/ops/comment','/api/v1/ops/comments','/api/v1/ops/assign',
+   '/api/v1/ops/status'];
+ if(retired.includes(path))return reply({error:'legacy_issue_workflow_retired',
+  use:'/api/v1/org/rooms',message:'Use D1 M messages and T tasks'},410);
  if(path.startsWith('/api/v1/maintenance/branches/')){
   // Branch removal is always tied to verified OWNER OAuth, never central/delegated tokens.
   const ownerSession=await session(request,env);
@@ -160,22 +142,17 @@ export default {async fetch(request,env){
   const central=await centralGithubAccess(env,sourceRepo);
   return publicSourceApi(request,{token:central.token||null});
  }
- if(path==='/api/v1/detail'){
-  const central=await centralGithubAccess(env,url.searchParams.get('repo'));
-  return detailApi(request,central.token?{fetcher:credentialedFetcher(central.token)}:{});
- }
  if(path==='/api/v1/mission'){
   const shared=await centralGithubAccess(env,url.searchParams.get('repo'));
   return missionApi(request,shared.token?{fetcher:credentialedFetcher(shared.token)}:{});
  }
- if(path==='/api/v1/ops/comment'&&request.method==='POST'||
-    path==='/api/v1/ops/comments'&&request.method==='GET'){
-  const body=request.method==='POST'?await request.clone().json().catch(()=>({})):null;
-  const target=request.method==='POST'?body?.repo:url.searchParams.get('repo');
-  const shared=await centralGithubAccess(env,target);
-  if(shared.token)return opsApi(request,{token:shared.token});
-  if(!shared.token)return reply({error:'central_github_credential_unavailable',
-    reason:shared.error||'not_configured',login_required:false},503);
+ // Read-only CI views use the server's central GitHub connection. AI
+ // reviewers stay on this website and never sign in to GitHub.
+ if(request.method==='GET'&&['/api/v1/ops/runs','/api/v1/ops/jobs',
+   '/api/v1/ops/workflows'].includes(path)){
+  const shared=await centralGithubAccess(env,url.searchParams.get('repo'));
+  if(!shared.token)return reply({error:'ci_read_unavailable',reason:shared.error||'not_configured'},503);
+  return opsApi(request,{token:shared.token});
  }
  if(path.startsWith('/api/v1/work/')){
   const repository=request.method==='POST'?(await request.clone().json().catch(()=>({}))).repo:url.searchParams.get('repo');
@@ -195,7 +172,7 @@ export default {async fetch(request,env){
   repositories:REPOS.map(name=>OWNER+'/'+name),
   write_repositories:WRITE_REPOS.map(name=>OWNER+'/'+name),
   auth_ready:configured(env),delegation_ready:issuerReady(env),guest_oauth_ready:configured(env),central_credential_present:centralCredentialConfigured(env),organization_workspaces_ready:Boolean(env.ORG_DB),qa_note:'PR QA and head SHA are inspected separately from repository CI',
-  endpoints:['/api/v1/org/rooms','POST /api/v1/org/rooms (verified CEO)','POST /api/v1/org/join','GET /api/v1/org/messages','POST /api/v1/org/messages','POST /api/v1/org/members','/api/health','/api/auth/me','/api/v1/repositories','/api/v1/queue?repo=ARCANA-SURVIVOR','/api/v1/summary?repo=ARCANA-SURVIVOR','/api/v1/pr-qa?repo=ARCANA-SURVIVOR&pr=1','POST /api/v1/issues (owner only)','GET /api/v1/maintenance/issues/preview?repo=ARCANA-SURVIVOR (owner only)','POST /api/v1/maintenance/issues/delete (owner only, permanent)','GET /api/v1/maintenance/branches/preview?repo=ARCANA-SURVIVOR (owner only)','POST /api/v1/maintenance/branches/delete (owner only, preserves main)','/api/v1/organization','/api/v1/organization/document?name=RULES.md','/api/v1/organization/bundle','/api/v1/ops/issues','/api/v1/ops/workflows','/api/v1/ops/runs','/api/v1/ops/jobs','POST /api/v1/ops/issue','POST /api/v1/ops/comment','POST /api/v1/ops/assign','POST /api/v1/ops/status','POST /api/v1/ops/dispatch (Actions write required)','/api/v1/source/branches','/api/v1/source/tree','/api/v1/source/file','/api/agent/me','POST /api/agent/invite','GET /api/agent/activate','GET /api/v1/mission?repo=ARCANA-SURVIVOR','GET /api/v1/work/branches','GET /api/v1/work/tree','GET /api/v1/work/file','POST /api/v1/work/branch','POST /api/v1/work/file','POST /api/v1/work/pr (draft only)']
+  endpoints:['/api/v1/org/rooms','POST /api/v1/org/rooms (verified CEO)','POST /api/v1/org/join','GET /api/v1/org/messages','POST /api/v1/org/messages','POST /api/v1/org/members','/api/health','/api/auth/me','/api/v1/repositories','/api/v1/queue?repo=ARCANA-SURVIVOR','/api/v1/summary?repo=ARCANA-SURVIVOR','/api/v1/pr-qa?repo=ARCANA-SURVIVOR&pr=1','POST /api/v1/issues (retired 410)','GET /api/v1/maintenance/issues/preview?repo=ARCANA-SURVIVOR (owner only)','POST /api/v1/maintenance/issues/delete (owner only, permanent)','GET /api/v1/maintenance/branches/preview?repo=ARCANA-SURVIVOR (owner only)','POST /api/v1/maintenance/branches/delete (owner only, preserves main)','/api/v1/organization','/api/v1/organization/document?name=RULES.md','/api/v1/organization/bundle','/api/v1/ops/issues','/api/v1/ops/workflows','/api/v1/ops/runs','/api/v1/ops/jobs','POST /api/v1/ops/dispatch (Actions write required)','/api/v1/source/branches','/api/v1/source/tree','/api/v1/source/file','/api/agent/me','POST /api/agent/invite','GET /api/agent/activate','GET /api/v1/mission?repo=ARCANA-SURVIVOR','GET /api/v1/work/branches','GET /api/v1/work/tree','GET /api/v1/work/file','POST /api/v1/work/branch','POST /api/v1/work/file','POST /api/v1/work/pr (draft only)']
  },200,true);
  const shared=await centralGithubAccess(env,url.searchParams.get('repo'));
  return readApi(request,shared.token?{fetcher:credentialedFetcher(shared.token)}:{});
