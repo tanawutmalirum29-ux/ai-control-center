@@ -16,7 +16,7 @@ test('Issues use selectable rows and two-stage irreversible confirmation, no typ
  assert.match(html,/src="\.\/issue-cleanup\.js"/);
  assert.match(html,/data-view="operations"/);
  assert.match(ui,/data\.authenticated&&data\.login===OWNER/);
- assert.match(ui,/snapshot\.repo===OWNER/);
+ assert.match(ui,/snapshot\?\.repo===OWNER/);
  assert.match(ui,/chosen\(\)/);
  assert.match(ui,/selected\.has\(issue\.id\)/);
  assert.match(ui,/input\.type='checkbox'/);
