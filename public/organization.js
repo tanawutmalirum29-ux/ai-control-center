@@ -22,12 +22,12 @@ import {OWNER} from './repositories.js';
  async function load(){
   renderProjects();el('org-status').textContent='กำลังอ่านกฎองค์กรจาก GitHub main…';
   try{
-   const response=await fetch('/api/v1/organization',{cache:'no-store'});
+   const response=await fetch('/api/v1/organization/bundle',{cache:'no-store'});
    const data=await response.json();
    if(!response.ok)throw Error(data.reason||data.error);
    if(!/^[a-f0-9]{40}$/.test(data.main_sha)||!Array.isArray(data.documents))throw Error('ข้อมูล Source ไม่สมบูรณ์');
    policy=data;
-   el('org-status').textContent='Main SHA '+data.main_sha.slice(0,12)+(data.stale?' · ข้อมูลสำรอง อาจไม่ใช่ล่าสุด':' · อ่าน GitHub main แล้ว');
+   el('org-status').textContent='กฎที่ฝังในเว็บ · SHA '+data.main_sha.slice(0,12)+' · Snapshot ไม่จำเป็นต้องตรงกับ main ล่าสุด';
    const list=el('org-documents');list.replaceChildren();
    for(const doc of data.documents){
     const row=document.createElement('div');row.className='org-document';
@@ -39,14 +39,14 @@ import {OWNER} from './repositories.js';
    showPreview('org-readme',data.readme_preview||'ไม่พบ README');
    showPreview('org-commands',data.commands_preview||'ไม่พบ COMMANDS');
   }catch(err){
-   policy=null;el('org-status').textContent='อ่านกฎจาก GitHub ไม่สำเร็จ: '+err.message+' · ต้องเปิดกฎจาก Repository จริงก่อนออกคำสั่ง';
+   policy=null;el('org-status').textContent='เปิด Snapshot องค์กรไม่สำเร็จ: '+err.message;
   }
  }
  async function loadDoc(name,button){
   button.disabled=true;
   el('org-document-title').textContent='กำลังโหลด '+name+'…';
   try{
-   const response=await fetch('/api/v1/organization/document?name='+encodeURIComponent(name),{cache:'no-store'});
+   const response=await fetch('/api/v1/organization/bundle/document?name='+encodeURIComponent(name),{cache:'no-store'});
    const doc=await response.json();
    if(!response.ok)throw Error(doc.reason||doc.error);
    el('org-document-title').textContent=name+' · SHA '+String(doc.sha).slice(0,12)+(doc.stale?' · สำรอง':'');
@@ -55,14 +55,15 @@ import {OWNER} from './repositories.js';
   finally{button.disabled=false;}
  }
  async function copy(){
-  if(!policy||policy.stale){el('org-copy-status').textContent='ยังไม่มีหลักฐานกฎล่าสุด กรุณาโหลดอีกครั้งก่อนส่งคำสั่ง';return;}
+  if(!policy){el('org-copy-status').textContent='ยังไม่ได้โหลดเอกสารองค์กร';return;}
   const project='https://github.com/'+current();
   const txt=[
    'AI ORGANIZATION HUB / MN',
    'PROJECT_REPO: '+project,
    'ORG_WORKSPACE_REPO: '+org,
    'STAGING_REPO: '+staging,
-   'ORG_RULES_MAIN_SHA: '+policy.main_sha,
+   'ORG_RULES_SNAPSHOT_SHA: '+policy.main_sha,
+   'นี่คือ Snapshot ที่ฝังกับเว็บ ต้องตรวจ latest main SHA ก่อนใช้กับงานใหม่:',
    'เปิดอ่าน RULES.md, COMMANDS.md และ README.md ที่ SHA นี้ก่อนทำงาน:',
    org+'/tree/'+policy.main_sha,
    'ตรวจ PROJECT_REPO/main SHA, Issue/PR/QA และ REPORTS_TO',
@@ -72,7 +73,7 @@ import {OWNER} from './repositories.js';
    'ห้ามแก้ main หรือ Merge โดยไม่ได้รับสิทธิ์ และห้ามกล่าวว่า QA ผ่านโดยไม่มีหลักฐาน exact SHA',
    'รายงาน MN/MQ/TR/C หรือ ER สั้น ๆ ตามกฎปัจจุบัน'
   ].join('\n');
-  try{await navigator.clipboard.writeText(txt);el('org-copy-status').textContent='คัดลอกคำสั่งพร้อมกฎองค์กรและ 3 Repo แล้ว';}
+  try{await navigator.clipboard.writeText(txt);el('org-copy-status').textContent='คัดลอกกฎที่ฝังและ 3 Repo แล้ว · โปรดตรวจ main ล่าสุดก่อนแต่งตั้ง';}
   catch{el('org-copy-status').textContent='คัดลอกไม่สำเร็จ กรุณาอนุญาต Clipboard';}
  }
  function setup(){
