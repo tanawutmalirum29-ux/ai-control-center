@@ -124,6 +124,10 @@ export async function branchCleanupApi(request,{token,fetcher=globalThis.fetch}=
   const deleted=[];
   for(const item of data.branches){
    try{
+    // Reduce the race between preflight and delete; GitHub REST deletion has no SHA CAS.
+    const latest=await github(token,prefix+'/branches/'+refPath(item.name),fetcher);
+    if(latest?.name!==item.name||latest.commit?.sha!==item.sha||latest.protected!==false)
+     throw Object.assign(Error('branch_changed_before_delete'),{status:409});
     await github(token,prefix+'/git/refs/heads/'+refPath(item.name),fetcher,'DELETE');
     deleted.push(item.name);
    }catch(error){
