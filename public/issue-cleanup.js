@@ -23,7 +23,7 @@ function refresh(){
  el('cleanup-preview').disabled=!owner||busy||!WRITE_REPOS.includes(repo());
 }
 function clear(){
- snapshot=null;context=repo();selected.clear();stop=false;closeConfirm();
+ snapshot=null;context=repo();selected.clear();if(!busy)stop=false;closeConfirm();
  el('cleanup-count').textContent='—';el('cleanup-sample').replaceChildren();
  el('cleanup-stop').hidden=true;refresh();
  note('เลือก Repository แล้วกดตรวจ Issues เพื่อแสดงรายการให้ติ๊กเลือก');
