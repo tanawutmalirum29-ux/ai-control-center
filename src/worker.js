@@ -142,6 +142,11 @@ export default {async fetch(request,env){
   return publicSourceApi(request,{token:central.token||null});
  }
  if(path==='/api/v1/mission')return missionApi(request);
+ if(path.startsWith('/api/v1/work/')){
+  const repository=request.method==='POST'?(await request.clone().json().catch(()=>({}))).repo:url.searchParams.get('repo');
+  const shared=await centralGithubAccess(env,repository);
+  if(shared.token)return workApi(request,{token:shared.token});
+ }
  if(path.startsWith('/api/v1/ops/')||path.startsWith('/api/v1/work/')){
   const s=await session(request,env);
   const access=s?{token:s.token,repo:null,claim:null}:await delegatedAccess(request,env);
